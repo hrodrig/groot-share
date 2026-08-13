@@ -35,13 +35,12 @@ Release (when a GitHub remote exists): PR `develop` → `main`, annotated tag `v
 
 Day-to-day work on **`develop`**. Do not commit features on **`main`**.
 
-### GitHub branch protection (TODO)
+### GitHub branch protection
 
-`main` exists as of v0.2.0 PR [#1](https://github.com/hrodrig/groot-share/pull/1) but is **not protected yet**. After merge and before the next release, enable on **Settings → Branches → `main`** (mirror [groot `protect-main`](https://github.com/hrodrig/groot)):
+`main` is protected (enabled **2026-08-13** after v0.2.0 release). Settings → Branches → `main`:
 
 - Block force-push and deletion
-- Require PR before merge (no direct pushes)
-- Require status check: **CI** (`ci.yml` on the PR head)
-- Optional: require linear history; restrict who can push (maintainers only)
+- Require pull request before merge (0 approvals — solo maintainer; PR still required)
+- Require status checks: **`gofmt + golangci-lint + gocyclo`**, **`test`** (strict: branch must be up to date)
 
-Until then, dismiss the “Your main branch isn't protected” banner is expected — **protect before tagging v0.2.1+**.
+`develop` stays unprotected for day-to-day pushes; release flow remains PR `develop` → `main`.
