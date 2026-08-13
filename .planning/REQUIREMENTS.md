@@ -30,16 +30,16 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 ### Ingest
 
 - [x] **ING-01**: User can HTTP-upload a groot `.tar.gz` to gfs (laptops; optional cluster path)
-- [ ] **ING-02**: In topology VPS + S3, an in-cluster groot/trigger `upload.s3` to the same prefix is accepted as a first-class ingest (preferred for multi-GB); listing includes those objects
+- [x] **ING-02**: In topology VPS + S3, an in-cluster groot/trigger `upload.s3` to the same prefix is accepted as a first-class ingest (preferred for multi-GB); listing includes those objects
 - [x] **ING-03**: No per-upload “also S3” flag; topology is deploy-time config
 
 ### Storage
 
 - [x] **STOR-01**: Topology VPS only: uploaded bytes live on VPS disk (home); listing is local
-- [ ] **STOR-02**: Topology VPS + S3: HTTP ingest lands on local staging, copies to the bucket, deletes staging; listing is the bucket; in-flight staging is not a listed groot file
-- [ ] **STOR-03**: If the bucket copy fails, the HTTP upload still succeeded (object stays in transit) and gfs retries; local-only is not the happy state
-- [ ] **STOR-04**: Staging disk is for in-flight objects only, not the retention set
-- [ ] **STOR-05**: S3-compatible endpoint + path-style when required (Contabo, MinIO, …); AWS virtual-hosted also works
+- [x] **STOR-02**: Topology VPS + S3: HTTP ingest lands on local staging, copies to the bucket, deletes staging; listing is the bucket; in-flight staging is not a listed groot file
+- [x] **STOR-03**: If the bucket copy fails, the HTTP upload still succeeded (object stays in transit) and gfs retries; local-only is not the happy state
+- [x] **STOR-04**: Staging disk is for in-flight objects only, not the retention set
+- [x] **STOR-05**: S3-compatible endpoint + path-style when required (Contabo, MinIO, …); AWS virtual-hosted also works
 
 ### List and download
 
@@ -104,11 +104,11 @@ Filled by roadmap.
 | LIST-01 | Phase 4 | Complete |
 | LIST-02 | Phase 4 | Complete |
 | LIST-03 | Phase 4 | Complete |
-| ING-02 | Phase 5 | Pending |
-| STOR-02 | Phase 5 | Pending |
-| STOR-03 | Phase 5 | Pending |
-| STOR-04 | Phase 5 | Pending |
-| STOR-05 | Phase 5 | Pending |
+| ING-02 | Phase 5 | Complete |
+| STOR-02 | Phase 5 | Complete |
+| STOR-03 | Phase 5 | Complete |
+| STOR-04 | Phase 5 | Complete |
+| STOR-05 | Phase 5 | Complete |
 | AUD-01 | Phase 6 | Pending |
 | RET-01 | Phase 6 | Pending |
 

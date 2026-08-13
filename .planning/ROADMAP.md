@@ -10,7 +10,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 2: Process** — Config topologies, slog, fail-closed, healthz/readyz (completed 2026-08-12)
 - [x] **Phase 3: Identity** — SQLite users, web session, hashed api_key (completed 2026-08-12)
 - [x] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML (completed 2026-08-12)
-- [ ] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist
+- [x] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist (completed 2026-08-12)
 - [ ] **Phase 6: Housekeeping** — Audit log + retention job
 
 ## Phase Details
@@ -103,12 +103,12 @@ Plans:
   3. An object that only exists in the prefix (cluster `upload.s3`) appears in the list
   4. Path-style custom endpoint works (Contabo/MinIO-style)
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 
-- [ ] 05-01: S3-compatible client, transit copy, retry
-- [ ] 05-02: List from prefix; accept foreign keys under `captures/`
+- [x] 05-01: S3-compatible client, transit copy, retry
+- [x] 05-02: List from prefix; accept foreign keys under `captures/`
 
 ### Phase 6: Housekeeping
 
@@ -137,5 +137,5 @@ Plans:
 | 2. Process | 1/1 | Complete   | 2026-08-12 |
 | 3. Identity | 1/1 | Complete    | 2026-08-12 |
 | 4. VPS home | 2/2 | Complete    | 2026-08-12 |
-| 5. Bucket home | 0/2 | Not started | - |
+| 5. Bucket home | 2/2 | Complete    | 2026-08-12 |
 | 6. Housekeeping | 0/1 | Not started | - |
