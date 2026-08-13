@@ -29,6 +29,7 @@ PLATFORMS ?= linux/amd64,linux/arm64
 DIST          := dist
 FREEBSD_ARCH  ?= amd64
 OPENBSD_ARCH  ?= amd64
+ENV_FILE      ?= .env
 
 check-docker = @docker info >/dev/null 2>&1 || { echo "Error: Docker is not running. Start Docker and try again."; exit 1; }
 
@@ -51,7 +52,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help all build test cover fmt fmt-check lint-fix lint vet run clean install \
+.PHONY: help all build test cover fmt fmt-check lint-fix lint vet run serve clean install \
 	docker-build docker-build-amd64 docker-scan goreleaser-check release-check ci \
 	gocyclo govulncheck vulncheck grype security \
 	dist-freebsd dist-openbsd port-freebsd-sync port-openbsd-sync man-sync
@@ -63,6 +64,8 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Build:$(RESET)"
 	@echo "  $(GREEN)build$(RESET)              Build $(BIN_DIR)/$(APP_NAME)"
+	@echo "  $(GREEN)run$(RESET)                Run $(BIN_DIR)/$(APP_NAME) (env from shell)"
+	@echo "  $(GREEN)serve$(RESET)              Run with $(ENV_FILE) (cp .env.example $(ENV_FILE))"
 	@echo "  $(GREEN)install$(RESET)            Install to GOPATH/bin"
 	@echo "  $(GREEN)clean$(RESET)              Remove $(BIN_DIR)/$(APP_NAME) and dist/"
 	@echo ""
@@ -109,6 +112,10 @@ clean:
 
 run: build
 	$(BIN_DIR)/$(APP_NAME)
+
+serve: build
+	@test -f $(ENV_FILE) || { echo "Error: $(ENV_FILE) missing — cp .env.example $(ENV_FILE)"; exit 1; }
+	@set -a && . ./$(ENV_FILE) && set +a && mkdir -p "$$GFS_DATA_DIR" && exec $(BIN_DIR)/$(APP_NAME)
 
 test:
 	go test ./... -race -count=1
