@@ -47,6 +47,25 @@ func TestPagerURL(t *testing.T) {
 	}
 }
 
+func TestApplySortQuery(t *testing.T) {
+	pv := pageView{PageSize: 25}
+	applySortQuery(&pv, "key", true)
+	if pv.SortField != "key" || pv.HiddenSort != "key" || pv.HiddenOrder != "" {
+		t.Fatalf("%+v", pv)
+	}
+	applySortQuery(&pv, "uploaded", true)
+	if pv.HiddenOrder != "asc" {
+		t.Fatalf("uploaded asc %+v", pv)
+	}
+}
+
+func TestPageViewForEmpty(t *testing.T) {
+	pv := pageViewFor(0, 1, 25)
+	if pv.TotalPages != 1 || pv.Total != 0 {
+		t.Fatalf("%+v", pv)
+	}
+}
+
 func TestPaginateSlice(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 	slice, pv := paginateSlice(items, 2, 2)

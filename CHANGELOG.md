@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] — unreleased
+## [0.2.0] — 2026-08-13
 
 ### Added
 
@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Existing SQLite databases migrate `admin` boolean to `role` + `active`; legacy `admin=1` becomes role `admin`
-- Minimum test coverage gate raised to 70% (`COVER_MIN`)
+- Minimum test coverage gate raised to 80% (`COVER_MIN`)
+- Man page describes **gfs** (was incorrectly copied from groot-trigger)
 
 ## [0.1.x]
 

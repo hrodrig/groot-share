@@ -5,13 +5,13 @@
 **📦** _Web and API door for groot `.tar.gz` archives when a VPS exists_
 
 [![Release](https://img.shields.io/github/v/release/hrodrig/groot-share?display_name=tag&label=release&logo=github)](https://github.com/hrodrig/groot-share/releases)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/hrodrig/groot-share/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/hrodrig/groot-share/releases)
 [![Go](https://img.shields.io/badge/Go-1.26.5-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![CI](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml)
 [![gghstats clones](https://gghstats.hermesrodriguez.com/api/v1/badge/hrodrig/groot-share?metric=clones)](https://gghstats.hermesrodriguez.com/hrodrig/groot-share)
 
-**Repo:** [github.com/hrodrig/groot-share](https://github.com/hrodrig/groot-share) · **Releases:** [GitHub Releases](https://github.com/hrodrig/groot-share/releases) · **Spec:** [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md) · **Alternatives:** [docs/ALTERNATIVES.md](docs/ALTERNATIVES.md) · **Operator:** [groot-selfhosted](https://github.com/hrodrig/groot-selfhosted) · **Changelog:** [CHANGELOG.md](CHANGELOG.md) · **Roadmap:** [.planning/ROADMAP.md](.planning/ROADMAP.md) · **Consensus:** [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md)
+**Repo:** [github.com/hrodrig/groot-share](https://github.com/hrodrig/groot-share) · **Releases:** [GitHub Releases](https://github.com/hrodrig/groot-share/releases) · **Spec:** [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md) · **Alternatives:** [docs/ALTERNATIVES.md](docs/ALTERNATIVES.md) · **Deploy:** groot-share-selfhosted *(in progress)* · **Changelog:** [CHANGELOG.md](CHANGELOG.md) · **Roadmap:** [.planning/ROADMAP.md](.planning/ROADMAP.md) · **Consensus:** [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md)
 
 <p align="center">
   <img src="docs/assets/gfs-readme-hero.png" alt="gfs — archive door for groot captures: RBAC, audit, VPS + S3" width="100%" />
@@ -46,7 +46,7 @@ The usual shortcuts fail:
 
 → **[Full comparison, pros/cons, and transparency about gfs limits](docs/ALTERNATIVES.md)**
 
-> **Not a replacement for groot.** Collect, validate, and analyze stay in the **groot** CLI. **groot-trigger** starts on-demand collects in-cluster. **groot-selfhosted** ships CronJob / bastion playbooks. **gfs** appears only in topologies where a VPS is the operator-chosen door.
+> **Not a replacement for groot.** Collect, validate, and analyze stay in the **groot** CLI. **groot-trigger** starts on-demand collects in-cluster. **groot-selfhosted** ships CronJob / bastion playbooks. **gfs** appears only in topologies where a VPS is the operator-chosen door; **groot-share-selfhosted** *(in progress)* will ship VPS / `vps-s3` deploy playbooks for gfs.
 
 **Related tools (same maintainer):**
 - **[pgwd](https://github.com/hrodrig/pgwd)** — PostgreSQL connection watchdog ([live traffic](https://gghstats.hermesrodriguez.com/hrodrig/pgwd); deploy: [pgwd-selfhosted](https://github.com/hrodrig/pgwd-selfhosted))
@@ -78,7 +78,8 @@ The usual shortcuts fail:
 | **[groot](https://github.com/hrodrig/groot)** | CLI: `collect` / validate / inspect / analyze → `.tar.gz`; optional `upload.s3` / `upload.gcs` / `upload.sftp` |
 | **[groot-trigger](https://github.com/hrodrig/groot-trigger)** | In-cluster HTTP → Job `groot collect`; fire-and-forget; optional post-collect upload |
 | **gfs** (this repo) | VPS web + API: auth, HTTP ingest, list, download, audit, retention (`vps` and `vps-s3` topologies) |
-| **[groot-selfhosted](https://github.com/hrodrig/groot-selfhosted)** | Operator deploy: CronJob, bastion, Helm; S3-only and SFTP-VPS playbooks |
+| **groot-share-selfhosted** *(in progress)* | Operator deploy for **gfs**: VPS, `vps-s3`, systemd, Docker |
+| **[groot-selfhosted](https://github.com/hrodrig/groot-selfhosted)** | Operator deploy for **groot**: CronJob, bastion, Helm; S3-only and SFTP-VPS playbooks |
 
 ## Operator topologies
 
@@ -165,7 +166,7 @@ Behavior contract: [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md).
 ```bash
 make build          # bin/gfs
 make test           # race detector
-make cover          # COVER_MIN=70
+make cover          # COVER_MIN=80
 make ci             # fmt-check + lint + gocyclo + test
 make release-check  # release gate (maintainers)
 ```

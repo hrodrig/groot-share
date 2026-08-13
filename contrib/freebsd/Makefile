@@ -1,5 +1,5 @@
 PORTNAME=	gfs
-PORTVERSION=	0.1.1
+PORTVERSION=	0.2.0
 DISTVERSIONPREFIX=	v
 CATEGORIES=	sysutils
 # Local test before release: copy the tarball into DISTDIR, or run e.g.
@@ -10,7 +10,7 @@ DISTFILES=	gfs_v${PORTVERSION}_freebsd_${ARCH:S/aarch64/arm64/}.tar.gz
 EXTRACT_SUFX=	.tar.gz
 
 MAINTAINER=	hrodrig@usb.ve
-COMMENT=	On-demand HTTP API that creates Kubernetes Jobs running groot collect
+COMMENT=	Authenticated web and API door for groot diagnostic archives
 WWW=		https://github.com/hrodrig/groot-share
 LICENSE=	MIT
 

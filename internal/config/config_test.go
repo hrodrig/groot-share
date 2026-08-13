@@ -3,6 +3,7 @@ package config
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadFromEnvFailClosed(t *testing.T) {
@@ -163,5 +164,51 @@ func TestRetentionDefaults(t *testing.T) {
 	}
 	if cfg.KeepLast != 5 || cfg.MaxAgeDays != 7 {
 		t.Fatalf("override %+v", cfg)
+	}
+}
+
+func TestLoadFromEnvInvalidKeepLast(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", dir)
+	t.Setenv("GFS_KEEP_LAST", "nope")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 20 {
+		t.Fatalf("default keep_last %+v", cfg)
+	}
+}
+
+func TestLoadFromEnvMaxUpload(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", dir)
+	t.Setenv("GFS_MAX_UPLOAD_BYTES", "1048576")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MaxUploadBytes != 1048576 {
+		t.Fatalf("max upload %+v", cfg)
+	}
+}
+
+func TestLoadFromEnvDurations(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", dir)
+	t.Setenv("GFS_RETENTION_EVERY", "2h")
+	t.Setenv("GFS_STAGING_GRACE", "bad")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RetentionEvery != 2*time.Hour {
+		t.Fatalf("retention every %+v", cfg.RetentionEvery)
+	}
+	if cfg.StagingGrace != 24*time.Hour {
+		t.Fatalf("staging grace default %+v", cfg.StagingGrace)
 	}
 }

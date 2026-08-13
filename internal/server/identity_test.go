@@ -296,6 +296,186 @@ func TestLogoutJSON(t *testing.T) {
 	}
 }
 
+func TestLoginPageAndHTMLSuccess(t *testing.T) {
+	s, _ := identServer(t)
+	get := httptest.NewRequest(http.MethodGet, "/login", nil)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, get)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "Sign in") {
+		t.Fatalf("login page %d", rr.Code)
+	}
+
+	form := strings.NewReader("username=root&password=correct-horse")
+	post := httptest.NewRequest(http.MethodPost, "/login", form)
+	post.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, post)
+	if rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/" {
+		t.Fatalf("html login %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestUploadPageRequiresAuth(t *testing.T) {
+	s, _ := identServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/upload", nil)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("upload redirect %d", rr.Code)
+	}
+}
+
+func TestCreateUserJSONValidation(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	body := strings.NewReader(`{"username":"x","password":"short"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("short password %d", rr.Code)
+	}
+}
+
+func TestAPIKeyCannotCreateAnotherKey(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	upKey := createAPIKey(t, s, admin, auth.KeyScopeUpload)
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+upKey)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("api key create key %d", rr.Code)
+	}
+}
+
+func TestViewerForbiddenAdminUsers(t *testing.T) {
+	s, st := identServer(t)
+	createUserWithRole(t, st, "view", "view-secret-1", auth.RoleViewer)
+	ck := loginAs(t, s, "view", "view-secret-1")
+	req := httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("viewer admin %d", rr.Code)
+	}
+}
+
+func TestMeUnauthorized(t *testing.T) {
+	s, _ := identServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("me %d", rr.Code)
+	}
+}
+
+func TestCreateUserMissingPasswordJSON(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	body := strings.NewReader(`{"username":"only-name"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("missing password %d", rr.Code)
+	}
+}
+
+func TestListMyAPIKeysEmpty(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/v1/me/api-keys", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"items":[]`) {
+		t.Fatalf("empty keys %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestLoginNotReadyWithoutStore(t *testing.T) {
+	s := &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Ready: func() bool { return true }}
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"root","password":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("not ready %d", rr.Code)
+	}
+}
+
+func TestLoginBadRequestMalformedJSON(t *testing.T) {
+	s, _ := identServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`not-json`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("malformed login %d", rr.Code)
+	}
+}
+
+func TestCreateUserInvalidRoleJSON(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	body := strings.NewReader(`{"username":"bad","password":"bad-secret-1","role":"superuser"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("invalid role %d", rr.Code)
+	}
+}
+
+func TestCreateUserDuplicateUsername(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	body := strings.NewReader(`{"username":"root","password":"other-secret-1","role":"viewer"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("duplicate %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestSettingsPasswordEmptyForm(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodPost, "/settings/password", strings.NewReader("password="))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=error") {
+		t.Fatalf("empty password %d", rr.Code)
+	}
+}
+
+func TestMergeActorData(t *testing.T) {
+	data := map[string]any{"Nav": "home"}
+	ac := &Actor{User: store.User{Username: "root", Role: auth.RoleAdmin}, Method: auth.AuthSession}
+	mergeActorData(data, ac)
+	if data["Username"] != "root" || !data["CanDelete"].(bool) {
+		t.Fatalf("merged %+v", data)
+	}
+}
+
 func TestLoginFormWrongPasswordShowsError(t *testing.T) {
 	s, _ := identServer(t)
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=root&password=wrong"))

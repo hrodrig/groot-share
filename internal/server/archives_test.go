@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -9,6 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/hrodrig/groot-share/internal/auth"
 )
 
 func loginCookie(t *testing.T, s *Server) *http.Cookie {
@@ -195,6 +198,49 @@ func TestUploadDuplicateBrowserForm(t *testing.T) {
 	rr := post()
 	if rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/upload?notice=duplicate&name=job.tar.gz" {
 		t.Fatalf("dup %d loc=%q", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestDownloadNotFound(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/v1/archives/00000000000000000000000000000000/file", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("download missing %d", rr.Code)
+	}
+}
+
+func TestPatchUserPasswordByAdmin(t *testing.T) {
+	s, st := identServer(t)
+	admin := loginCookie(t, s)
+	createUserWithRole(t, st, "bob", "bob-secret-1", auth.RoleViewer)
+	u, err := st.UserByUsername(context.Background(), "bob")
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(u.ID), strings.NewReader(`{"password":"new-bob-secret"}`))
+	patch.Header.Set("Content-Type", "application/json")
+	patch.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, patch)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("patch password %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestListArchivesEmptyJSON(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/v1/archives", nil)
+	req.Header.Set("Accept", "application/json")
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"items"`) {
+		t.Fatalf("list %d %s", rr.Code, rr.Body.String())
 	}
 }
 

@@ -1,8 +1,8 @@
 .\" Copyright (c) 2026 hrodrig
 .\" SPDX-License-Identifier: MIT
-.TH GFS 1 "2026-08-12" "gfs v0.1.1" "User Commands"
+.TH GFS 1 "2026-08-13" "gfs v0.2.0" "User Commands"
 .SH NAME
-gfs \- on-demand HTTP API that creates Kubernetes Jobs for groot collect
+gfs \- authenticated web and API door for groot diagnostic archives
 .SH SYNOPSIS
 .B gfs
 .br
@@ -10,61 +10,112 @@ gfs \- on-demand HTTP API that creates Kubernetes Jobs for groot collect
 .BR version | --version | -V
 .SH DESCRIPTION
 .B gfs
-is a long-lived companion to
-.BR groot (1).
-It stays idle until called, then creates a one-shot Kubernetes
-.B Job
-that runs
-.B groot collect
-(with optional upload configured in the Job's
-.BR groot.yml ).
+(groot files share) is a VPS service for teams that need one catalog of
+.BR groot (1)
+.B .tar.gz
+diagnostic archives.
+It provides session login, scoped API keys, HTTP ingest, a Captures UI, audit
+logging, and retention when a VPS is the operator-chosen door.
 .PP
-The process does
+Collect, validate, and analyze stay in the
+.B groot
+CLI.
+.B gfs
+does
 .B not
-embed the collector. Operators deploy it in-cluster (ClusterIP) with a shared
-API key. See the project
-.B SPECIFICATIONS.md
-for the HTTP contract, rate limits, and trusted-proxy rules.
-.SH HTTP ENDPOINTS (when implemented)
+run
+.B groot collect
+or embed the collector.
+.PP
+Deploy-time topologies (see
+.B docs/SPECIFICATIONS.md
+):
 .TP
-.B GET /v1/collect
-Minimal HTML page: API key field and button
-.BR "Generate GROOT files" .
+.B vps
+Archives live on VPS disk; listing is local.
 .TP
-.B POST /v1/collect
-Start a collect Job after API key validation. Responses include
-.BR 202 ,
-.BR 401 ,
-.BR 409 ,
-.BR 429 .
+.B vps-s3
+HTTP ingest transits staging to an S3-compatible bucket; listing reads the
+bucket prefix; cluster jobs may use
+.B groot upload.s3
+to the same prefix.
+.PP
+Topology
+.B s3
+only (no gfs process) is out of scope for this binary.
+.SH HTTP ENDPOINTS
 .TP
 .B GET /healthz
 Liveness probe (unauthenticated).
 .TP
 .B GET /readyz
-Readiness probe (unauthenticated).
-.SH ENVIRONMENT
-Primary settings use the
-.B GROOT_TRIGGER_*
-prefix (API key, log level/format, rate limits, trusted proxies) and
-.B GROOT_*
-keys for Job image/config (see SPECIFICATIONS.md).
+Readiness: SQLite OK; if S3 is configured, bucket access must succeed.
 .TP
-.B LISTEN_ADDR
+.B GET /login
+Login form.
+.TP
+.B POST /login
+Username and password \-> session cookie.
+.TP
+.B GET /
+Captures list (session).
+.TP
+.B GET /v1/archives
+JSON archive list (session).
+.TP
+.B POST /v1/archives
+Upload
+.B .tar.gz
+(session or upload-scoped API key).
+.TP
+.B GET /v1/archives/{id}
+Download archive (session or read-scoped API key).
+.SH ENVIRONMENT
+Settings use the
+.B GFS_*
+prefix (see
+.B docs/SPECIFICATIONS.md
+):
+.TP
+.B GFS_TOPOLOGY
+.BR vps
+or
+.BR vps-s3
+(required).
+.TP
+.B GFS_DATA_DIR
+SQLite database and blob directories (required).
+.TP
+.B GFS_LISTEN
 Listen address (default
 .BR :8080 ).
+.TP
+.B GFS_BOOTSTRAP_ADMIN
+.TP
+.B GFS_BOOTSTRAP_PASSWORD
+First admin when the user table is empty (required then; ignored afterward).
+.TP
+.B GFS_S3_*
+Bucket, region, endpoint, prefix for topology
+.BR vps-s3 .
+.TP
+.B AWS_ACCESS_KEY_ID
+.TP
+.B AWS_SECRET_ACCESS_KEY
+Required for topology
+.BR vps-s3 .
 .SH FILES
-Configuration is via environment and Kubernetes objects (ConfigMap/Secret),
-not a local YAML file on the trigger host.
+.B GFS_DATA_DIR
+holds
+.B gfs.db
+, staging, and local archive home.
 .SH SEE ALSO
-Project documentation:
-.I https://github.com/hrodrig/groot-share
+.BR groot (1),
+.B docs/SPECIFICATIONS.md
 .br
-Collector CLI:
-.BR groot (1)
-(package
-.BR groot ).
+Project:
+.I https://github.com/hrodrig/groot-share
 .SH BUGS
-Report issues upstream when the GitHub repository is available.
+Report issues at the GitHub repository.
 .SH AUTHOR
 hrodrig
