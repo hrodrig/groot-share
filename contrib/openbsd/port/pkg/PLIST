@@ -1,0 +1,4 @@
+bin/gfs
+man/man1/gfs.1
+share/doc/gfs/LICENSE
+share/doc/gfs/README.md

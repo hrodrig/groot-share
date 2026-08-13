@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1
+# Runtime image for GoReleaser dockers_v2: binaries laid out as linux/<arch>/<binary>.
+ARG TARGETPLATFORM
+FROM gcr.io/distroless/static-debian13:nonroot
+ARG TARGETPLATFORM
+WORKDIR /app
+LABEL org.opencontainers.image.title="gfs"
+LABEL org.opencontainers.image.description="Web/API door for groot .tar.gz archives"
+LABEL org.opencontainers.image.source="https://github.com/hrodrig/groot-share"
+LABEL org.opencontainers.image.authors="https://github.com/hrodrig/groot-share"
+COPY ${TARGETPLATFORM}/gfs /app/gfs
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app/gfs"]

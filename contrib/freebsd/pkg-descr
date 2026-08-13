@@ -1,0 +1,9 @@
+gfs is an idle HTTP companion that creates a Kubernetes Job running
+the groot collector (collect → optional object-storage upload). It ships a
+minimal vanilla HTML page (API key + "Generate GROOT files") and a JSON API.
+
+The package installs the static binary, man page, license, and README.
+Configure via environment (see docs/SPECIFICATIONS.md upstream). Not a
+replacement for the groot CLI.
+
+WWW: https://github.com/hrodrig/groot-share

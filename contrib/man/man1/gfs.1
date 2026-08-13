@@ -1,0 +1,70 @@
+.\" Copyright (c) 2026 hrodrig
+.\" SPDX-License-Identifier: MIT
+.TH GFS 1 "2026-08-12" "gfs v0.1.1" "User Commands"
+.SH NAME
+gfs \- on-demand HTTP API that creates Kubernetes Jobs for groot collect
+.SH SYNOPSIS
+.B gfs
+.br
+.B gfs
+.BR version | --version | -V
+.SH DESCRIPTION
+.B gfs
+is a long-lived companion to
+.BR groot (1).
+It stays idle until called, then creates a one-shot Kubernetes
+.B Job
+that runs
+.B groot collect
+(with optional upload configured in the Job's
+.BR groot.yml ).
+.PP
+The process does
+.B not
+embed the collector. Operators deploy it in-cluster (ClusterIP) with a shared
+API key. See the project
+.B SPECIFICATIONS.md
+for the HTTP contract, rate limits, and trusted-proxy rules.
+.SH HTTP ENDPOINTS (when implemented)
+.TP
+.B GET /v1/collect
+Minimal HTML page: API key field and button
+.BR "Generate GROOT files" .
+.TP
+.B POST /v1/collect
+Start a collect Job after API key validation. Responses include
+.BR 202 ,
+.BR 401 ,
+.BR 409 ,
+.BR 429 .
+.TP
+.B GET /healthz
+Liveness probe (unauthenticated).
+.TP
+.B GET /readyz
+Readiness probe (unauthenticated).
+.SH ENVIRONMENT
+Primary settings use the
+.B GROOT_TRIGGER_*
+prefix (API key, log level/format, rate limits, trusted proxies) and
+.B GROOT_*
+keys for Job image/config (see SPECIFICATIONS.md).
+.TP
+.B LISTEN_ADDR
+Listen address (default
+.BR :8080 ).
+.SH FILES
+Configuration is via environment and Kubernetes objects (ConfigMap/Secret),
+not a local YAML file on the trigger host.
+.SH SEE ALSO
+Project documentation:
+.I https://github.com/hrodrig/groot-share
+.br
+Collector CLI:
+.BR groot (1)
+(package
+.BR groot ).
+.SH BUGS
+Report issues upstream when the GitHub repository is available.
+.SH AUTHOR
+hrodrig
