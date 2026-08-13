@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"html/template"
@@ -47,7 +46,7 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 		s.loginFail(w, r, asJSON, http.StatusInternalServerError, "internal")
 		return
 	}
-	if !auth.CheckPassword(u.PasswordHash, password) {
+	if !auth.CheckPassword(u.PasswordHash, password) || !u.Active {
 		s.loginFail(w, r, asJSON, http.StatusUnauthorized, "unauthorized")
 		return
 	}
@@ -66,7 +65,7 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 	if asJSON {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "admin": u.Admin})
+		_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "role": u.Role})
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -87,19 +86,45 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
+	ac := actorFrom(r.Context())
+	if ac == nil {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "admin": u.Admin})
+	_ = json.NewEncoder(w).Encode(map[string]any{"username": ac.User.Username, "role": ac.User.Role})
 }
 
 func (s *Server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
+	ac := actorFrom(r.Context())
+	if ac == nil {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	scope := auth.KeyScopeUpload
+	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		var body struct {
+			Scope string `json:"scope"`
+		}
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+		if err := dec.Decode(&body); err == nil && body.Scope != "" {
+			scope = auth.KeyScope(body.Scope)
+		}
+	}
+	if scope != auth.KeyScopeUpload && scope != auth.KeyScopeRead {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	if ac.Method == auth.AuthAPIKey {
+		writeJSONError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	if ac.User.Role == auth.RoleViewer {
+		writeJSONError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	if ac.User.Role == auth.RoleUploader && scope == auth.KeyScopeRead {
+		writeJSONError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 	raw, hash, prefix, err := auth.NewAPIKey()
@@ -108,29 +133,40 @@ func (s *Server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
-	if err := s.Store.CreateAPIKey(r.Context(), u.ID, hash, prefix); err != nil {
+	if err := s.Store.CreateAPIKey(r.Context(), ac.User.ID, hash, prefix, scope); err != nil {
 		slog.Error("api key store failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]any{"api_key": raw, "prefix": prefix})
+	_ = json.NewEncoder(w).Encode(map[string]any{"api_key": raw, "prefix": prefix, "scope": scope})
 }
 
 func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil || !u.Admin {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+	ac := actorFrom(r.Context())
+	if ac == nil || !ac.Can(auth.PermUsersManage) {
+		writeJSONError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 	var body struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		Role     string `json:"role"`
 		Admin    bool   `json:"admin"`
 	}
 	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 	if err := dec.Decode(&body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	role := auth.RoleUploader
+	if body.Role != "" {
+		role = auth.Role(body.Role)
+	} else if body.Admin {
+		role = auth.RoleAdmin
+	}
+	if !auth.ValidRole(role) {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
@@ -139,41 +175,26 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	created, err := s.Store.CreateUser(r.Context(), body.Username, hash, body.Admin)
+	created, err := s.Store.CreateUser(r.Context(), body.Username, hash, role)
 	if err != nil {
 		writeJSONError(w, http.StatusConflict, "conflict")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]any{"username": created.Username, "admin": created.Admin})
+	_ = json.NewEncoder(w).Encode(map[string]any{"username": created.Username, "role": created.Role})
 }
 
-func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		u := s.actorFromRequest(r)
-		if u == nil {
-			if wantsJSON(r) || strings.HasPrefix(r.URL.Path, "/v1/") {
-				writeJSONError(w, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), actorKey, u)))
-	}
-}
-
-func (s *Server) actorFromRequest(r *http.Request) *store.User {
+func (s *Server) actorFromRequest(r *http.Request) *Actor {
 	if s.Store == nil {
 		return nil
 	}
 	if key := auth.ExtractKey(r); key != "" {
-		u, err := s.Store.UserByAPIKeyHash(r.Context(), auth.HashSecret(key))
+		ka, err := s.Store.AuthByAPIKeyHash(r.Context(), auth.HashSecret(key))
 		if err != nil {
 			return nil
 		}
-		return &u
+		return &Actor{User: ka.User, Method: auth.AuthAPIKey, KeyScope: ka.Scope}
 	}
 	c, err := r.Cookie(sessionCookie)
 	if err != nil || c.Value == "" {
@@ -183,12 +204,7 @@ func (s *Server) actorFromRequest(r *http.Request) *store.User {
 	if err != nil {
 		return nil
 	}
-	return &u
-}
-
-func actorFrom(ctx context.Context) *store.User {
-	u, _ := ctx.Value(actorKey).(*store.User)
-	return u
+	return &Actor{User: u, Method: auth.AuthSession}
 }
 
 func (s *Server) setSessionCookie(w http.ResponseWriter, value string, maxAge int) {
@@ -294,13 +310,13 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       </a>
       <nav class="appnav" aria-label="Primary">
         <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
-        <a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>
+        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
         <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
       </nav>
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}}{{if .Admin}} <span class="role">admin</span>{{end}}</span>
+      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -336,9 +352,11 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       <td class="muted tabular">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
       <td class="actions">
         <a class="btn btn-quiet btn-sm btn-icon" href="/v1/archives/{{.ID}}/file" title="Download" aria-label="Download {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v10"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg></a>
+        {{if $.CanDelete}}
         <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
           <button class="btn btn-danger-quiet btn-sm btn-icon" type="submit" title="Delete" aria-label="Delete {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
         </form>
+        {{end}}
       </td>
     </tr>
     {{end}}
@@ -420,13 +438,13 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
       </a>
       <nav class="appnav" aria-label="Primary">
         <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
-        <a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>
+        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
         <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
       </nav>
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}}{{if .Admin}} <span class="role">admin</span>{{end}}</span>
+      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -501,13 +519,13 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
       </a>
       <nav class="appnav" aria-label="Primary">
         <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
-        <a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>
+        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
         <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
       </nav>
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}}{{if .Admin}} <span class="role">admin</span>{{end}}</span>
+      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>

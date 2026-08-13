@@ -12,17 +12,17 @@ var HTMLPageSizes = []int{25, 50, 100}
 
 // pageView is HTML pagination state (1-based page index).
 type pageView struct {
-	Page       int
-	PageSize   int
-	TotalPages int
-	Total      int
-	HasPrev    bool
-	HasNext    bool
-	PrevPage   int
-	NextPage   int
-	SortField  string
-	SortAsc    bool
-	HiddenSort string
+	Page        int
+	PageSize    int
+	TotalPages  int
+	Total       int
+	HasPrev     bool
+	HasNext     bool
+	PrevPage    int
+	NextPage    int
+	SortField   string
+	SortAsc     bool
+	HiddenSort  string
 	HiddenOrder string
 }
 

@@ -39,7 +39,7 @@ func TestEnsureAdminThenNoOp(t *testing.T) {
 		t.Fatalf("count %d %v", n, err)
 	}
 	u, err := st.UserByUsername(ctx, "root")
-	if err != nil || !u.Admin {
+	if err != nil || u.Role != auth.RoleAdmin {
 		t.Fatalf("user %+v %v", u, err)
 	}
 }
@@ -51,7 +51,7 @@ func TestSessionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, false)
+	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestAPIKeyStoredHashed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, false)
+	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,11 +89,11 @@ func TestAPIKeyStoredHashed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := st.CreateAPIKey(ctx, u.ID, khash, prefix); err != nil {
+	if err := st.CreateAPIKey(ctx, u.ID, khash, prefix, auth.KeyScopeUpload); err != nil {
 		t.Fatal(err)
 	}
-	got, err := st.UserByAPIKeyHash(ctx, auth.HashSecret(kraw))
-	if err != nil || got.ID != u.ID {
+	got, err := st.AuthByAPIKeyHash(ctx, auth.HashSecret(kraw))
+	if err != nil || got.User.ID != u.ID || got.Scope != auth.KeyScopeUpload {
 		t.Fatalf("key %+v %v", got, err)
 	}
 	ok, err := st.APIKeyHashStored(ctx, khash)

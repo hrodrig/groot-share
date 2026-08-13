@@ -107,8 +107,17 @@ func TestAPIKeyShownOnceAndBearerMe(t *testing.T) {
 	me.Header.Set("Authorization", "Bearer "+payload.APIKey)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, me)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("upload-scope bearer me %d want 403", rr.Code)
+	}
+
+	readKey := createAPIKey(t, s, cookie, auth.KeyScopeRead)
+	me2 := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	me2.Header.Set("Authorization", "Bearer "+readKey)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, me2)
 	if rr.Code != http.StatusOK {
-		t.Fatalf("bearer me %d %s", rr.Code, rr.Body.String())
+		t.Fatalf("read-scope bearer me %d %s", rr.Code, rr.Body.String())
 	}
 
 	meQ := httptest.NewRequest(http.MethodGet, "/v1/me?api_key="+payload.APIKey, nil)

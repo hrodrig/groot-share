@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/store"
@@ -30,18 +31,18 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /login", s.handleLoginGET)
 	mux.HandleFunc("POST /login", s.handleLoginPOST)
 	mux.HandleFunc("POST /logout", s.requireAuth(s.handleLogout))
-	mux.HandleFunc("GET /{$}", s.requireAuth(s.handleHome))
-	mux.HandleFunc("GET /upload", s.requireAuth(s.handleUploadGET))
-	mux.HandleFunc("GET /activity", s.requireAuth(s.handleActivityGET))
-	mux.HandleFunc("GET /v1/me", s.requireAuth(s.handleMe))
-	mux.HandleFunc("POST /v1/api-keys", s.requireAuth(s.handleCreateAPIKey))
-	mux.HandleFunc("POST /v1/users", s.requireAuth(s.handleCreateUser))
-	mux.HandleFunc("GET /v1/archives", s.requireAuth(s.handleListArchives))
-	mux.HandleFunc("POST /v1/archives", s.requireAuth(s.handleUpload))
-	mux.HandleFunc("GET /v1/archives/{id...}", s.requireAuth(s.handleDownload))
-	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requireAuth(s.handleDelete))
-	mux.HandleFunc("POST /v1/archives/{id...}", s.requireAuth(s.handleDelete))
-	mux.HandleFunc("GET /v1/audit", s.requireAuth(s.handleListAudit))
+	mux.HandleFunc("GET /{$}", s.requirePermission(auth.PermArchivesRead, s.handleHome))
+	mux.HandleFunc("GET /upload", s.requirePermission(auth.PermArchivesWrite, s.handleUploadGET))
+	mux.HandleFunc("GET /activity", s.requirePermission(auth.PermAuditRead, s.handleActivityGET))
+	mux.HandleFunc("GET /v1/me", s.requirePermission(auth.PermArchivesRead, s.handleMe))
+	mux.HandleFunc("POST /v1/api-keys", s.requirePermission(auth.PermAPIKeysManage, s.handleCreateAPIKey))
+	mux.HandleFunc("POST /v1/users", s.requirePermission(auth.PermUsersManage, s.handleCreateUser))
+	mux.HandleFunc("GET /v1/archives", s.requirePermission(auth.PermArchivesRead, s.handleListArchives))
+	mux.HandleFunc("POST /v1/archives", s.requirePermission(auth.PermArchivesWrite, s.handleUpload))
+	mux.HandleFunc("GET /v1/archives/{id...}", s.requirePermission(auth.PermArchivesRead, s.handleDownload))
+	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
+	mux.HandleFunc("POST /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
+	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.handleListAudit))
 	mountFaviconRoutes(mux)
 	return s.accessLog(mux)
 }

@@ -13,9 +13,9 @@ func (s *Server) recordAudit(r *http.Request, action string, a store.Archive) {
 		return
 	}
 	ev := store.Audit{Action: action, ObjectID: a.ID, ObjectKey: a.Key, RemoteIP: remoteIP(r.RemoteAddr)}
-	if u := actorFrom(r.Context()); u != nil {
-		ev.Actor = u.Username
-		ev.ActorID = u.ID
+	if ac := actorFrom(r.Context()); ac != nil {
+		ev.Actor = ac.User.Username
+		ev.ActorID = ac.User.ID
 	}
 	if err := s.Store.InsertAudit(r.Context(), ev); err != nil {
 		slog.Error("audit insert", "error", err, "action", action)
@@ -23,11 +23,7 @@ func (s *Server) recordAudit(r *http.Request, action string, a store.Archive) {
 }
 
 func (s *Server) handleActivityGET(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
+	ac := actorFrom(r.Context())
 	pageSize := parsePageSize(r)
 	page := parsePage(r)
 	total, err := s.Store.CountAudit(r.Context())
@@ -46,8 +42,7 @@ func (s *Server) handleActivityGET(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := pageShellData(s.Version)
-	data["Username"] = u.Username
-	data["Admin"] = u.Admin
+	mergeActorData(data, ac)
 	data["Audit"] = events
 	data["Pager"] = pv
 	data["Nav"] = "activity"

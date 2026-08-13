@@ -23,11 +23,7 @@ func (s *Server) maxUpload() int64 {
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
+	ac := actorFrom(r.Context())
 	items, err := s.listItems(r.Context())
 	if err != nil {
 		slog.Error("list archives", "error", err)
@@ -50,8 +46,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	noticeKind, noticeText := noticeFromQuery(r.URL.Query())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := pageShellData(s.Version)
-	data["Username"] = u.Username
-	data["Admin"] = u.Admin
+	mergeActorData(data, ac)
 	data["Items"] = pageItems
 	data["StatsLine"] = statsLine(len(items), total)
 	data["Pager"] = pager
@@ -62,16 +57,11 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
+	ac := actorFrom(r.Context())
 	noticeKind, noticeText := noticeFromQuery(r.URL.Query())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := pageShellData(s.Version)
-	data["Username"] = u.Username
-	data["Admin"] = u.Admin
+	mergeActorData(data, ac)
 	data["MaxUpload"] = s.maxUpload()
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText
@@ -95,11 +85,7 @@ func (s *Server) handleListArchives(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
+	ac := actorFrom(r.Context())
 	r.Body = http.MaxBytesReader(w, r.Body, s.maxUpload())
 	src, key, err := uploadReader(r)
 	if err != nil {
@@ -117,7 +103,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = src.Close() }()
-	a, err := s.ingestBody(r.Context(), src, key, u.ID)
+	a, err := s.ingestBody(r.Context(), src, key, ac.User.ID)
 	if err != nil {
 		var dup *store.DuplicateError
 		if errors.As(err, &dup) {

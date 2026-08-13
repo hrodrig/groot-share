@@ -30,7 +30,7 @@ A ~20-person team on a shared cluster wants one place for groot `.tar.gz` archiv
 
 - Analyze / compare / BYOK LLM
 - `groot upload --gfs`
-- OIDC, RBAC roles, quotas, presigned PUT
+- OIDC, quotas, presigned PUT
 - HTTP inside the groot binary
 - Download proxy inside groot-trigger
 - Multi-tenant SaaS
@@ -116,6 +116,28 @@ Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions 
 - api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once
 - Session: httpOnly cookie; Secure when TLS
 - Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
+
+### 6.1 Roles and api_key scopes (v0.2)
+
+Roles: `viewer`, `uploader`, `admin`. Session auth inherits the user's role.
+
+| Permission | viewer | uploader | admin |
+|------------|--------|----------|-------|
+| List / download archives | ✓ | ✓ | ✓ |
+| Upload archives | — | ✓ | ✓ |
+| Delete archives | — | — | ✓ (session only) |
+| Read audit log | ✓ | ✓ | ✓ |
+| Manage users | — | — | ✓ (session only) |
+| Manage own api_keys | — | ✓ | ✓ (session only) |
+
+api_key scopes (never grant delete or user management):
+
+- **`upload`:** `POST /v1/archives` only (default on create).
+- **`read`:** `GET /v1/archives`, download, `GET /v1/audit`, `GET /v1/me`.
+
+Missing auth → `401`. Authenticated but forbidden → `403`.
+
+Inactive users cannot log in or use api_keys.
 
 ## 7. Retention
 

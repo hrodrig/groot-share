@@ -19,7 +19,14 @@ type User struct {
 	ID           int64
 	Username     string
 	PasswordHash string
-	Admin        bool
+	Role         auth.Role
+	Active       bool
+}
+
+// APIKeyAuth is the user and scope for a presented api_key hash.
+type APIKeyAuth struct {
+	User  User
+	Scope auth.KeyScope
 }
 
 // UserCount returns how many users exist.
@@ -33,14 +40,17 @@ func (s *Store) UserCount(ctx context.Context) (int, error) {
 }
 
 // CreateUser inserts a user. passwordHash is already bcrypt.
-func (s *Store) CreateUser(ctx context.Context, username, passwordHash string, admin bool) (User, error) {
+func (s *Store) CreateUser(ctx context.Context, username, passwordHash string, role auth.Role) (User, error) {
 	username = strings.TrimSpace(username)
 	if username == "" {
 		return User{}, fmt.Errorf("username is required")
 	}
+	if !auth.ValidRole(role) {
+		return User{}, fmt.Errorf("invalid role")
+	}
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO users (username, password_hash, admin) VALUES (?, ?, ?)`,
-		username, passwordHash, boolToInt(admin),
+		`INSERT INTO users (username, password_hash, role, active) VALUES (?, ?, ?, 1)`,
+		username, passwordHash, string(role),
 	)
 	if err != nil {
 		return User{}, fmt.Errorf("insert user: %w", err)
@@ -49,43 +59,25 @@ func (s *Store) CreateUser(ctx context.Context, username, passwordHash string, a
 	if err != nil {
 		return User{}, fmt.Errorf("user id: %w", err)
 	}
-	return User{ID: id, Username: username, PasswordHash: passwordHash, Admin: admin}, nil
+	return User{ID: id, Username: username, PasswordHash: passwordHash, Role: role, Active: true}, nil
 }
 
 // UserByUsername looks up a login name.
 func (s *Store) UserByUsername(ctx context.Context, username string) (User, error) {
-	var u User
-	var admin int
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, username, password_hash, admin FROM users WHERE username = ?`,
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, username, password_hash, role, active FROM users WHERE username = ?`,
 		strings.TrimSpace(username),
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &admin)
-	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, ErrNotFound
-	}
-	if err != nil {
-		return User{}, fmt.Errorf("get user: %w", err)
-	}
-	u.Admin = admin != 0
-	return u, nil
+	)
+	return scanUser(row)
 }
 
 // UserByID loads a user by primary key.
 func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
-	var u User
-	var admin int
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, username, password_hash, admin FROM users WHERE id = ?`,
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, username, password_hash, role, active FROM users WHERE id = ?`,
 		id,
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &admin)
-	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, ErrNotFound
-	}
-	if err != nil {
-		return User{}, fmt.Errorf("get user by id: %w", err)
-	}
-	u.Admin = admin != 0
-	return u, nil
+	)
+	return scanUser(row)
 }
 
 // EnsureAdmin creates the first admin when the table is empty.
@@ -105,18 +97,11 @@ func (s *Store) EnsureAdmin(ctx context.Context, username, password string) erro
 	if err != nil {
 		return fmt.Errorf("bootstrap password: %w", err)
 	}
-	_, err = s.CreateUser(ctx, username, hash, true)
+	_, err = s.CreateUser(ctx, username, hash, auth.RoleAdmin)
 	if err != nil {
 		return fmt.Errorf("bootstrap admin: %w", err)
 	}
 	return nil
-}
-
-func boolToInt(v bool) int {
-	if v {
-		return 1
-	}
-	return 0
 }
 
 // CreateSession stores a hashed session token.
@@ -134,14 +119,15 @@ func (s *Store) CreateSession(ctx context.Context, userID int64, tokenHash strin
 // UserBySessionHash returns the user for a still-valid session.
 func (s *Store) UserBySessionHash(ctx context.Context, tokenHash string) (User, error) {
 	var u User
-	var admin int
+	var role string
+	var active int
 	var exp string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT u.id, u.username, u.password_hash, u.admin, s.expires_at
+		SELECT u.id, u.username, u.password_hash, u.role, u.active, s.expires_at
 		FROM sessions s
 		JOIN users u ON u.id = s.user_id
 		WHERE s.token_hash = ?`, tokenHash,
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &admin, &exp)
+	).Scan(&u.ID, &u.Username, &u.PasswordHash, &role, &active, &exp)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
@@ -152,7 +138,11 @@ func (s *Store) UserBySessionHash(ctx context.Context, tokenHash string) (User, 
 	if err != nil || time.Now().After(until) {
 		return User{}, ErrNotFound
 	}
-	u.Admin = admin != 0
+	u.Role = auth.Role(role)
+	u.Active = active != 0
+	if !u.Active {
+		return User{}, ErrNotFound
+	}
 	return u, nil
 }
 
@@ -165,11 +155,14 @@ func (s *Store) DeleteSession(ctx context.Context, tokenHash string) error {
 	return nil
 }
 
-// CreateAPIKey stores a hashed key.
-func (s *Store) CreateAPIKey(ctx context.Context, userID int64, keyHash, prefix string) error {
+// CreateAPIKey stores a hashed key with scope.
+func (s *Store) CreateAPIKey(ctx context.Context, userID int64, keyHash, prefix string, scope auth.KeyScope) error {
+	if !auth.ValidKeyScope(scope) {
+		return fmt.Errorf("invalid api_key scope")
+	}
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO api_keys (user_id, key_hash, prefix) VALUES (?, ?, ?)`,
-		userID, keyHash, prefix,
+		`INSERT INTO api_keys (user_id, key_hash, prefix, scope) VALUES (?, ?, ?, ?)`,
+		userID, keyHash, prefix, string(scope),
 	)
 	if err != nil {
 		return fmt.Errorf("insert api key: %w", err)
@@ -177,24 +170,29 @@ func (s *Store) CreateAPIKey(ctx context.Context, userID int64, keyHash, prefix 
 	return nil
 }
 
-// UserByAPIKeyHash looks up the owner of a key hash.
-func (s *Store) UserByAPIKeyHash(ctx context.Context, keyHash string) (User, error) {
+// AuthByAPIKeyHash looks up the owner and scope of a key hash.
+func (s *Store) AuthByAPIKeyHash(ctx context.Context, keyHash string) (APIKeyAuth, error) {
 	var u User
-	var admin int
+	var role, scope string
+	var active int
 	err := s.db.QueryRowContext(ctx, `
-		SELECT u.id, u.username, u.password_hash, u.admin
+		SELECT u.id, u.username, u.password_hash, u.role, u.active, k.scope
 		FROM api_keys k
 		JOIN users u ON u.id = k.user_id
 		WHERE k.key_hash = ?`, keyHash,
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &admin)
+	).Scan(&u.ID, &u.Username, &u.PasswordHash, &role, &active, &scope)
 	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, ErrNotFound
+		return APIKeyAuth{}, ErrNotFound
 	}
 	if err != nil {
-		return User{}, fmt.Errorf("api key lookup: %w", err)
+		return APIKeyAuth{}, fmt.Errorf("api key lookup: %w", err)
 	}
-	u.Admin = admin != 0
-	return u, nil
+	u.Role = auth.Role(role)
+	u.Active = active != 0
+	if !u.Active {
+		return APIKeyAuth{}, ErrNotFound
+	}
+	return APIKeyAuth{User: u, Scope: auth.KeyScope(scope)}, nil
 }
 
 // APIKeyHashStored reports whether this hash exists (tests).
@@ -205,4 +203,20 @@ func (s *Store) APIKeyHashStored(ctx context.Context, keyHash string) (bool, err
 		return false, err
 	}
 	return n > 0, nil
+}
+
+func scanUser(row *sql.Row) (User, error) {
+	var u User
+	var role string
+	var active int
+	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &role, &active)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("get user: %w", err)
+	}
+	u.Role = auth.Role(role)
+	u.Active = active != 0
+	return u, nil
 }

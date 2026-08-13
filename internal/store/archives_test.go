@@ -59,14 +59,14 @@ func TestIngestEmpty(t *testing.T) {
 
 func TestSanitizeKey(t *testing.T) {
 	cases := map[string]string{
-		"/tmp/../secret.tar.gz":           "secret.tar.gz",
-		"":                                "archive.tar.gz",
-		"my file.tar.gz":                  "my-file.tar.gz",
-		"foo@#bar$.tar.gz":                "foobar.tar.gz",
-		"kel-capture-AZKB335001.tar.gz":   "kel-capture-AZKB335001.tar.gz",
-		" spaced  .tar.gz":                 "spaced-.tar.gz",
-		"bad\u0000name.tar.gz":            "badname.tar.gz",
-		"../../../etc/passwd":             "passwd",
+		"/tmp/../secret.tar.gz":         "secret.tar.gz",
+		"":                              "archive.tar.gz",
+		"my file.tar.gz":                "my-file.tar.gz",
+		"foo@#bar$.tar.gz":              "foobar.tar.gz",
+		"kel-capture-AZKB335001.tar.gz": "kel-capture-AZKB335001.tar.gz",
+		" spaced  .tar.gz":              "spaced-.tar.gz",
+		"bad\u0000name.tar.gz":          "badname.tar.gz",
+		"../../../etc/passwd":           "passwd",
 	}
 	for in, want := range cases {
 		if got := sanitizeKey(in); got != want {
