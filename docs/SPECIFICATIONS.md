@@ -31,6 +31,7 @@ A ~20-person team on a shared cluster wants one place for groot `.tar.gz` archiv
 - Analyze / compare / BYOK LLM
 - `groot upload --gfs`
 - OIDC, quotas, presigned PUT
+- External share links for third parties (Phase 9)
 - HTTP inside the groot binary
 - Download proxy inside groot-trigger
 - Multi-tenant SaaS
@@ -129,6 +130,7 @@ Roles: `viewer`, `uploader`, `admin`. Session auth inherits the user's role.
 | Read audit log | ✓ | ✓ | ✓ |
 | Manage users | — | — | ✓ (session only) |
 | Manage own api_keys | — | ✓ | ✓ (session only) |
+| Create / revoke external share links | — | — | ✓ (session only; Phase 9) |
 
 api_key scopes (never grant delete or user management):
 
@@ -189,6 +191,26 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 - Presigned GET vs proxy download — MVP: gfs streams (local or GetObject)
 - Manifest peek (`extras/manifest.json`)
 
+## 12. External share links (planned Phase 9 — not implemented)
+
+**Problem:** Hand one archive to a third party (vendor, external auditor) without a gfs account; know if they downloaded it; link must expire.
+
+**Locked:** Only **admin** (session) may create, list, or revoke share links. Uploader and viewer → `403`. No api_key scope for share management.
+
+| Method | Path | Auth | Behavior |
+|--------|------|------|----------|
+| POST | `/v1/archives/{id}/shares` | admin session | Create link; body `{ "expires_at" }` **or** `{ "expires_in" }`; optional `label`, `max_uses`. Response includes full URL **once**. |
+| GET | `/v1/archives/{id}/shares` | admin session | List active and historical links (no raw token) |
+| DELETE | `/v1/archives/{id}/shares/{share_id}` | admin session | Revoke (`share_revoke` audit) |
+| GET | `/s/{token}` | none | Stream archive until expired, revoked, or uses exhausted; `share_download` audit |
+
+- Token: high entropy; store hash only (same spirit as api_key).
+- Download path **proxies through gfs** (local or GetObject) — do not hand third parties a presigned S3 URL (audit + revocation).
+- Team “copy download link” (`/v1/archives/{id}/file`, session required) stays separate from external share URLs.
+
+Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`.
+
 ---
 
-*SPEC approved 2026-08-12 from GFS-CONSENSUS.md + groot-trigger supply-chain reference.*
+*SPEC approved 2026-08-12 from GFS-CONSENSUS.md + groot-trigger supply-chain reference.*  
+*§12 added 2026-08-13 — external share links (Phase 9, admin-only).*

@@ -14,6 +14,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
 - [ ] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (planned 2026-08-13)
 - [ ] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (planned 2026-08-13)
+- [ ] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (planned 2026-08-13)
 
 ## Phase Details
 
@@ -173,6 +174,27 @@ Plans:
 
 Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 
+### Phase 9: External share links
+
+**Goal:** An admin can mint a time-limited download URL for one archive so a third party (no gfs account) can fetch it; every fetch is audited; links are revocable.
+**Depends on:** Phase 7 (admin role and RBAC)
+**Requirements:** SHARE-01, SHARE-02, SHARE-03
+**Success Criteria** (what must be TRUE):
+
+  1. Only **admin** session can create, list, or revoke share links; uploader/viewer get `403`
+  2. `GET /s/{token}` works without auth until `expires_at`, revocation, or `max_uses` — gfs proxies bytes on `vps` and `vps-s3`
+  3. Audit rows: `share_create`, `share_download`, `share_revoke`; raw token never in logs or audit
+  4. Admin UI on Captures: create (TTL or until-date), copy URL once, list/revoke active links
+
+**Plans:** 0/2 plans complete
+
+Plans:
+
+- [ ] 09-01: `share_links` schema + admin API + public `/s/{token}` download + audit
+- [ ] 09-02: Captures admin UI + SPEC §12 + CHANGELOG
+
+Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
+
 ## Backlog
 
 - [x] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc.
@@ -181,7 +203,7 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 ## Progress
 
 **Execution Order:**
-1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -193,3 +215,4 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
 | 7. RBAC | 3/3 | Complete | 2026-08-13 |
 | 8. SFTP watcher | 0/2 | Planned | — |
+| 9. External share links | 0/2 | Planned | — |

@@ -68,14 +68,22 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ## v2 Requirements
 
-Deferred. Tracked, not in current roadmap.
+Deferred. Tracked in roadmap Phase 9+ and backlog.
+
+### External share links (Phase 9)
+
+- **SHARE-01**: **Admin only** can create a time-limited download link for one archive (`expires_at` absolute or `expires_in` TTL); high-entropy token shown once; optional label and `max_uses`; token stored hashed only
+- **SHARE-02**: Unauthenticated `GET /s/{token}` streams the archive via gfs (proxy) until expired, revoked, or max uses exhausted; works on `vps` and `vps-s3`
+- **SHARE-03**: Audit `share_create`, `share_download`, and `share_revoke`; admin can list and revoke links per archive; audit never contains the raw token
+
+### Other v2
 
 - **ANLZ-01**: Analyze / compare from gfs UI
 - **ANLZ-02**: Per-user BYOK LLM credentials, encrypted at rest
 - **CLI-01**: `groot upload --gfs` with api_key, never AWS keys
 - **AUTH-06**: OIDC / SSO
 - **STOR-06**: Presigned PUT laptop / bastion → bucket (only after a spike against that provider)
-- **LIST-04**: Presigned GET download (spike per endpoint)
+- **LIST-04**: Presigned GET download for **authenticated** users (spike per endpoint) — not a substitute for SHARE links to third parties
 
 ## Out of Scope
 
@@ -121,15 +129,19 @@ Filled by roadmap.
 | RET-01 | Phase 6 | Complete |
 | AUTH-05 | Phase 7 | Complete |
 | ING-04 | Phase 8 | Planned |
+| SHARE-01 | Phase 9 | Planned |
+| SHARE-02 | Phase 9 | Planned |
+| SHARE-03 | Phase 9 | Planned |
 
 **Coverage:**
 
 - v1 requirements: 25 total
 - v1.1 requirements: 1 (AUTH-05)
 - v1.2 requirements: 1 (ING-04)
-- Mapped to phases: 27
-- Unmapped: 0
+- v2 mapped (Phase 9): 3 (SHARE-01..03)
+- Mapped to phases: 30
+- Unmapped v2: ANLZ, CLI, AUTH-06, STOR-06, LIST-04 (backlog)
 
 ---
 *Requirements defined: 2026-08-12*  
-*Last updated: 2026-08-13 — ING-04 SFTP watcher (Phase 8)*
+*Last updated: 2026-08-13 — SHARE-01..03 external share links (Phase 9, admin-only)*

@@ -246,6 +246,7 @@ Be explicit so you do not over-deploy:
 | **Not IdP/OIDC yet** | Local users + bootstrap env; SSO is v2 ([REQUIREMENTS](../.planning/REQUIREMENTS.md)) |
 | **No analyze/compare UI** | MVP is ingest/list/download/audit; LLM phase 2 |
 | **Presigned PUT from laptop / bastion** | Not promised; HTTP through gfs until provider spikes land |
+| **Share archive with external third party** | **Phase 9** — admin-only time-limited `/s/{token}` + download audit; not in v0.1–v0.3 |
 | **SFTP server** | Never in gfs; Phase 8 watcher only |
 | **Visibility modes** | MVP: authenticated users see captures; fine-grained visibility TBD |
 | **Single binary trust** | BYOK LLM (future) trusts gfs host for envelope encryption |

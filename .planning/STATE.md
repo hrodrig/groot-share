@@ -10,8 +10,8 @@ last_updated: "2026-08-13T15:15:00.000Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 8 SFTP inbox watcher planned (watcher over groot upload.sftp drop dir)
 progress:
-  total_phases: 8
-  completed_phases: 6
+  total_phases: 9
+  completed_phases: 7
   total_plans: 14
   completed_plans: 9
 ---
@@ -65,6 +65,7 @@ Progress: [███████░░░] 75% (6/8 phases; 9/14 plans)
 - Three PRs: 07-01 core, 07-02 CRUD API, 07-03 UI + keys
 - Target tag: v0.2.0 after 07-03
 - Phase 8 SFTP watcher: poll `GFS_SFTP_INBOX` (groot `remote_dir/inbox`); no SFTP server in gfs; target v0.3.0
+- Phase 9 external share links: admin-only time-limited `/s/{token}` for third parties + audit; target v0.4.0
 
 ### Pending Todos
 

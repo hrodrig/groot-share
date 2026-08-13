@@ -96,6 +96,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 | 9 | LLM credentials (phase 2) | Each user may store **their own** provider credentials (BYOK) to interact with archives; encrypted at rest; not a single global team key for user chats. |
 | 10 | Origins | **Three classes** from day one: in-cluster (trigger / CronJob), **bastion** (groot-selfhosted Docker / cron / systemd), and laptops. |
 | 11 | gfs host | First gfs is a **VPS** (topologies that include gfs). Not a substitute for trigger inside the cluster. |
+| 12 | External share links | **Admin only** creates time-limited download URLs for third parties (`/s/{token}`); gfs streams bytes and audits each download; uploader/viewer cannot mint links. Phase 9 / SHARE-01..03. |
 
 ---
 
@@ -126,6 +127,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 - Optional CLI: `groot upload --gfs` with api_key (token), never AWS keys
 - Richer roles/scopes, quotas, OIDC, etc. (ideas — not committed)
 - Presigned PUT for laptop / bastion → bucket (only if a spike against that provider succeeds)
+- **External share links** (Phase 9): **admin only** mints time-limited `GET /s/{token}` URLs for third parties; gfs proxies download; audit `share_create` / `share_download` / `share_revoke` — not presigned S3 to outsiders (see SHARE-01..03)
 
 ---
 
