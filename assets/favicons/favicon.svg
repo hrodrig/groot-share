@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="gfs">
+  <!-- Neobrutalist crate: amber field + ink rim (matches .crate in gfs UI). -->
+  <rect x="2" y="2" width="60" height="60" fill="#f79009" stroke="#121212" stroke-width="4"/>
+  <rect x="16" y="18" width="32" height="28" fill="none" stroke="#121212" stroke-width="4" rx="2"/>
+  <rect x="12" y="26" width="40" height="4" fill="#121212"/>
+  <rect x="30" y="30" width="4" height="18" fill="#121212"/>
+</svg>

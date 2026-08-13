@@ -25,7 +25,7 @@ func identServer(t *testing.T) (*Server, *store.Store) {
 	if err := st.EnsureAdmin(context.Background(), "root", "correct-horse"); err != nil {
 		t.Fatal(err)
 	}
-	return &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Store: st, Ready: func() bool { return true }}, st
+	return &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Store: st, Ready: func() bool { return true }, Version: "0.1.0-test"}, st
 }
 
 func TestLoginWrongPassword(t *testing.T) {
@@ -137,8 +137,12 @@ func TestGetLoginForm(t *testing.T) {
 	s, _ := identServer(t)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/login", nil))
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `name="password"`) {
-		t.Fatalf("%d %s", rr.Code, rr.Body.String())
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK || !strings.Contains(body, `id="login-password"`) {
+		t.Fatalf("%d %s", rr.Code, body)
+	}
+	if !strings.Contains(body, `class="input-group"`) || !strings.Contains(body, `id="pw-toggle"`) || !strings.Contains(body, `id="theme-toggle"`) {
+		t.Fatalf("login polish missing: %s", body)
 	}
 }
 
@@ -148,6 +152,83 @@ func TestHomeRequiresAuth(t *testing.T) {
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
 	if rr.Code != http.StatusSeeOther {
 		t.Fatalf("code %d", rr.Code)
+	}
+}
+
+func TestHomeShowsVersionFooter(t *testing.T) {
+	s, _ := identServer(t)
+	login := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"root","password":"correct-horse"}`))
+	login.Header.Set("Content-Type", "application/json")
+	login.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, login)
+	var cookie *http.Cookie
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == sessionCookie {
+			cookie = c
+		}
+	}
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	home.AddCookie(cookie)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, home)
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK || !strings.Contains(body, "gfs v0.1.0-test") {
+		t.Fatalf("home footer %d %s", rr.Code, body)
+	}
+	if strings.Contains(body, `id="dropzone"`) {
+		t.Fatalf("home should not embed upload form")
+	}
+	if !strings.Contains(body, `href="/upload"`) || !strings.Contains(body, `icon-moon`) {
+		t.Fatalf("home nav/upload link missing")
+	}
+}
+
+func TestUploadPage(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/upload", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK || !strings.Contains(body, `id="dropzone"`) {
+		t.Fatalf("upload page %d %s", rr.Code, body)
+	}
+	if !strings.Contains(body, `aria-current="page">Upload`) {
+		t.Fatalf("upload nav active missing")
+	}
+}
+
+func TestActivityPage(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/activity", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK || !strings.Contains(body, `id="ac-h"`) {
+		t.Fatalf("activity page %d %s", rr.Code, body)
+	}
+	if !strings.Contains(body, `aria-current="page">Activity`) {
+		t.Fatalf("activity nav missing")
+	}
+}
+
+func TestHomeHasNoActivitySection(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if strings.Contains(body, `id="ac-h"`) {
+		t.Fatalf("home should not include activity section")
+	}
+	if !strings.Contains(body, `class="brand" href="/"`) {
+		t.Fatalf("brand home link missing on home")
 	}
 }
 

@@ -22,8 +22,50 @@ func (s *Server) recordAudit(r *http.Request, action string, a store.Archive) {
 	}
 }
 
+func (s *Server) handleActivityGET(w http.ResponseWriter, r *http.Request) {
+	u := actorFrom(r.Context())
+	if u == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	pageSize := parsePageSize(r)
+	page := parsePage(r)
+	total, err := s.Store.CountAudit(r.Context())
+	if err != nil {
+		slog.Error("count audit", "error", err)
+		http.Error(w, "internal", http.StatusInternalServerError)
+		return
+	}
+	pv := pageViewFor(total, page, pageSize)
+	offset := (pv.Page - 1) * pageSize
+	events, err := s.Store.ListAuditPage(r.Context(), pageSize, offset)
+	if err != nil {
+		slog.Error("list audit", "error", err)
+		http.Error(w, "internal", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	data := pageShellData(s.Version)
+	data["Username"] = u.Username
+	data["Admin"] = u.Admin
+	data["Audit"] = events
+	data["Pager"] = pv
+	data["Nav"] = "activity"
+	_ = activityTmpl.Execute(w, data)
+}
+
 func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {
-	items, err := s.Store.ListAudit(r.Context(), 100)
+	perPage := parsePageSize(r)
+	page := parsePage(r)
+	total, err := s.Store.CountAudit(r.Context())
+	if err != nil {
+		slog.Error("count audit", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	pv := pageViewFor(total, page, perPage)
+	offset := (pv.Page - 1) * perPage
+	items, err := s.Store.ListAuditPage(r.Context(), perPage, offset)
 	if err != nil {
 		slog.Error("list audit", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "internal")
@@ -34,7 +76,13 @@ func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {
 		out = append(out, auditJSON(ev))
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items":       out,
+		"page":        pv.Page,
+		"per_page":    perPage,
+		"total":       pv.Total,
+		"total_pages": pv.TotalPages,
+	})
 }
 
 func auditJSON(ev store.Audit) map[string]any {

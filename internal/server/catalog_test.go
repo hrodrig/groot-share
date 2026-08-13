@@ -176,6 +176,24 @@ func TestOpenDownloadRejectsDotDot(t *testing.T) {
 	}
 }
 
+func TestVPSS3UploadDuplicate(t *testing.T) {
+	s, _ := vpsS3Server(t)
+	ck := loginCookie(t, s)
+	payload := "bucket-dup-bytes"
+	postArchive(t, s, ck, "run.tar.gz", payload)
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/gzip")
+	req.Header.Set("X-Gfs-Filename", "run.tar.gz")
+	req.Header.Set("Accept", "application/json")
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("duplicate code %d %s", rr.Code, rr.Body.String())
+	}
+	assertStagingEmpty(t, s)
+}
+
 func TestStagingDirUnusedOnVPSSuccess(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)

@@ -15,10 +15,11 @@ import (
 
 // Server is the HTTP front-end.
 type Server struct {
-	Cfg   config.Config
-	Store *store.Store
-	Blobs blob.Store
-	Ready func() bool
+	Cfg     config.Config
+	Store   *store.Store
+	Blobs   blob.Store
+	Ready   func() bool
+	Version string
 }
 
 // Handler returns the root mux with middleware.
@@ -30,6 +31,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /login", s.handleLoginPOST)
 	mux.HandleFunc("POST /logout", s.requireAuth(s.handleLogout))
 	mux.HandleFunc("GET /{$}", s.requireAuth(s.handleHome))
+	mux.HandleFunc("GET /upload", s.requireAuth(s.handleUploadGET))
+	mux.HandleFunc("GET /activity", s.requireAuth(s.handleActivityGET))
 	mux.HandleFunc("GET /v1/me", s.requireAuth(s.handleMe))
 	mux.HandleFunc("POST /v1/api-keys", s.requireAuth(s.handleCreateAPIKey))
 	mux.HandleFunc("POST /v1/users", s.requireAuth(s.handleCreateUser))
@@ -39,6 +42,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requireAuth(s.handleDelete))
 	mux.HandleFunc("POST /v1/archives/{id...}", s.requireAuth(s.handleDelete))
 	mux.HandleFunc("GET /v1/audit", s.requireAuth(s.handleListAudit))
+	mountFaviconRoutes(mux)
 	return s.accessLog(mux)
 }
 

@@ -38,6 +38,13 @@ func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key string, upl
 	if err != nil {
 		return store.Archive{}, err
 	}
+	if existing, err := s.Store.FindExistingSHA256(ctx, st.SHA256); err == nil {
+		_ = os.Remove(st.Path)
+		return store.Archive{}, &store.DuplicateError{Existing: existing}
+	} else if !errors.Is(err, store.ErrNotFound) {
+		_ = os.Remove(st.Path)
+		return store.Archive{}, err
+	}
 	return s.copyOrTransit(ctx, st, s3key)
 }
 
@@ -75,6 +82,9 @@ func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key strin
 		return a, nil
 	}
 	_ = os.Remove(st.Path)
+	if err := s.Store.InsertArchiveMeta(ctx, a); err != nil {
+		slog.Warn("archive meta index", "error", err, "id", a.ID)
+	}
 	return a, nil
 }
 

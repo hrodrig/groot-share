@@ -31,6 +31,8 @@
 !cmd/**
 !internal/
 !internal/**
+!assets/
+!assets/**
 !docs/
 !docs/**
 !contrib/

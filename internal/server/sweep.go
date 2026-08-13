@@ -35,7 +35,7 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/?notice=deleted", http.StatusSeeOther)
 }
 
 func (s *Server) removeArchive(ctx context.Context, id string) (store.Archive, error) {

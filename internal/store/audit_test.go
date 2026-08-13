@@ -19,6 +19,14 @@ func TestInsertListAudit(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].Action != "upload" || got[0].Actor != "root" {
 		t.Fatalf("%+v %v", got, err)
 	}
+	n, err := st.CountAudit(ctx)
+	if err != nil || n != 1 {
+		t.Fatalf("count %d %v", n, err)
+	}
+	page, err := st.ListAuditPage(ctx, 10, 0)
+	if err != nil || len(page) != 1 {
+		t.Fatalf("page %v %v", page, err)
+	}
 	blob, err := dumpAudit(st)
 	if err != nil {
 		t.Fatal(err)

@@ -74,10 +74,26 @@ func NewArchiveID() (string, error) {
 	return hex.EncodeToString(b[:]), nil
 }
 
+// DuplicateError is returned when an upload matches an existing archive by sha256.
+type DuplicateError struct {
+	Existing Archive
+}
+
+func (e *DuplicateError) Error() string {
+	return "duplicate archive"
+}
+
 // Ingest streams r into VPS home and records metadata. Does not buffer r in RAM.
 func (s *Store) Ingest(ctx context.Context, r io.Reader, key string, uploadedBy int64) (Archive, error) {
 	st, err := s.Stage(ctx, r, key, uploadedBy)
 	if err != nil {
+		return Archive{}, err
+	}
+	if existing, err := s.FindExistingSHA256(ctx, st.SHA256); err == nil {
+		_ = os.Remove(st.Path)
+		return Archive{}, &DuplicateError{Existing: existing}
+	} else if !errors.Is(err, ErrNotFound) {
+		_ = os.Remove(st.Path)
 		return Archive{}, err
 	}
 	return s.CommitLocal(ctx, st)
@@ -159,6 +175,81 @@ func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
 		UploadedBy: st.UploadedBy,
 		CreatedAt:  st.CreatedAt,
 	}, nil
+}
+
+// InsertArchiveMeta records metadata for objects stored outside VPS home (e.g. S3).
+func (s *Store) InsertArchiveMeta(ctx context.Context, a Archive) error {
+	if strings.TrimSpace(a.ID) == "" || strings.TrimSpace(a.SHA256) == "" {
+		return fmt.Errorf("invalid archive metadata")
+	}
+	created := a.CreatedAt.UTC().Format(time.RFC3339)
+	if a.CreatedAt.IsZero() {
+		created = time.Now().UTC().Format(time.RFC3339)
+	}
+	source := a.Source
+	if source == "" {
+		source = "http"
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO archives (id, key, size, sha256, source, uploaded_by, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		a.ID, a.Key, a.Size, a.SHA256, source, a.UploadedBy, created,
+	)
+	if err != nil {
+		return fmt.Errorf("insert archive meta: %w", err)
+	}
+	return nil
+}
+
+// ArchiveBySHA256 returns the newest archive with the given content hash.
+func (s *Store) ArchiveBySHA256(ctx context.Context, sha256 string) (Archive, error) {
+	if strings.TrimSpace(sha256) == "" {
+		return Archive{}, ErrNotFound
+	}
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, key, size, sha256, source, COALESCE(uploaded_by, 0), created_at
+		FROM archives WHERE sha256 = ?
+		ORDER BY created_at DESC LIMIT 1`, sha256)
+	a, err := scanArchive(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Archive{}, ErrNotFound
+	}
+	if err != nil {
+		return Archive{}, fmt.Errorf("get archive by sha256: %w", err)
+	}
+	return a, nil
+}
+
+// FindExistingSHA256 returns an archive or in-flight transit row with the same hash.
+func (s *Store) FindExistingSHA256(ctx context.Context, sha256 string) (Archive, error) {
+	a, err := s.ArchiveBySHA256(ctx, sha256)
+	if err == nil {
+		return a, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return Archive{}, err
+	}
+	tr, err := s.TransitBySHA256(ctx, sha256)
+	if errors.Is(err, ErrNotFound) {
+		return Archive{}, ErrNotFound
+	}
+	if err != nil {
+		return Archive{}, err
+	}
+	return archiveFromTransit(tr), nil
+}
+
+func archiveFromTransit(tr Transit) Archive {
+	return Archive{
+		ID:         tr.S3Key,
+		Key:        tr.Key,
+		Size:       tr.Size,
+		SHA256:     tr.SHA256,
+		Source:     "http",
+		Storage:    "transit",
+		UploadedBy: tr.UploadedBy,
+		CreatedAt:  tr.CreatedAt,
+	}
 }
 
 func sanitizeKey(key string) string {

@@ -26,7 +26,9 @@ const actorKey ctxKey = 1
 
 func (s *Server) handleLoginGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = loginTmpl.Execute(w, map[string]any{"CSS": template.CSS(layoutCSS), "Error": ""})
+	data := pageShellData(s.Version)
+	data["Error"] = ""
+	_ = loginTmpl.Execute(w, data)
 }
 
 func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +229,9 @@ func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
-	_ = loginTmpl.Execute(w, map[string]any{"CSS": template.CSS(layoutCSS), "Error": loginErrorCopy(msg)})
+	data := pageShellData(s.Version)
+	data["Error"] = loginErrorCopy(msg)
+	_ = loginTmpl.Execute(w, data)
 }
 
 func writeJSONError(w http.ResponseWriter, code int, msg string) {
@@ -241,96 +245,333 @@ func wantsJSON(r *http.Request) bool {
 	return strings.Contains(a, "application/json")
 }
 
+// isBrowserForm reports whether the request is the browser's multipart upload
+// form, which expects redirect-and-notice UX instead of JSON error bodies.
+func isBrowserForm(r *http.Request) bool {
+	return !wantsJSON(r) && strings.Contains(r.Header.Get("Content-Type"), "multipart/")
+}
+
 var pageFuncs = template.FuncMap{
 	"humansize": humanSize,
+	"pagerurl":  pagerURL,
+	"sortlink":  sortURL,
 }
 
 var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — sign in</title><style>{{.CSS}}</style></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Sign in</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
 <body class="gate">
 <a class="skip" href="#main">Skip to content</a>
-<main id="main">
-<div class="sheet">
-<p class="eyebrow">Archive door</p>
-<h1 class="mark">gfs</h1>
-<p class="muted">Sign in to list and download groot captures.</p>
-{{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+<div class="gate-tools">{{.ThemeToggle}}</div>
+<main id="main" class="gate-wrap">
+<div class="gate-brand"><span class="crate crate-lg" aria-hidden="true"></span><span class="wordmark-lg">gfs</span></div>
+<p class="gate-sub">Sign in to the archive door</p>
+<div class="card gate-card">
+{{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
 <form method="post" action="/login">
-<label>Username <input name="username" autocomplete="username" required></label>
-<label>Password <input name="password" type="password" autocomplete="current-password" required></label>
-<button type="submit">Sign in</button>
+<label class="field"><span>Username</span><input name="username" autocomplete="username" required autofocus></label>
+<label class="field field-pw"><span>Password</span><span class="input-group"><input name="password" id="login-password" type="password" autocomplete="current-password" required><button type="button" class="pw-toggle" id="pw-toggle" aria-label="Show password" aria-controls="login-password"><svg class="icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg><svg class="icon-hide is-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-10-8-10-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 10 8 10 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></span></label>
+<button class="btn btn-block" type="submit">Sign in</button>
 </form>
 </div>
-</main></body></html>
+<p class="gate-foot">gfs — groot files share</p>
+</main>
+{{.ThemeToggleScript}}
+` + passwordToggleScript + `
+</body></html>
 `))
 
 var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs</title><style>{{.CSS}}</style></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Captures</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<main id="main">
-<header class="bar">
-  <div>
-    <p class="eyebrow">Archive door</p>
-    <h1 class="mark">gfs</h1>
-    <p class="muted">Signed in as {{.Username}}{{if .Admin}} (admin){{end}}</p>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="appbar-start">
+      <a class="brand" href="/">
+        <span class="crate" aria-hidden="true"></span>
+        <span class="wordmark">gfs</span>
+        <span class="brand-sub">archive door</span>
+      </a>
+      <nav class="appnav" aria-label="Primary">
+        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
+        <a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>
+        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
+      </nav>
+    </div>
+    <div class="appbar-side">
+      {{.ThemeToggle}}
+      <span class="who">{{.Username}}{{if .Admin}} <span class="role">admin</span>{{end}}</span>
+      <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
+    </div>
   </div>
-  <form method="post" action="/logout"><button class="ghost" type="submit">Sign out</button></form>
 </header>
-<section>
-<h2>Upload</h2>
-<form method="post" action="/v1/archives" enctype="multipart/form-data">
-<label>groot .tar.gz <input type="file" name="file" accept=".tar.gz,.tgz,application/gzip" required></label>
-<button type="submit">Upload capture</button>
-</form>
-</section>
-<section>
-<h2>Archives</h2>
-{{if .Items}}
-<table class="manifest">
-<thead><tr><th>Name</th><th>Source</th><th>Size</th><th>When</th><th></th></tr></thead>
-<tbody>
-{{range .Items}}
-<tr>
-  <td>{{.Key}}</td>
-  <td><span class="stamp">{{.Source}}</span></td>
-  <td>{{humansize .Size}}</td>
-  <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
-  <td>
-    <div class="actions">
-      <a href="/v1/archives/{{.ID}}/file">Download</a>
-      <form method="post" action="/v1/archives/{{.ID}}/delete">
-        <button class="ghost" type="submit">Delete</button>
+<main id="main" class="wrap">
+{{if .NoticeText}}<div class="notice notice-{{.NoticeKind}}" role="status">{{.NoticeText}}</div>{{end}}
+<div class="page-head">
+  <div>
+    <h1>Captures</h1>
+    <p class="sub">{{.StatsLine}}</p>
+  </div>
+</div>
+<section class="card" aria-labelledby="ar-h">
+  <div class="card-head"><h2 id="ar-h">Archives</h2></div>
+  {{if .Items}}
+  <div class="table-wrap">
+  <table class="grid">
+    <thead><tr>
+      <th scope="col" class="sortable{{if eq $.Pager.SortField "key"}} is-active{{end}}"><a href="{{sortlink $.Pager "key"}}"{{if eq $.Pager.SortField "key"}} aria-sort="{{if $.Pager.SortAsc}}ascending{{else}}descending{{end}}"{{end}}>Name<span class="sort-ind" aria-hidden="true">{{if eq $.Pager.SortField "key"}}{{if $.Pager.SortAsc}}▲{{else}}▼{{end}}{{else}}↕{{end}}</span></a></th>
+      <th scope="col" class="sortable{{if eq $.Pager.SortField "source"}} is-active{{end}}"><a href="{{sortlink $.Pager "source"}}"{{if eq $.Pager.SortField "source"}} aria-sort="{{if $.Pager.SortAsc}}ascending{{else}}descending{{end}}"{{end}}>Source<span class="sort-ind" aria-hidden="true">{{if eq $.Pager.SortField "source"}}{{if $.Pager.SortAsc}}▲{{else}}▼{{end}}{{else}}↕{{end}}</span></a></th>
+      <th scope="col" class="sortable{{if eq $.Pager.SortField "storage"}} is-active{{end}}"><a href="{{sortlink $.Pager "storage"}}"{{if eq $.Pager.SortField "storage"}} aria-sort="{{if $.Pager.SortAsc}}ascending{{else}}descending{{end}}"{{end}}>Storage<span class="sort-ind" aria-hidden="true">{{if eq $.Pager.SortField "storage"}}{{if $.Pager.SortAsc}}▲{{else}}▼{{end}}{{else}}↕{{end}}</span></a></th>
+      <th scope="col" class="sortable num{{if eq $.Pager.SortField "size"}} is-active{{end}}"><a href="{{sortlink $.Pager "size"}}"{{if eq $.Pager.SortField "size"}} aria-sort="{{if $.Pager.SortAsc}}ascending{{else}}descending{{end}}"{{end}}>Size<span class="sort-ind" aria-hidden="true">{{if eq $.Pager.SortField "size"}}{{if $.Pager.SortAsc}}▲{{else}}▼{{end}}{{else}}↕{{end}}</span></a></th>
+      <th scope="col" class="sortable{{if eq $.Pager.SortField "uploaded"}} is-active{{end}}"><a href="{{sortlink $.Pager "uploaded"}}"{{if eq $.Pager.SortField "uploaded"}} aria-sort="{{if $.Pager.SortAsc}}ascending{{else}}descending{{end}}"{{end}}>Uploaded (UTC)<span class="sort-ind" aria-hidden="true">{{if eq $.Pager.SortField "uploaded"}}{{if $.Pager.SortAsc}}▲{{else}}▼{{end}}{{else}}↕{{end}}</span></a></th>
+      <th scope="col"><span class="visually-hidden">Actions</span></th>
+    </tr></thead>
+    <tbody>
+    {{range .Items}}
+    <tr>
+      <td class="key">{{.Key}}</td>
+      <td><span class="pill pill-{{.Source}}">{{.Source}}</span></td>
+      <td>{{if .Storage}}<span class="pill pill-{{.Storage}}">{{.Storage}}</span>{{end}}</td>
+      <td class="num tabular">{{humansize .Size}}</td>
+      <td class="muted tabular">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
+      <td class="actions">
+        <a class="btn btn-quiet btn-sm btn-icon" href="/v1/archives/{{.ID}}/file" title="Download" aria-label="Download {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v10"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg></a>
+        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
+          <button class="btn btn-danger-quiet btn-sm btn-icon" type="submit" title="Delete" aria-label="Delete {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
+        </form>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  {{if gt .Pager.Total 0}}
+  <nav class="pager" aria-label="Archives pagination">
+    {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
+    <div class="pager-center">
+      <p class="pager-meta">Page {{.Pager.Page}} of {{.Pager.TotalPages}} · {{.Pager.Total}} captures</p>
+      <form class="pager-size" method="get">
+        {{if .Pager.HiddenSort}}<input type="hidden" name="sort" value="{{.Pager.HiddenSort}}">{{end}}
+        {{if .Pager.HiddenOrder}}<input type="hidden" name="order" value="{{.Pager.HiddenOrder}}">{{end}}
+        <label for="arch-per-page">Per page</label>
+        <select id="arch-per-page" name="per_page" onchange="this.form.submit()">
+        {{range .PagerSizes}}<option value="{{.}}"{{if eq $.Pager.PageSize .}} selected{{end}}>{{.}}</option>{{end}}
+        </select>
       </form>
     </div>
-  </td>
-</tr>
-{{end}}
-</tbody>
-</table>
-{{else}}
-<p class="empty">No captures yet. Upload a groot .tar.gz to start the list.</p>
-{{end}}
+    {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.NextPage .Pager}}">Next</a>{{else}}<span></span>{{end}}
+  </nav>
+  {{end}}
+  {{else}}
+  <div class="empty">
+    <p class="empty-title">No captures yet</p>
+    <p class="empty-sub">Browse will stay empty until the first archive lands. <a href="/upload">Upload a capture</a> or use the HTTP API.</p>
+  </div>
+  {{end}}
 </section>
-<section>
-<h2>Activity</h2>
-{{if .Audit}}
-<table class="audit">
-<thead><tr><th>When</th><th>Who</th><th>Action</th><th>Object</th></tr></thead>
-<tbody>
-{{range .Audit}}
-<tr>
-  <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
-  <td>{{.Actor}}</td>
-  <td>{{.Action}}</td>
-  <td class="muted">{{.ObjectKey}}</td>
-</tr>
-{{end}}
-</tbody>
-</table>
-{{else}}
-<p class="empty">No activity yet.</p>
-{{end}}
+</main>
+{{.AppFoot}}
+<dialog id="confirm-dialog" aria-labelledby="confirm-title">
+  <form method="dialog" class="dialog-card">
+    <p class="dialog-title" id="confirm-title">Delete capture</p>
+    <p class="dialog-text" id="confirm-text"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-quiet" value="cancel">Cancel</button>
+      <button class="btn btn-danger" value="ok">Delete</button>
+    </div>
+  </form>
+</dialog>
+<script>
+(function () {
+  var dlg = document.getElementById('confirm-dialog');
+  var txt = document.getElementById('confirm-text');
+  var pending = null;
+  if (dlg && dlg.showModal) {
+    document.querySelectorAll('form[data-confirm]').forEach(function (f) {
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        pending = f;
+        txt.textContent = f.getAttribute('data-confirm');
+        dlg.showModal();
+      });
+    });
+    dlg.addEventListener('close', function () {
+      if (dlg.returnValue === 'ok' && pending) { pending.submit(); }
+      pending = null;
+    });
+  }
+})();
+</script>
+{{.ThemeToggleScript}}
+</body></html>
+`))
+
+var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Upload</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="appbar-start">
+      <a class="brand" href="/">
+        <span class="crate" aria-hidden="true"></span>
+        <span class="wordmark">gfs</span>
+        <span class="brand-sub">archive door</span>
+      </a>
+      <nav class="appnav" aria-label="Primary">
+        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
+        <a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>
+        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
+      </nav>
+    </div>
+    <div class="appbar-side">
+      {{.ThemeToggle}}
+      <span class="who">{{.Username}}{{if .Admin}} <span class="role">admin</span>{{end}}</span>
+      <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
+    </div>
+  </div>
+</header>
+<main id="main" class="wrap">
+{{if .NoticeText}}<div class="notice notice-{{.NoticeKind}}" role="status">{{.NoticeText}}</div>{{end}}
+<div class="page-head">
+  <div>
+    <h1>Upload capture</h1>
+    <p class="sub">Send a groot .tar.gz from your browser. For automation, use <span class="mono">POST /v1/archives</span> with an API key.</p>
+  </div>
+  <a class="btn btn-quiet" href="/">Back to captures</a>
+</div>
+<section class="card" aria-labelledby="up-h">
+  <div class="card-head">
+    <h2 id="up-h">Choose file</h2>
+    <p class="hint">groot .tar.gz, up to {{humansize .MaxUpload}} per file</p>
+  </div>
+  <form method="post" action="/v1/archives" enctype="multipart/form-data" class="upload">
+    <label class="dropzone" id="dropzone">
+      <input type="file" name="file" id="file" accept=".tar.gz,.tgz,application/gzip" required>
+      <span class="dz-text" id="dz-text">Choose a file or drop it here</span>
+    </label>
+    <button class="btn" type="submit">Upload capture</button>
+  </form>
 </section>
-</main></body></html>
+</main>
+{{.AppFoot}}
+<script>
+(function () {
+  var dz = document.getElementById('dropzone');
+  var input = document.getElementById('file');
+  var label = document.getElementById('dz-text');
+  if (dz && input) {
+    var show = function () {
+      if (input.files && input.files.length) {
+        label.textContent = input.files[0].name;
+        label.classList.add('has-file');
+      }
+    };
+    input.addEventListener('change', show);
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('drag'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('drag'); });
+    });
+    dz.addEventListener('drop', function (e) {
+      if (e.dataTransfer && e.dataTransfer.files.length) {
+        input.files = e.dataTransfer.files;
+        show();
+      }
+    });
+  }
+})();
+</script>
+{{.ThemeToggleScript}}
+</body></html>
+`))
+
+var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Activity</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="appbar-start">
+      <a class="brand" href="/">
+        <span class="crate" aria-hidden="true"></span>
+        <span class="wordmark">gfs</span>
+        <span class="brand-sub">archive door</span>
+      </a>
+      <nav class="appnav" aria-label="Primary">
+        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
+        <a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>
+        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
+      </nav>
+    </div>
+    <div class="appbar-side">
+      {{.ThemeToggle}}
+      <span class="who">{{.Username}}{{if .Admin}} <span class="role">admin</span>{{end}}</span>
+      <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
+    </div>
+  </div>
+</header>
+<main id="main" class="wrap">
+<div class="page-head">
+  <div>
+    <h1>Activity</h1>
+    <p class="sub">Audit log for uploads, downloads, and deletions. JSON at <span class="mono">GET /v1/audit</span>.</p>
+  </div>
+  <a class="btn btn-quiet" href="/">Back to captures</a>
+</div>
+<section class="card" aria-labelledby="ac-h">
+  <div class="card-head">
+    <h2 id="ac-h">Recent events</h2>
+    <p class="hint">{{.Pager.Total}} total</p>
+  </div>
+  {{if .Audit}}
+  <div class="table-wrap">
+  <table class="grid">
+    <thead><tr>
+      <th scope="col">When (UTC)</th>
+      <th scope="col">Who</th>
+      <th scope="col">Action</th>
+      <th scope="col">Object</th>
+      <th scope="col">IP</th>
+    </tr></thead>
+    <tbody>
+    {{range .Audit}}
+    <tr>
+      <td class="muted tabular">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
+      <td>{{.Actor}}</td>
+      <td>{{.Action}}</td>
+      <td class="muted mono" style="word-break: break-all;">{{.ObjectKey}}</td>
+      <td class="muted tabular">{{.RemoteIP}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  {{if gt .Pager.Total 0}}
+  <nav class="pager" aria-label="Activity pagination">
+    {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
+    <div class="pager-center">
+      <p class="pager-meta">Page {{.Pager.Page}} of {{.Pager.TotalPages}} · {{.Pager.Total}} events</p>
+      <form class="pager-size" method="get">
+        <label for="act-per-page">Per page</label>
+        <select id="act-per-page" name="per_page" onchange="this.form.submit()">
+        {{range .PagerSizes}}<option value="{{.}}"{{if eq $.Pager.PageSize .}} selected{{end}}>{{.}}</option>{{end}}
+        </select>
+      </form>
+    </div>
+    {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.NextPage .Pager}}">Next</a>{{else}}<span></span>{{end}}
+  </nav>
+  {{end}}
+  {{else}}
+  <div class="empty">
+    <p class="empty-title">No activity yet</p>
+    <p class="empty-sub">Uploads, downloads, and deletions will appear here.</p>
+  </div>
+  {{end}}
+</section>
+</main>
+{{.AppFoot}}
+{{.ThemeToggleScript}}
+</body></html>
 `))

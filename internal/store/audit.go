@@ -35,14 +35,32 @@ func (s *Store) InsertAudit(ctx context.Context, ev Audit) error {
 	return nil
 }
 
-// ListAudit returns newest first.
+// ListAudit returns newest first (first page only).
 func (s *Store) ListAudit(ctx context.Context, limit int) ([]Audit, error) {
+	return s.ListAuditPage(ctx, limit, 0)
+}
+
+// CountAudit returns total audit rows.
+func (s *Store) CountAudit(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit`).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count audit: %w", err)
+	}
+	return n, nil
+}
+
+// ListAuditPage returns newest first with limit/offset.
+func (s *Store) ListAuditPage(ctx context.Context, limit, offset int) ([]Audit, error) {
 	if limit <= 0 {
 		limit = 50
 	}
+	if offset < 0 {
+		offset = 0
+	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, actor, actor_id, action, object_id, object_key, remote_ip, created_at
-		FROM audit ORDER BY id DESC LIMIT ?`, limit)
+		FROM audit ORDER BY id DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list audit: %w", err)
 	}

@@ -67,7 +67,7 @@ func run(args []string) int {
 		slog.Error("s3 client", "error", err)
 		return 1
 	}
-	app := newApp(cfg, st, blobs)
+	app := newApp(cfg, st, blobs, version)
 	httpSrv := &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           app.Handler(),
@@ -98,11 +98,12 @@ func openBlobs(cfg config.Config) (blob.Store, error) {
 	})
 }
 
-func newApp(cfg config.Config, st *store.Store, blobs blob.Store) *server.Server {
+func newApp(cfg config.Config, st *store.Store, blobs blob.Store, version string) *server.Server {
 	return &server.Server{
-		Cfg:   cfg,
-		Store: st,
-		Blobs: blobs,
+		Cfg:     cfg,
+		Store:   st,
+		Blobs:   blobs,
+		Version: version,
 		Ready: func() bool {
 			if !st.Ping(context.Background()) {
 				return false
@@ -121,7 +122,7 @@ func newApp(cfg config.Config, st *store.Store, blobs blob.Store) *server.Server
 }
 
 func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
-	app := newApp(cfg, st, nil)
+	app := newApp(cfg, st, nil, version)
 	return &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           app.Handler(),

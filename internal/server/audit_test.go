@@ -46,6 +46,9 @@ func TestAuditUploadDownload(t *testing.T) {
 	if !strings.Contains(body, `"action":"upload"`) || !strings.Contains(body, `"action":"download"`) {
 		t.Fatalf("missing actions: %s", body)
 	}
+	if !strings.Contains(body, `"total":`) || !strings.Contains(body, `"page":`) {
+		t.Fatalf("pagination fields missing: %s", body)
+	}
 	if strings.Contains(body, "correct-horse") || strings.Contains(body, `"gfs_`) {
 		t.Fatalf("secrets in audit: %s", body)
 	}

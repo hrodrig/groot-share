@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS audit (
   remote_ip TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS archives_sha256_idx ON archives(sha256);
+CREATE INDEX IF NOT EXISTS transit_sha256_idx ON transit(sha256);
 `
 
 func (s *Store) migrate() error {

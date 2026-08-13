@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -42,6 +43,25 @@ func (s *Store) ListTransit(ctx context.Context) ([]Transit, error) {
 		out = append(out, tr)
 	}
 	return out, rows.Err()
+}
+
+// TransitBySHA256 loads a pending staging object by content hash.
+func (s *Store) TransitBySHA256(ctx context.Context, sha256 string) (Transit, error) {
+	if strings.TrimSpace(sha256) == "" {
+		return Transit{}, ErrNotFound
+	}
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, key, s3_key, size, sha256, path, COALESCE(uploaded_by, 0), created_at, last_error
+		FROM transit WHERE sha256 = ?
+		ORDER BY created_at DESC LIMIT 1`, sha256)
+	tr, err := scanTransit(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Transit{}, ErrNotFound
+	}
+	if err != nil {
+		return Transit{}, fmt.Errorf("get transit by sha256: %w", err)
+	}
+	return tr, nil
 }
 
 // TransitByS3Key loads a pending staging object.

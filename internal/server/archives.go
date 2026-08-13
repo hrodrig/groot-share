@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log/slog"
 	"mime"
@@ -34,20 +33,49 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
-	events, err := s.Store.ListAudit(r.Context(), 20)
-	if err != nil {
-		slog.Error("list audit", "error", err)
-		http.Error(w, "internal", http.StatusInternalServerError)
+	var total int64
+	for i := range items {
+		if items[i].Storage == "" {
+			items[i].Storage = "local"
+		}
+		total += items[i].Size
+	}
+	pageSize := parsePageSize(r)
+	sortField, sortAsc := parseSort(r)
+	sortArchives(items, sortField, sortAsc)
+	page := parsePage(r)
+	pageItems, pager := paginateSlice(items, page, pageSize)
+	applySortQuery(&pager, sortField, sortAsc)
+	noticeKind, noticeText := noticeCopy(r.URL.Query().Get("notice"))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	data := pageShellData(s.Version)
+	data["Username"] = u.Username
+	data["Admin"] = u.Admin
+	data["Items"] = pageItems
+	data["StatsLine"] = statsLine(len(items), total)
+	data["Pager"] = pager
+	data["NoticeKind"] = noticeKind
+	data["NoticeText"] = noticeText
+	data["Nav"] = "captures"
+	_ = homeTmpl.Execute(w, data)
+}
+
+func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {
+	u := actorFrom(r.Context())
+	if u == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	noticeKind, noticeText := noticeCopy(r.URL.Query().Get("notice"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = homeTmpl.Execute(w, map[string]any{
-		"CSS":      template.CSS(layoutCSS),
-		"Username": u.Username,
-		"Admin":    u.Admin,
-		"Items":    items,
-		"Audit":    events,
-	})
+	data := pageShellData(s.Version)
+	data["Username"] = u.Username
+	data["Admin"] = u.Admin
+	data["MaxUpload"] = s.maxUpload()
+	data["NoticeKind"] = noticeKind
+	data["NoticeText"] = noticeText
+	data["Nav"] = "upload"
+	_ = uploadTmpl.Execute(w, data)
 }
 
 func (s *Server) handleListArchives(w http.ResponseWriter, r *http.Request) {
@@ -75,19 +103,38 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	src, key, err := uploadReader(r)
 	if err != nil {
 		status := http.StatusBadRequest
+		notice := "upload_error"
 		if isMaxBytes(err) {
 			status = http.StatusRequestEntityTooLarge
+			notice = "too_large"
 		}
-		if wantsJSON(r) || strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			writeJSONError(w, status, "bad_request")
+		if isBrowserForm(r) {
+			http.Redirect(w, r, "/upload?notice="+notice, http.StatusSeeOther)
 			return
 		}
-		http.Error(w, "bad request", status)
+		writeJSONError(w, status, "bad_request")
 		return
 	}
 	defer func() { _ = src.Close() }()
 	a, err := s.ingestBody(r.Context(), src, key, u.ID)
 	if err != nil {
+		var dup *store.DuplicateError
+		if errors.As(err, &dup) {
+			if isBrowserForm(r) {
+				http.Redirect(w, r, "/upload?notice=duplicate", http.StatusSeeOther)
+				return
+			}
+			writeJSONDuplicate(w, dup.Existing)
+			return
+		}
+		if isBrowserForm(r) {
+			notice := "upload_error"
+			if isMaxBytes(err) {
+				notice = "too_large"
+			}
+			http.Redirect(w, r, "/upload?notice="+notice, http.StatusSeeOther)
+			return
+		}
 		if isMaxBytes(err) {
 			writeJSONError(w, http.StatusRequestEntityTooLarge, "too_large")
 			return
@@ -97,8 +144,8 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.recordAudit(r, "upload", a)
-	if !wantsJSON(r) && strings.Contains(r.Header.Get("Content-Type"), "multipart/") {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+	if isBrowserForm(r) {
+		http.Redirect(w, r, "/upload?notice=uploaded", http.StatusSeeOther)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -145,6 +192,15 @@ func archiveJSON(a store.Archive) map[string]any {
 		out["storage"] = a.Storage
 	}
 	return out
+}
+
+func writeJSONDuplicate(w http.ResponseWriter, existing store.Archive) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"error":    "duplicate",
+		"existing": archiveJSON(existing),
+	})
 }
 
 type readCloser struct {

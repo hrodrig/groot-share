@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,5 +81,47 @@ func TestDeleteArchive(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(st.HomeDir(), a.ID+".tar.gz")); !os.IsNotExist(err) {
 		t.Fatalf("blob still there: %v", err)
+	}
+}
+
+func TestIngestDuplicateSHA256(t *testing.T) {
+	st := testStore(t)
+	ctx := context.Background()
+	payload := []byte("same-bytes")
+	first, err := st.Ingest(ctx, bytes.NewReader(payload), "one.tar.gz", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = st.Ingest(ctx, bytes.NewReader(payload), "two.tar.gz", 1)
+	var dup *DuplicateError
+	if !errors.As(err, &dup) {
+		t.Fatalf("want duplicate, got %v", err)
+	}
+	if dup.Existing.ID != first.ID || dup.Existing.SHA256 != first.SHA256 {
+		t.Fatalf("existing %+v first %+v", dup.Existing, first)
+	}
+	list, err := st.ListArchives(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list %+v %v", list, err)
+	}
+}
+
+func TestIngestDuplicateAfterDelete(t *testing.T) {
+	st := testStore(t)
+	ctx := context.Background()
+	payload := []byte("reupload-bytes")
+	a, err := st.Ingest(ctx, bytes.NewReader(payload), "once.tar.gz", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteArchive(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	b, err := st.Ingest(ctx, bytes.NewReader(payload), "again.tar.gz", 1)
+	if err != nil {
+		t.Fatalf("reupload after delete: %v", err)
+	}
+	if b.ID == a.ID {
+		t.Fatalf("expected new id, got same %s", b.ID)
 	}
 }
