@@ -77,8 +77,10 @@ func shellUserData(ac *Actor) map[string]any {
 	return map[string]any{
 		"Username":  ac.User.Username,
 		"Role":      string(ac.User.Role),
-		"CanDelete": ac.Can(auth.PermArchivesDelete),
-		"CanUpload": ac.Can(auth.PermArchivesWrite),
+		"CanDelete":      ac.Can(auth.PermArchivesDelete),
+		"CanUpload":      ac.Can(auth.PermArchivesWrite),
+		"CanManageUsers": ac.Can(auth.PermUsersManage),
+		"CanManageKeys":  ac.Can(auth.PermAPIKeysManage) && ac.Method == auth.AuthSession,
 	}
 }
 

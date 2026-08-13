@@ -53,6 +53,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText
 	data["Nav"] = "captures"
+	data["BaseURL"] = requestBaseURL(r)
 	_ = homeTmpl.Execute(w, data)
 }
 

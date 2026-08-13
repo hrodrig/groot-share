@@ -9,6 +9,15 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
+const appNavTmpl = `
+      <nav class="appnav" aria-label="Primary">
+        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
+        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
+        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
+        <a href="/settings" {{if eq .Nav "settings"}}aria-current="page"{{end}}>Settings</a>
+        {{if .CanManageUsers}}<a href="/admin/users" {{if eq .Nav "admin"}}aria-current="page"{{end}}>Users</a>{{end}}
+      </nav>`
+
 // Design system: neutral slate surfaces, one institutional accent, hairline
 // borders, monospace data. The amber "crate" mark is the only brand flourish.
 const layoutCSS = `
@@ -302,6 +311,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   font: inherit;
 }
 .field input:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.field select {
+  display: block; width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.stack-form { max-width: 28rem; }
+.inline-form { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.key-once {
+  margin: 0 0 16px; padding: 12px 14px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface-2); font-family: var(--mono); font-size: 13px;
+  word-break: break-all;
+}
 .input-group {
   display: flex; align-items: stretch;
   border: 1px solid var(--line-strong);

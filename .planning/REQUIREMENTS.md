@@ -64,7 +64,7 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ## v1.1 Requirements (Phase 7 — RBAC)
 
-- [ ] **AUTH-05**: Roles `viewer` / `uploader` / `admin` enforced on all authenticated routes; api_key scopes `upload` / `read`; admin CRUD users via `/v1/users`; last-admin guard; self-service password + api_key revoke
+- [x] **AUTH-05**: Roles `viewer` / `uploader` / `admin` enforced on all authenticated routes; api_key scopes `upload` / `read`; admin CRUD users via `/v1/users`; last-admin guard; self-service password + api_key revoke
 
 ## v2 Requirements
 
@@ -119,7 +119,7 @@ Filled by roadmap.
 | STOR-05 | Phase 5 | Complete |
 | AUD-01 | Phase 6 | Complete |
 | RET-01 | Phase 6 | Complete |
-| AUTH-05 | Phase 7 | Planned |
+| AUTH-05 | Phase 7 | Complete |
 | ING-04 | Phase 8 | Planned |
 
 **Coverage:**

@@ -264,3 +264,45 @@ func TestCreateUserAdmin(t *testing.T) {
 		t.Fatalf("create user %d %s", rr.Code, rr.Body.String())
 	}
 }
+
+func TestLogoutHTMLRedirect(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("logout %d", rr.Code)
+	}
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, home)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("home after logout should redirect %d", rr.Code)
+	}
+}
+
+func TestLogoutJSON(t *testing.T) {
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.Header.Set("Accept", "application/json")
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"ok"`) {
+		t.Fatalf("logout json %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestLoginFormWrongPasswordShowsError(t *testing.T) {
+	s, _ := identServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=root&password=wrong"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "Incorrect username or password") {
+		t.Fatalf("form login fail %d body=%q", rr.Code, rr.Body.String())
+	}
+}

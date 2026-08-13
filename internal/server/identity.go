@@ -102,40 +102,21 @@ func (s *Server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	scope := auth.KeyScopeUpload
-	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
-		var body struct {
-			Scope string `json:"scope"`
-		}
-		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
-		if err := dec.Decode(&body); err == nil && body.Scope != "" {
-			scope = auth.KeyScope(body.Scope)
-		}
-	}
-	if scope != auth.KeyScopeUpload && scope != auth.KeyScopeRead {
-		writeJSONError(w, http.StatusBadRequest, "bad_request")
-		return
-	}
 	if ac.Method == auth.AuthAPIKey {
 		writeJSONError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	if ac.User.Role == auth.RoleViewer {
+	raw, prefix, scope, err := s.createAPIKeyForUser(w, r, ac.User.ID, ac.User.Role)
+	if errors.Is(err, errBadScope) {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	if errors.Is(err, errForbiddenScope) {
 		writeJSONError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	if ac.User.Role == auth.RoleUploader && scope == auth.KeyScopeRead {
-		writeJSONError(w, http.StatusForbidden, "forbidden")
-		return
-	}
-	raw, hash, prefix, err := auth.NewAPIKey()
 	if err != nil {
-		slog.Error("api key generate failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "internal")
-		return
-	}
-	if err := s.Store.CreateAPIKey(r.Context(), ac.User.ID, hash, prefix, scope); err != nil {
-		slog.Error("api key store failed", "error", err)
+		slog.Error("api key create failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
@@ -311,11 +292,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
         <span class="wordmark">gfs</span>
         <span class="brand-sub">archive door</span>
       </a>
-      <nav class="appnav" aria-label="Primary">
-        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
-        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
-        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
-      </nav>
+` + appNavTmpl + `
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
@@ -355,6 +332,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       <td class="muted tabular">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
       <td class="actions">
         <a class="btn btn-quiet btn-sm btn-icon" href="/v1/archives/{{.ID}}/file" title="Download" aria-label="Download {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v10"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg></a>
+        <button class="btn btn-quiet btn-sm btn-icon copy-link" type="button" data-copy-url="{{$.BaseURL}}/v1/archives/{{.ID}}/file" title="Copy download link" aria-label="Copy download link for {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
         {{if $.CanDelete}}
         <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
           <button class="btn btn-danger-quiet btn-sm btn-icon" type="submit" title="Delete" aria-label="Delete {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
@@ -421,6 +399,16 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       pending = null;
     });
   }
+  document.querySelectorAll('.copy-link').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = btn.getAttribute('data-copy-url');
+      if (!url || !navigator.clipboard) return;
+      navigator.clipboard.writeText(url).then(function () {
+        btn.setAttribute('title', 'Copied');
+        setTimeout(function () { btn.setAttribute('title', 'Copy download link'); }, 2000);
+      });
+    });
+  });
 })();
 </script>
 {{.ThemeToggleScript}}
@@ -439,11 +427,7 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
         <span class="wordmark">gfs</span>
         <span class="brand-sub">archive door</span>
       </a>
-      <nav class="appnav" aria-label="Primary">
-        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
-        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
-        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
-      </nav>
+` + appNavTmpl + `
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
@@ -520,11 +504,7 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
         <span class="wordmark">gfs</span>
         <span class="brand-sub">archive door</span>
       </a>
-      <nav class="appnav" aria-label="Primary">
-        <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
-        {{if .CanUpload}}<a href="/upload" {{if eq .Nav "upload"}}aria-current="page"{{end}}>Upload</a>{{end}}
-        <a href="/activity" {{if eq .Nav "activity"}}aria-current="page"{{end}}>Activity</a>
-      </nav>
+` + appNavTmpl + `
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}

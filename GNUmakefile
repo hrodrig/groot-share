@@ -19,7 +19,7 @@ LDFLAGS     := -s -w \
 
 GOLANGCI_LINT_VERSION ?= v2.12.2
 # Gate like groot: release-check runs cover; override locally with COVER_MIN=0 if needed.
-COVER_MIN ?= 60
+COVER_MIN ?= 70
 GRYPE_FAIL_ON ?= high
 GRYPE_DIR_EXCLUDES := --exclude './bin/**' --exclude './dist/**' --exclude './.gocache/**' --exclude './.gotmp/**'
 STRICT_RELEASE ?= 0

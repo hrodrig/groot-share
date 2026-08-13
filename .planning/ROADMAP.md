@@ -141,13 +141,13 @@ Plans:
   4. Last admin cannot be removed or demoted
   5. Admin HTML at `/admin/users`; self-service at `/settings`
 
-**Plans:** 0/3 plans complete
+**Plans:** 3/3 plans complete
 
 Plans:
 
-- [ ] 07-01: RBAC core — schema migration, perm.go, restrict existing routes, SPEC §6.1
-- [ ] 07-02: Users CRUD API + PATCH `/v1/me` + last-admin guard
-- [ ] 07-03: api_key list/revoke + scoped create + admin/settings HTML
+- [x] 07-01: RBAC core — schema migration, perm.go, restrict existing routes, SPEC §6.1
+- [x] 07-02: Users CRUD API + PATCH `/v1/me` + last-admin guard
+- [x] 07-03: api_key list/revoke + scoped create + admin/settings HTML
 
 Context: `.planning/phases/07-rbac/07-CONTEXT.md`
 
@@ -175,7 +175,7 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 
 ## Backlog
 
-- [ ] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc. Clipboard API + toast; markdown optional (`[name](url)`).
+- [x] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc.
 - [ ] **999.1: Audit fixes (2026-08-12)** — prioritized findings from the independent audit: packaged docs (man page / README / CHANGELOG), api_key scope decision, login rate limiting, session purge, error mapping, CI gates. Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
 
 ## Progress
@@ -191,5 +191,5 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 | 4. VPS home | 2/2 | Complete    | 2026-08-12 |
 | 5. Bucket home | 2/2 | Complete    | 2026-08-12 |
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
-| 7. RBAC | 0/3 | Planned | — |
+| 7. RBAC | 3/3 | Complete | 2026-08-13 |
 | 8. SFTP watcher | 0/2 | Planned | — |
