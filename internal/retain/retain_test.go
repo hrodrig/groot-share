@@ -1,6 +1,7 @@
 package retain
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -42,5 +43,25 @@ func TestPickUnion(t *testing.T) {
 	got := Pick(items, 2, 90, now)
 	if len(got) != 1 || got[0].ID != "old" {
 		t.Fatalf("%+v", got)
+	}
+}
+
+func TestPickDefaultLimits(t *testing.T) {
+	now := time.Now().UTC()
+	items := make([]store.Archive, 22)
+	for i := range items {
+		items[i] = store.Archive{ID: fmt.Sprintf("id-%d", i), CreatedAt: now}
+	}
+	got := Pick(items, 0, 0, now)
+	if len(got) != 2 {
+		t.Fatalf("default keep_last 20: got %+v", got)
+	}
+}
+
+func TestPickSkipsEmptyID(t *testing.T) {
+	now := time.Now().UTC()
+	got := Pick([]store.Archive{{ID: "", CreatedAt: now.Add(-200 * 24 * time.Hour)}}, 20, 90, now)
+	if len(got) != 0 {
+		t.Fatalf("empty id skipped: %+v", got)
 	}
 }

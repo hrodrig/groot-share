@@ -100,6 +100,32 @@ func deactivateUser(t *testing.T, s *Server, st *store.Store, admin *http.Cookie
 	}
 }
 
+func TestPatchUserNotFound(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodPatch, "/v1/users/99999", strings.NewReader(`{"role":"viewer"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("patch missing %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestPatchUserBadID(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodPatch, "/v1/users/not-a-number", strings.NewReader(`{"role":"viewer"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("patch bad id %d", rr.Code)
+	}
+}
+
 func TestLastAdminCannotDeactivate(t *testing.T) {
 	s, st := identServer(t)
 	admin := loginCookie(t, s)
