@@ -105,15 +105,16 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_S3_*` | bucket, region, endpoint, prefix (`captures/`), path-style |
 | AWS creds | env `AWS_*` on the VPS only |
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
+| `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | first admin only; required when the user table is empty |
 
-Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit.
+Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit.
 
 ## 6. Auth detail
 
 - Password: argon2id or bcrypt; never log
 - api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once
 - Session: httpOnly cookie; Secure when TLS
-- Bootstrap of first admin: env `GFS_BOOTSTRAP_ADMIN` / password **once** or documented file — exact bootstrap UX may refine in plan-phase; must exist for v0.1
+- Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
 
 ## 7. Retention
 
@@ -152,7 +153,6 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 
 - Visibility enum (private / team / hybrid) — MVP: all authenticated users see all; admin flag reserved
 - Presigned GET vs proxy download — MVP: gfs streams (local or GetObject)
-- Exact bootstrap UX
 - Manifest peek (`extras/manifest.json`)
 
 ---

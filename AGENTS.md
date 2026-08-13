@@ -8,6 +8,7 @@ Web/API door for groot `.tar.gz` archives when a VPS exists.
 | Mirror **groot-trigger** Make / GoReleaser / CI / distroless / `v`-tags | Put HTTP inside the **groot** CLI |
 | English-only artifacts | `git push` unless the operator asked |
 | Keep laptop `AWS_*` off machines | Build gfs for topology **S3 only** (no process) |
+| First admin from `GFS_BOOTSTRAP_*` env (fail closed if empty DB) | Ship a well-known default password (`admin`/`changeme`) |
 
 | Repo | Role |
 |------|------|

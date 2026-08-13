@@ -1,6 +1,6 @@
 # gfs — consensus so far
 
-**Captured:** 2026-08-11, updated **2026-08-12**  
+**Captured:** 2026-08-11, updated **2026-08-12** (bootstrap admin locked)  
 **Repo:** `groot-share` (product name **gfs** = groot files share)  
 **Next:** more open questions remain; **no application code** until those are clearer; then kick off **GSD**.
 
@@ -104,6 +104,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 - **Web UI:** username + password → session/cookie.
 - **Upload API:** username + api_key (opaque, rotatable; show full secret only at creation).
 - Password hash in SQLite; api_key stored hashed (or equivalent); raw secrets never in audit rows.
+- **First admin (locked 2026-08-12):** empty user table → create one admin from `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD` (once). Missing env → refuse start. Users already present → ignore the env. No well-known default password.
 - Phase 2: BYOK LLM keys encrypted with a server envelope key; used only in-memory when calling the provider; document that the gfs host is trusted.
 
 ---
@@ -156,7 +157,7 @@ Related ops: groot-selfhosted S3 examples (e.g. `run/examples/s3-contabo/` as on
 
 1. Visibility modes — exact enum and defaults for a 20-person develop team.
 2. Retention — global only vs per-user overrides; edge cases (keep_last vs age when count is low).
-3. Who provisions first admin / users (bootstrap, invite, shared admin password once).
+3. ~~Who provisions first admin~~ — **locked:** env once (`GFS_BOOTSTRAP_*`); fail closed if the user table is empty. Later users: admin creates them in-app (Phase 3).
 4. First internal gfs **hostname** / which VPS (host role is locked: VPS).
 5. Whether MVP peeks manifest on upload or only stores filename/size/sha256.
 6. Envelope encryption approach for BYOK (phase 2) — KDF from server secret vs external KMS.
