@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -180,9 +181,11 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusConflict, "conflict")
 		return
 	}
+	s.recordUserAudit(r, "user.create", strconv.FormatInt(created.ID, 10), created.Username)
+	rec, _ := s.userRecord(r.Context(), created)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]any{"username": created.Username, "role": created.Role})
+	_ = json.NewEncoder(w).Encode(userJSON(rec))
 }
 
 func (s *Server) actorFromRequest(r *http.Request) *Actor {

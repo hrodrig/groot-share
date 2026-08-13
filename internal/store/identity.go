@@ -14,6 +14,15 @@ import (
 // ErrNotFound is a missing row.
 var ErrNotFound = errors.New("not found")
 
+// ErrLastAdmin blocks removing or demoting the only active admin.
+var ErrLastAdmin = errors.New("last admin")
+
+// UserRecord is a user row including metadata for APIs.
+type UserRecord struct {
+	User
+	CreatedAt time.Time
+}
+
 // User is an identity row.
 type User struct {
 	ID           int64
@@ -102,6 +111,13 @@ func (s *Store) EnsureAdmin(ctx context.Context, username, password string) erro
 		return fmt.Errorf("bootstrap admin: %w", err)
 	}
 	return nil
+}
+
+func boolToInt(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 // CreateSession stores a hashed session token.
@@ -205,6 +221,101 @@ func (s *Store) APIKeyHashStored(ctx context.Context, keyHash string) (bool, err
 	return n > 0, nil
 }
 
+// ListUsers returns all users ordered by username.
+func (s *Store) ListUsers(ctx context.Context) ([]UserRecord, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, username, password_hash, role, active, created_at
+		FROM users ORDER BY username COLLATE NOCASE`)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer rows.Close()
+	var out []UserRecord
+	for rows.Next() {
+		rec, err := scanUserRecord(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rec)
+	}
+	return out, rows.Err()
+}
+
+// CountActiveAdmins returns active users with role admin.
+func (s *Store) CountActiveAdmins(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1`,
+	).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count admins: %w", err)
+	}
+	return n, nil
+}
+
+// UpdateUser sets role and active for one user.
+func (s *Store) UpdateUser(ctx context.Context, id int64, role auth.Role, active bool) error {
+	if !auth.ValidRole(role) {
+		return fmt.Errorf("invalid role")
+	}
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE users SET role = ?, active = ? WHERE id = ?`,
+		string(role), boolToInt(active), id,
+	)
+	if err != nil {
+		return fmt.Errorf("update user: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update user rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetPassword replaces the bcrypt hash for one user.
+func (s *Store) SetPassword(ctx context.Context, id int64, passwordHash string) error {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE users SET password_hash = ? WHERE id = ?`,
+		passwordHash, id,
+	)
+	if err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("set password rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GuardLastAdmin returns ErrLastAdmin if the change would leave zero active admins.
+func (s *Store) GuardLastAdmin(ctx context.Context, userID int64, newRole auth.Role, newActive bool) error {
+	u, err := s.UserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if u.Role != auth.RoleAdmin || !u.Active {
+		return nil
+	}
+	if newActive && newRole == auth.RoleAdmin {
+		return nil
+	}
+	n, err := s.CountActiveAdmins(ctx)
+	if err != nil {
+		return err
+	}
+	if n <= 1 {
+		return ErrLastAdmin
+	}
+	return nil
+}
+
 func scanUser(row *sql.Row) (User, error) {
 	var u User
 	var role string
@@ -219,4 +330,26 @@ func scanUser(row *sql.Row) (User, error) {
 	u.Role = auth.Role(role)
 	u.Active = active != 0
 	return u, nil
+}
+
+func scanUserRecord(sc interface {
+	Scan(dest ...any) error
+}) (UserRecord, error) {
+	var rec UserRecord
+	var role string
+	var active int
+	var created string
+	err := sc.Scan(&rec.ID, &rec.Username, &rec.PasswordHash, &role, &active, &created)
+	if errors.Is(err, sql.ErrNoRows) {
+		return UserRecord{}, ErrNotFound
+	}
+	if err != nil {
+		return UserRecord{}, fmt.Errorf("scan user: %w", err)
+	}
+	rec.Role = auth.Role(role)
+	rec.Active = active != 0
+	if t, err := time.Parse(time.RFC3339, created); err == nil {
+		rec.CreatedAt = t
+	}
+	return rec, nil
 }

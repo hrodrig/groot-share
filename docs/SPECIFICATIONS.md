@@ -139,6 +139,17 @@ Missing auth → `401`. Authenticated but forbidden → `403`.
 
 Inactive users cannot log in or use api_keys.
 
+User management (admin session only):
+
+| Method | Path | Behavior |
+|--------|------|----------|
+| GET | `/v1/users` | List `{items:[{id,username,role,active,created_at}]}` |
+| POST | `/v1/users` | Create `{username,password,role?}` — default role `uploader` |
+| GET | `/v1/users/{id}` | One user |
+| PATCH | `/v1/users/{id}` | `{role?,active?,password?}` — last active admin cannot be demoted/deactivated (`409 last_admin`) |
+| DELETE | `/v1/users/{id}` | Soft deactivate (`active=0`) |
+| PATCH | `/v1/me` | Session only: `{password}` — change own password |
+
 ## 7. Retention
 
 Job (timer in-process or cron): delete objects that violate **either** keep_last **or** max_age_days.  

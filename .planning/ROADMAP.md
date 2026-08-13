@@ -175,6 +175,7 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 
 ## Backlog
 
+- [ ] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc. Clipboard API + toast; markdown optional (`[name](url)`).
 - [ ] **999.1: Audit fixes (2026-08-12)** — prioritized findings from the independent audit: packaged docs (man page / README / CHANGELOG), api_key scope decision, login rate limiting, session purge, error mapping, CI gates. Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
 
 ## Progress

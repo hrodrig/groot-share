@@ -1,0 +1,225 @@
+package server
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/hrodrig/groot-share/internal/auth"
+	"github.com/hrodrig/groot-share/internal/store"
+)
+
+func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
+	items, err := s.Store.ListUsers(r.Context())
+	if err != nil {
+		slog.Error("list users", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	out := make([]map[string]any, 0, len(items))
+	for _, u := range items {
+		out = append(out, userJSON(u))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
+}
+
+func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUserID(r.PathValue("id"))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	u, err := s.Store.UserByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, "not_found")
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	rec, err := s.userRecord(r.Context(), u)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(userJSON(rec))
+}
+
+func (s *Server) handlePatchUser(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUserID(r.PathValue("id"))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	u, err := s.Store.UserByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, "not_found")
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	var body struct {
+		Role     *string `json:"role"`
+		Active   *bool   `json:"active"`
+		Password string  `json:"password"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	newRole := u.Role
+	if body.Role != nil {
+		newRole = auth.Role(*body.Role)
+		if !auth.ValidRole(newRole) {
+			writeJSONError(w, http.StatusBadRequest, "bad_request")
+			return
+		}
+	}
+	newActive := u.Active
+	if body.Active != nil {
+		newActive = *body.Active
+	}
+	if body.Role != nil || body.Active != nil {
+		if err := s.Store.GuardLastAdmin(r.Context(), id, newRole, newActive); err != nil {
+			if errors.Is(err, store.ErrLastAdmin) {
+				writeJSONError(w, http.StatusConflict, "last_admin")
+				return
+			}
+			writeJSONError(w, http.StatusInternalServerError, "internal")
+			return
+		}
+		if err := s.Store.UpdateUser(r.Context(), id, newRole, newActive); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "internal")
+			return
+		}
+		s.recordUserAudit(r, "user.update", strconv.FormatInt(id, 10), u.Username)
+	}
+	if body.Password != "" {
+		hash, err := auth.HashPassword(body.Password)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, "bad_request")
+			return
+		}
+		if err := s.Store.SetPassword(r.Context(), id, hash); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "internal")
+			return
+		}
+	}
+	updated, err := s.Store.UserByID(r.Context(), id)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	rec, err := s.userRecord(r.Context(), updated)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(userJSON(rec))
+}
+
+func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUserID(r.PathValue("id"))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	u, err := s.Store.UserByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, "not_found")
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	if err := s.Store.GuardLastAdmin(r.Context(), id, u.Role, false); err != nil {
+		if errors.Is(err, store.ErrLastAdmin) {
+			writeJSONError(w, http.StatusConflict, "last_admin")
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	if err := s.Store.UpdateUser(r.Context(), id, u.Role, false); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	s.recordUserAudit(r, "user.deactivate", strconv.FormatInt(id, 10), u.Username)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handlePatchMe(w http.ResponseWriter, r *http.Request) {
+	ac := actorFrom(r.Context())
+	if ac == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if ac.Method != auth.AuthSession {
+		writeJSONError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	var body struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil || body.Password == "" {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	hash, err := auth.HashPassword(body.Password)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	if err := s.Store.SetPassword(r.Context(), ac.User.ID, hash); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
+func (s *Server) userRecord(ctx context.Context, u store.User) (store.UserRecord, error) {
+	items, err := s.Store.ListUsers(ctx)
+	if err != nil {
+		return store.UserRecord{}, err
+	}
+	for _, rec := range items {
+		if rec.ID == u.ID {
+			return rec, nil
+		}
+	}
+	return store.UserRecord{User: u}, nil
+}
+
+func userJSON(u store.UserRecord) map[string]any {
+	out := map[string]any{
+		"id":       u.ID,
+		"username": u.Username,
+		"role":     u.Role,
+		"active":   u.Active,
+	}
+	if !u.CreatedAt.IsZero() {
+		out["created_at"] = u.CreatedAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return out
+}
+
+func parseUserID(raw string) (int64, error) {
+	raw = strings.Trim(raw, "/")
+	if raw == "" {
+		return 0, errors.New("empty id")
+	}
+	return strconv.ParseInt(raw, 10, 64)
+}

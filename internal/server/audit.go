@@ -22,6 +22,20 @@ func (s *Server) recordAudit(r *http.Request, action string, a store.Archive) {
 	}
 }
 
+func (s *Server) recordUserAudit(r *http.Request, action, objectID, objectKey string) {
+	if s.Store == nil {
+		return
+	}
+	ev := store.Audit{Action: action, ObjectID: objectID, ObjectKey: objectKey, RemoteIP: remoteIP(r.RemoteAddr)}
+	if ac := actorFrom(r.Context()); ac != nil {
+		ev.Actor = ac.User.Username
+		ev.ActorID = ac.User.ID
+	}
+	if err := s.Store.InsertAudit(r.Context(), ev); err != nil {
+		slog.Error("audit insert", "error", err, "action", action)
+	}
+}
+
 func (s *Server) handleActivityGET(w http.ResponseWriter, r *http.Request) {
 	ac := actorFrom(r.Context())
 	pageSize := parsePageSize(r)
