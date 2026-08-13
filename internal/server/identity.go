@@ -293,5 +293,25 @@ var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
 <p class="empty">No archives yet.</p>
 {{end}}
 </section>
+<section>
+<h2>Audit</h2>
+{{if .Audit}}
+<table>
+<thead><tr><th>When</th><th>Who</th><th>Action</th><th>Object</th></tr></thead>
+<tbody>
+{{range .Audit}}
+<tr>
+  <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
+  <td>{{.Actor}}</td>
+  <td>{{.Action}}</td>
+  <td class="muted">{{.ObjectKey}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+{{else}}
+<p class="empty">No audit rows yet.</p>
+{{end}}
+</section>
 </main></body></html>
 `))

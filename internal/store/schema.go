@@ -41,6 +41,16 @@ CREATE TABLE IF NOT EXISTS transit (
   created_at TEXT NOT NULL,
   last_error TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor TEXT NOT NULL,
+  actor_id INTEGER NOT NULL DEFAULT 0,
+  action TEXT NOT NULL,
+  object_id TEXT NOT NULL DEFAULT '',
+  object_key TEXT NOT NULL DEFAULT '',
+  remote_ip TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
 `
 
 func (s *Store) migrate() error {

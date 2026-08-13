@@ -34,12 +34,19 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
+	events, err := s.Store.ListAudit(r.Context(), 20)
+	if err != nil {
+		slog.Error("list audit", "error", err)
+		http.Error(w, "internal", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = homeTmpl.Execute(w, map[string]any{
 		"CSS":      template.CSS(layoutCSS),
 		"Username": u.Username,
 		"Admin":    u.Admin,
 		"Items":    items,
+		"Audit":    events,
 	})
 }
 
@@ -89,6 +96,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
+	s.recordAudit(r, "upload", a)
 	if !wantsJSON(r) && strings.Contains(r.Header.Get("Content-Type"), "multipart/") {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
@@ -106,6 +114,7 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = rc.Close() }()
+	s.recordAudit(r, "download", a)
 	serveBlob(w, r, a, rc)
 }
 

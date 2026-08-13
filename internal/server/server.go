@@ -36,6 +36,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/archives", s.requireAuth(s.handleListArchives))
 	mux.HandleFunc("POST /v1/archives", s.requireAuth(s.handleUpload))
 	mux.HandleFunc("GET /v1/archives/{id...}", s.requireAuth(s.handleDownload))
+	mux.HandleFunc("GET /v1/audit", s.requireAuth(s.handleListAudit))
 	return s.accessLog(mux)
 }
 
