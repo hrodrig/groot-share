@@ -12,7 +12,7 @@ import (
 	_ "modernc.org/sqlite" // register pure-Go sqlite driver (CGO=0)
 )
 
-// Store is a SQLite handle. Schema arrives in Phase 3.
+// Store is a SQLite handle (users, sessions, api_keys).
 type Store struct {
 	db *sql.DB
 }
@@ -35,7 +35,12 @@ func Open(dataDir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
-	return &Store{db: db}, nil
+	st := &Store{db: db}
+	if err := st.migrate(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	return st, nil
 }
 
 // Ping reports whether SQLite still answers.

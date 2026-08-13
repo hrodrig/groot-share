@@ -31,6 +31,10 @@ type Config struct {
 	S3Endpoint  string
 	S3Prefix    string
 	S3PathStyle bool
+
+	BootstrapAdmin    string
+	BootstrapPassword string
+	CookieSecure      bool
 }
 
 // LoadFromEnv reads configuration. Returns error if topology/data dir are
@@ -38,15 +42,18 @@ type Config struct {
 func LoadFromEnv() (Config, error) {
 	topo := Topology(strings.ToLower(strings.TrimSpace(os.Getenv("GFS_TOPOLOGY"))))
 	cfg := Config{
-		ListenAddr: envOr("GFS_LISTEN", ":8080"),
-		Topology:   topo,
-		DataDir:    strings.TrimSpace(os.Getenv("GFS_DATA_DIR")),
-		LogFormat:  strings.ToLower(envOr("GFS_LOG_FORMAT", "json")),
-		LogLevel:   strings.ToLower(envOr("GFS_LOG_LEVEL", "info")),
-		S3Bucket:   strings.TrimSpace(os.Getenv("GFS_S3_BUCKET")),
-		S3Region:   envOr("GFS_S3_REGION", "us-east-1"),
-		S3Endpoint: strings.TrimSpace(os.Getenv("GFS_S3_ENDPOINT")),
-		S3Prefix:   envOr("GFS_S3_PREFIX", "captures/"),
+		ListenAddr:        envOr("GFS_LISTEN", ":8080"),
+		Topology:          topo,
+		DataDir:           strings.TrimSpace(os.Getenv("GFS_DATA_DIR")),
+		LogFormat:         strings.ToLower(envOr("GFS_LOG_FORMAT", "json")),
+		LogLevel:          strings.ToLower(envOr("GFS_LOG_LEVEL", "info")),
+		S3Bucket:          strings.TrimSpace(os.Getenv("GFS_S3_BUCKET")),
+		S3Region:          envOr("GFS_S3_REGION", "us-east-1"),
+		S3Endpoint:        strings.TrimSpace(os.Getenv("GFS_S3_ENDPOINT")),
+		S3Prefix:          envOr("GFS_S3_PREFIX", "captures/"),
+		BootstrapAdmin:    strings.TrimSpace(os.Getenv("GFS_BOOTSTRAP_ADMIN")),
+		BootstrapPassword: os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
+		CookieSecure:      parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
 	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)

@@ -1,4 +1,4 @@
-// Package server implements the HTTP API. Phase 2: liveness and readiness only.
+// Package server implements the HTTP API (probes + identity).
 package server
 
 import (
@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/hrodrig/groot-share/internal/config"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 // Server is the HTTP front-end.
 type Server struct {
 	Cfg   config.Config
+	Store *store.Store
 	Ready func() bool
 }
 
@@ -22,6 +24,13 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
+	mux.HandleFunc("GET /login", s.handleLoginGET)
+	mux.HandleFunc("POST /login", s.handleLoginPOST)
+	mux.HandleFunc("POST /logout", s.requireAuth(s.handleLogout))
+	mux.HandleFunc("GET /{$}", s.requireAuth(s.handleHome))
+	mux.HandleFunc("GET /v1/me", s.requireAuth(s.handleMe))
+	mux.HandleFunc("POST /v1/api-keys", s.requireAuth(s.handleCreateAPIKey))
+	mux.HandleFunc("POST /v1/users", s.requireAuth(s.handleCreateUser))
 	return s.accessLog(mux)
 }
 

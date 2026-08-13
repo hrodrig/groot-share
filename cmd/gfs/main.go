@@ -53,6 +53,14 @@ func run(args []string) int {
 	}
 	defer func() { _ = st.Close() }()
 
+	if err := st.EnsureAdmin(context.Background(), cfg.BootstrapAdmin, cfg.BootstrapPassword); err != nil {
+		fmt.Fprintf(os.Stderr, "gfs: %v\n", err)
+		return 1
+	}
+	if n, err := st.UserCount(context.Background()); err == nil && n > 0 {
+		slog.Info("identity ready", "users", n)
+	}
+
 	httpSrv := newHTTPServer(cfg, st)
 	slog.Info("starting",
 		"version", version,
@@ -65,7 +73,8 @@ func run(args []string) int {
 
 func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
 	srv := &server.Server{
-		Cfg: cfg,
+		Cfg:   cfg,
+		Store: st,
 		Ready: func() bool {
 			if !st.Ping(context.Background()) {
 				return false

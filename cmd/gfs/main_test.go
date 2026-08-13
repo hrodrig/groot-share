@@ -31,6 +31,16 @@ func TestRunMissingTopology(t *testing.T) {
 	}
 }
 
+func TestRunMissingBootstrap(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_BOOTSTRAP_ADMIN", "")
+	t.Setenv("GFS_BOOTSTRAP_PASSWORD", "")
+	if code := run(nil); code != 1 {
+		t.Fatalf("want 1 got %d", code)
+	}
+}
+
 func TestNewHTTPServerProbes(t *testing.T) {
 	dir := t.TempDir()
 	st, err := store.Open(dir)
