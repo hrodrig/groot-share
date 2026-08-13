@@ -74,7 +74,7 @@ Deferred. Tracked, not in current roadmap.
 - **ANLZ-02**: Per-user BYOK LLM credentials, encrypted at rest
 - **CLI-01**: `groot upload --gfs` with api_key, never AWS keys
 - **AUTH-06**: OIDC / SSO
-- **STOR-06**: Presigned PUT laptop → bucket (only after a spike against that provider)
+- **STOR-06**: Presigned PUT laptop / bastion → bucket (only after a spike against that provider)
 - **LIST-04**: Presigned GET download (spike per endpoint)
 
 ## Out of Scope

@@ -77,7 +77,7 @@ VPS staging disk is sized for **in-flight** objects, not for `keep_last` × 90 d
 
 ### Presigned URLs
 
-Vendor panels (and most S3-compatible control planes) do **not** issue presigned URLs. gfs (or Cyberduck / AWS SDK) **mints** SigV4 URLs with the host credentials. Path-style vs virtual-hosted depends on the endpoint (Contabo and MinIO need path-style; AWS usually virtual-hosted; Cloudflare R2 has its own host). GET-for-download is the usual shape; PUT/multipart for multi-GB is a **lab spike per provider**, not assumed. Laptop upload in VPS + S3 is HTTP to gfs, not a presigned PUT, until a spike says otherwise.
+Vendor panels (and most S3-compatible control planes) do **not** issue presigned URLs. gfs (or Cyberduck / AWS SDK) **mints** SigV4 URLs with the host credentials. Path-style vs virtual-hosted depends on the endpoint (Contabo and MinIO need path-style; AWS usually virtual-hosted; Cloudflare R2 has its own host). GET-for-download is the usual shape; PUT/multipart for multi-GB is a **lab spike per provider**, not assumed. Laptop and bastion upload in VPS + S3 is HTTP to gfs, not a presigned PUT, until a spike says otherwise.
 
 ---
 
@@ -125,7 +125,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 - BYOK LLM per user
 - Optional CLI: `groot upload --gfs` with api_key (token), never AWS keys
 - Richer roles/scopes, quotas, OIDC, etc. (ideas — not committed)
-- Presigned PUT for laptop → bucket (only if a spike against that provider succeeds)
+- Presigned PUT for laptop / bastion → bucket (only if a spike against that provider succeeds)
 
 ---
 

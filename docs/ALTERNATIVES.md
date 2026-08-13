@@ -74,7 +74,7 @@ Use this first. Details below.
 | Scheduled collects only; no gfs UI yet | **[groot-selfhosted](https://github.com/hrodrig/groot-selfhosted)** CronJob / Helm | Operator packaging; add gfs later if you need a web door |
 | Legacy SFTP drop box; no gfs | **[SFTP inbox](#sftp-drop-groot-uploadsftp--sshd)** — groot `upload.sftp` + OpenSSH | Today: selfhosted playbook; gfs Phase 8 will **watch** inbox, not run SFTP |
 | Need full DLP, SSO, document workflow | **Enterprise file platform** (SharePoint, Box, …) or **self-hosted Nextcloud** | gfs is a thin archive door, not a collaboration suite |
-| Want presigned PUT from laptop straight to bucket | **Not gfs today** — spike per provider; until then HTTP to gfs | [SPEC non-goal](SPECIFICATIONS.md); vendor SigV4 quirks vary |
+| Want presigned PUT from laptop or bastion straight to bucket | **Not gfs today** — spike per provider; until then HTTP to gfs | [SPEC non-goal](SPECIFICATIONS.md); vendor SigV4 quirks vary |
 | Single maintainer; archives on laptop disk | **`groot collect` locally** | No shared service required |
 
 ---
@@ -245,7 +245,7 @@ Be explicit so you do not over-deploy:
 | **Requires VPS** (for gfs topologies) | No gfs process in pure S3-only — by design |
 | **Not IdP/OIDC yet** | Local users + bootstrap env; SSO is v2 ([REQUIREMENTS](../.planning/REQUIREMENTS.md)) |
 | **No analyze/compare UI** | MVP is ingest/list/download/audit; LLM phase 2 |
-| **Presigned PUT from laptop** | Not promised; HTTP through gfs until provider spikes land |
+| **Presigned PUT from laptop / bastion** | Not promised; HTTP through gfs until provider spikes land |
 | **SFTP server** | Never in gfs; Phase 8 watcher only |
 | **Visibility modes** | MVP: authenticated users see captures; fine-grained visibility TBD |
 | **Single binary trust** | BYOK LLM (future) trusts gfs host for envelope encryption |
