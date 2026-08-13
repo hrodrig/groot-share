@@ -21,6 +21,15 @@ CREATE TABLE IF NOT EXISTS api_keys (
   prefix TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS archives (
+  id TEXT PRIMARY KEY,
+  key TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  source TEXT NOT NULL,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `
 
 func (s *Store) migrate() error {

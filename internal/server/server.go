@@ -31,6 +31,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/me", s.requireAuth(s.handleMe))
 	mux.HandleFunc("POST /v1/api-keys", s.requireAuth(s.handleCreateAPIKey))
 	mux.HandleFunc("POST /v1/users", s.requireAuth(s.handleCreateUser))
+	mux.HandleFunc("GET /v1/archives", s.requireAuth(s.handleListArchives))
+	mux.HandleFunc("POST /v1/archives", s.requireAuth(s.handleUpload))
+	mux.HandleFunc("GET /v1/archives/{id}", s.requireAuth(s.handleDownload))
+	mux.HandleFunc("GET /v1/archives/{id}/file", s.requireAuth(s.handleDownload))
 	return s.accessLog(mux)
 }
 

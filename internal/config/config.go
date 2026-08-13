@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -35,6 +36,7 @@ type Config struct {
 	BootstrapAdmin    string
 	BootstrapPassword string
 	CookieSecure      bool
+	MaxUploadBytes    int64
 }
 
 // LoadFromEnv reads configuration. Returns error if topology/data dir are
@@ -54,6 +56,7 @@ func LoadFromEnv() (Config, error) {
 		BootstrapAdmin:    strings.TrimSpace(os.Getenv("GFS_BOOTSTRAP_ADMIN")),
 		BootstrapPassword: os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
 		CookieSecure:      parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
+		MaxUploadBytes:    parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
 	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)
@@ -85,6 +88,18 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func parseInt64(s string, def int64) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return def
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || n <= 0 {
+		return def
+	}
+	return n
 }
 
 func parseBool(s string, def bool) bool {

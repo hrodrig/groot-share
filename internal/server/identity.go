@@ -26,7 +26,7 @@ const actorKey ctxKey = 1
 
 func (s *Server) handleLoginGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = loginTmpl.Execute(w, map[string]string{"Error": ""})
+	_ = loginTmpl.Execute(w, map[string]any{"CSS": template.CSS(layoutCSS), "Error": ""})
 }
 
 func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
@@ -82,16 +82,6 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	u := actorFrom(r.Context())
-	if u == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = homeTmpl.Execute(w, map[string]any{"Username": u.Username, "Admin": u.Admin})
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +227,7 @@ func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
-	_ = loginTmpl.Execute(w, map[string]string{"Error": msg})
+	_ = loginTmpl.Execute(w, map[string]any{"CSS": template.CSS(layoutCSS), "Error": msg})
 }
 
 func writeJSONError(w http.ResponseWriter, code int, msg string) {
@@ -252,23 +242,55 @@ func wantsJSON(r *http.Request) bool {
 }
 
 var loginTmpl = template.Must(template.New("login").Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>gfs login</title></head>
-<body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs login</title><style>{{.CSS}}</style></head>
+<body><main>
 <h1>gfs</h1>
-{{if .Error}}<p>{{.Error}}</p>{{end}}
+<p class="muted">Sign in to list and download groot archives.</p>
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 <form method="post" action="/login">
 <label>Username <input name="username" autocomplete="username" required></label>
 <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
 <button type="submit">Sign in</button>
 </form>
-</body></html>
+</main></body></html>
 `))
 
 var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>gfs</title></head>
-<body>
-<p>Signed in as {{.Username}}{{if .Admin}} (admin){{end}}.</p>
-<p>Archive list is Phase 4.</p>
-<form method="post" action="/logout"><button type="submit">Sign out</button></form>
-</body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs</title><style>{{.CSS}}</style></head>
+<body><main>
+<header class="bar">
+  <div>
+    <h1>gfs</h1>
+    <p class="muted">Signed in as {{.Username}}{{if .Admin}} (admin){{end}}</p>
+  </div>
+  <form method="post" action="/logout"><button class="ghost" type="submit">Sign out</button></form>
+</header>
+<section>
+<h2>Upload</h2>
+<form method="post" action="/v1/archives" enctype="multipart/form-data">
+<label>groot .tar.gz <input type="file" name="file" accept=".tar.gz,.tgz,application/gzip" required></label>
+<button type="submit">Upload</button>
+</form>
+</section>
+<section>
+<h2>Archives</h2>
+{{if .Items}}
+<table>
+<thead><tr><th>Name</th><th>Size</th><th>When</th><th></th></tr></thead>
+<tbody>
+{{range .Items}}
+<tr>
+  <td>{{.Key}}</td>
+  <td>{{.Size}}</td>
+  <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
+  <td><a href="/v1/archives/{{.ID}}/file">Download</a></td>
+</tr>
+{{end}}
+</tbody>
+</table>
+{{else}}
+<p class="empty">No archives yet.</p>
+{{end}}
+</section>
+</main></body></html>
 `))

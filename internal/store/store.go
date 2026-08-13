@@ -12,9 +12,10 @@ import (
 	_ "modernc.org/sqlite" // register pure-Go sqlite driver (CGO=0)
 )
 
-// Store is a SQLite handle (users, sessions, api_keys).
+// Store is a SQLite handle plus local blob directories.
 type Store struct {
-	db *sql.DB
+	db  *sql.DB
+	dir string
 }
 
 // Open creates dataDir if needed and opens gfs.db with the pure-Go driver.
@@ -35,13 +36,27 @@ func Open(dataDir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
-	st := &Store{db: db}
+	st := &Store{db: db, dir: dataDir}
 	if err := st.migrate(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	if err := os.MkdirAll(st.HomeDir(), 0o750); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("mkdir home: %w", err)
+	}
+	if err := os.MkdirAll(st.StagingDir(), 0o750); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("mkdir staging: %w", err)
+	}
 	return st, nil
 }
+
+// HomeDir is the VPS blob home (durable on topology vps).
+func (s *Store) HomeDir() string { return filepath.Join(s.dir, "home") }
+
+// StagingDir is in-flight ingest (not listed).
+func (s *Store) StagingDir() string { return filepath.Join(s.dir, "staging") }
 
 // Ping reports whether SQLite still answers.
 func (s *Store) Ping(ctx context.Context) bool {
