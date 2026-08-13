@@ -9,7 +9,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 1: Supply chain** — Make/CI/GoReleaser/image identical in spirit to groot-trigger; SPEC is the contract
 - [x] **Phase 2: Process** — Config topologies, slog, fail-closed, healthz/readyz (completed 2026-08-12)
 - [x] **Phase 3: Identity** — SQLite users, web session, hashed api_key (completed 2026-08-12)
-- [ ] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML
+- [x] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML (completed 2026-08-12)
 - [ ] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist
 - [ ] **Phase 6: Housekeeping** — Audit log + retention job
 
@@ -81,12 +81,15 @@ Plans:
   2. `GET /` and `GET /v1/archives` list it; `GET /v1/archives/{id}` downloads it
   3. There is no per-upload S3 flag; UI is vanilla HTML
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 
-- [ ] 04-01: Local blob store + upload/list/download API
-- [ ] 04-02: Vanilla HTML list/download pages
+- [x] 04-01-PLAN.md
+- [x] 04-02-PLAN.md
+
+- [x] 04-01: Local blob store + upload/list/download API
+- [x] 04-02: Vanilla HTML list/download pages
 
 ### Phase 5: Bucket home
 
@@ -133,6 +136,6 @@ Plans:
 | 1. Supply chain | 2/2 | Complete | 2026-08-12 |
 | 2. Process | 1/1 | Complete   | 2026-08-12 |
 | 3. Identity | 1/1 | Complete    | 2026-08-12 |
-| 4. VPS home | 0/2 | Not started | - |
+| 4. VPS home | 2/2 | Complete    | 2026-08-12 |
 | 5. Bucket home | 0/2 | Not started | - |
 | 6. Housekeeping | 0/1 | Not started | - |

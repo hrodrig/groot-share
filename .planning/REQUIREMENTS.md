@@ -29,13 +29,13 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### Ingest
 
-- [ ] **ING-01**: User can HTTP-upload a groot `.tar.gz` to gfs (laptops; optional cluster path)
+- [x] **ING-01**: User can HTTP-upload a groot `.tar.gz` to gfs (laptops; optional cluster path)
 - [ ] **ING-02**: In topology VPS + S3, an in-cluster groot/trigger `upload.s3` to the same prefix is accepted as a first-class ingest (preferred for multi-GB); listing includes those objects
-- [ ] **ING-03**: No per-upload “also S3” flag; topology is deploy-time config
+- [x] **ING-03**: No per-upload “also S3” flag; topology is deploy-time config
 
 ### Storage
 
-- [ ] **STOR-01**: Topology VPS only: uploaded bytes live on VPS disk (home); listing is local
+- [x] **STOR-01**: Topology VPS only: uploaded bytes live on VPS disk (home); listing is local
 - [ ] **STOR-02**: Topology VPS + S3: HTTP ingest lands on local staging, copies to the bucket, deletes staging; listing is the bucket; in-flight staging is not a listed groot file
 - [ ] **STOR-03**: If the bucket copy fails, the HTTP upload still succeeded (object stays in transit) and gfs retries; local-only is not the happy state
 - [ ] **STOR-04**: Staging disk is for in-flight objects only, not the retention set
@@ -43,9 +43,9 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### List and download
 
-- [ ] **LIST-01**: Authenticated web user can list archives (respect visibility config; admin sees all)
-- [ ] **LIST-02**: Authenticated web user can download an archive
-- [ ] **LIST-03**: MVP UI is server-rendered / vanilla HTML (no SPA framework)
+- [x] **LIST-01**: Authenticated web user can list archives (respect visibility config; admin sees all)
+- [x] **LIST-02**: Authenticated web user can download an archive
+- [x] **LIST-03**: MVP UI is server-rendered / vanilla HTML (no SPA framework)
 
 ### Audit and retention
 
@@ -98,12 +98,12 @@ Filled by roadmap.
 | AUTH-01 | Phase 3 | Complete |
 | AUTH-02 | Phase 3 | Complete |
 | AUTH-03 | Phase 3 | Complete |
-| ING-01 | Phase 4 | Pending |
-| ING-03 | Phase 4 | Pending |
-| STOR-01 | Phase 4 | Pending |
-| LIST-01 | Phase 4 | Pending |
-| LIST-02 | Phase 4 | Pending |
-| LIST-03 | Phase 4 | Pending |
+| ING-01 | Phase 4 | Complete |
+| ING-03 | Phase 4 | Complete |
+| STOR-01 | Phase 4 | Complete |
+| LIST-01 | Phase 4 | Complete |
+| LIST-02 | Phase 4 | Complete |
+| LIST-03 | Phase 4 | Complete |
 | ING-02 | Phase 5 | Pending |
 | STOR-02 | Phase 5 | Pending |
 | STOR-03 | Phase 5 | Pending |
