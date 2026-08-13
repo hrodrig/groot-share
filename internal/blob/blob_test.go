@@ -49,6 +49,12 @@ func TestMemoryPutGetListHead(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("%+v %v", list, err)
 	}
+	if err := m.Delete(ctx, "captures/a.tar.gz"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Head(ctx, "captures/a.tar.gz"); !errors.Is(err, ErrNotFound) {
+		t.Fatal(err)
+	}
 }
 
 func TestMemoryFailPutAndHeadBucket(t *testing.T) {

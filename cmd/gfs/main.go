@@ -76,6 +76,7 @@ func run(args []string) int {
 	if blobs != nil {
 		go app.RetryLoop(context.Background(), 30*time.Second)
 	}
+	go app.SweepLoop(context.Background(), cfg.RetentionEvery)
 	slog.Info("starting",
 		"version", version,
 		"listen", cfg.ListenAddr,

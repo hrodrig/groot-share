@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Topology is the deploy-time storage layout. Not a per-upload flag.
@@ -37,6 +38,10 @@ type Config struct {
 	BootstrapPassword string
 	CookieSecure      bool
 	MaxUploadBytes    int64
+	KeepLast          int
+	MaxAgeDays        int
+	RetentionEvery    time.Duration
+	StagingGrace      time.Duration
 }
 
 // LoadFromEnv reads configuration. Returns error if topology/data dir are
@@ -57,6 +62,10 @@ func LoadFromEnv() (Config, error) {
 		BootstrapPassword: os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
 		CookieSecure:      parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
 		MaxUploadBytes:    parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
+		KeepLast:          int(parseInt64(os.Getenv("GFS_KEEP_LAST"), 20)),
+		MaxAgeDays:        int(parseInt64(os.Getenv("GFS_MAX_AGE_DAYS"), 90)),
+		RetentionEvery:    parseDuration(os.Getenv("GFS_RETENTION_EVERY"), time.Hour),
+		StagingGrace:      parseDuration(os.Getenv("GFS_STAGING_GRACE"), 24*time.Hour),
 	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)
@@ -100,6 +109,18 @@ func parseInt64(s string, def int64) int64 {
 		return def
 	}
 	return n
+}
+
+func parseDuration(s string, def time.Duration) time.Duration {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return def
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		return def
+	}
+	return d
 }
 
 func parseBool(s string, def bool) bool {

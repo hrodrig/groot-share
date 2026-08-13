@@ -105,3 +105,24 @@ func (m *Memory) HeadBucket(_ context.Context) error {
 	}
 	return nil
 }
+
+// Delete removes a key.
+func (m *Memory) Delete(_ context.Context, key string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.objects[key]; !ok {
+		return ErrNotFound
+	}
+	delete(m.objects, key)
+	delete(m.meta, key)
+	return nil
+}
+
+// Touch sets LastModified (tests).
+func (m *Memory) Touch(key string, t time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	obj := m.meta[key]
+	obj.LastModified = t.UTC()
+	m.meta[key] = obj
+}

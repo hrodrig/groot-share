@@ -208,6 +208,29 @@ func (s *Store) ArchiveByID(ctx context.Context, id string) (Archive, error) {
 	return a, nil
 }
 
+// DeleteArchive removes the sqlite row and the VPS home file.
+func (s *Store) DeleteArchive(ctx context.Context, id string) error {
+	if !validArchiveID(id) {
+		return ErrNotFound
+	}
+	p, err := s.BlobPath(id)
+	if err != nil {
+		return err
+	}
+	res, err := s.db.ExecContext(ctx, `DELETE FROM archives WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete archive: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove blob: %w", err)
+	}
+	return nil
+}
+
 type rowScanner interface {
 	Scan(dest ...any) error
 }

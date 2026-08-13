@@ -27,4 +27,5 @@ type Store interface {
 	List(ctx context.Context, prefix string) ([]Object, error)
 	Head(ctx context.Context, key string) (Object, error)
 	HeadBucket(ctx context.Context) error
+	Delete(ctx context.Context, key string) error
 }

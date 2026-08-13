@@ -64,3 +64,21 @@ func TestSanitizeKey(t *testing.T) {
 		t.Fatal(sanitizeKey(""))
 	}
 }
+
+func TestDeleteArchive(t *testing.T) {
+	st := testStore(t)
+	ctx := context.Background()
+	a, err := st.Ingest(ctx, bytes.NewReader([]byte("bye")), "gone.tar.gz", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteArchive(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.ArchiveByID(ctx, a.ID); err != ErrNotFound {
+		t.Fatalf("want not found %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(st.HomeDir(), a.ID+".tar.gz")); !os.IsNotExist(err) {
+		t.Fatalf("blob still there: %v", err)
+	}
+}

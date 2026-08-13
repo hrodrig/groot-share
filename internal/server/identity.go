@@ -284,7 +284,12 @@ var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
   <td class="muted">{{.Source}}</td>
   <td>{{.Size}}</td>
   <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
-  <td><a href="/v1/archives/{{.ID}}/file">Download</a></td>
+  <td>
+    <a href="/v1/archives/{{.ID}}/file">Download</a>
+    <form method="post" action="/v1/archives/{{.ID}}/delete" style="display:inline">
+      <button class="ghost" type="submit">Delete</button>
+    </form>
+  </td>
 </tr>
 {{end}}
 </tbody>

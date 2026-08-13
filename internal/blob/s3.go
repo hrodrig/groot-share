@@ -194,6 +194,18 @@ func (c *S3) HeadBucket(ctx context.Context) error {
 	return nil
 }
 
+// Delete is DeleteObject.
+func (c *S3) Delete(ctx context.Context, key string) error {
+	_, err := c.api.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("delete object: %w", err)
+	}
+	return nil
+}
+
 func isNotFound(err error) bool {
 	var nf *types.NotFound
 	var nsk *types.NoSuchKey

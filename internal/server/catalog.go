@@ -214,5 +214,6 @@ func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store
 func downloadID(r *http.Request) string {
 	id := strings.Trim(r.PathValue("id"), "/")
 	id = strings.TrimSuffix(id, "/file")
+	id = strings.TrimSuffix(id, "/delete")
 	return strings.TrimSuffix(id, "/")
 }

@@ -140,3 +140,28 @@ func TestParseBool(t *testing.T) {
 		t.Fatal("parseBool fallback")
 	}
 }
+
+func TestRetentionDefaults(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_KEEP_LAST", "")
+	t.Setenv("GFS_MAX_AGE_DAYS", "")
+	t.Setenv("GFS_RETENTION_EVERY", "")
+	t.Setenv("GFS_STAGING_GRACE", "")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 20 || cfg.MaxAgeDays != 90 {
+		t.Fatalf("defaults %+v", cfg)
+	}
+	t.Setenv("GFS_KEEP_LAST", "5")
+	t.Setenv("GFS_MAX_AGE_DAYS", "7")
+	cfg, err = LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 5 || cfg.MaxAgeDays != 7 {
+		t.Fatalf("override %+v", cfg)
+	}
+}
