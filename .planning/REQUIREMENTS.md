@@ -11,14 +11,14 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### Supply chain
 
-- [ ] **SUP-01**: Repo builds with GNU Make targets matching groot-trigger (`build`, `test`, `cover`, `fmt-check`, `lint`, `gocyclo`, `ci`, `govulncheck`, `grype`, `docker-build-amd64`, `goreleaser-check`, `release-check`)
-- [ ] **SUP-02**: GoReleaser publishes `v`-prefixed tags; CGO_ENABLED=0; linux/darwin/freebsd/openbsd amd64+arm64; distroless image
-- [ ] **SUP-03**: CI on `main`/`develop` runs fmt-check + golangci-lint + gocyclo + test (trigger workflow shape)
-- [ ] **SUP-04**: English-only artifacts; `AGENTS.md` / project guide points implementers at `docs/SPECIFICATIONS.md`
+- [x] **SUP-01**: Repo builds with GNU Make targets matching groot-trigger (`build`, `test`, `cover`, `fmt-check`, `lint`, `gocyclo`, `ci`, `govulncheck`, `grype`, `docker-build-amd64`, `goreleaser-check`, `release-check`)
+- [x] **SUP-02**: GoReleaser publishes `v`-prefixed tags; CGO_ENABLED=0; linux/darwin/freebsd/openbsd amd64+arm64; distroless image
+- [x] **SUP-03**: CI on `main`/`develop` runs fmt-check + golangci-lint + gocyclo + test (trigger workflow shape)
+- [x] **SUP-04**: English-only artifacts; `AGENTS.md` / project guide points implementers at `docs/SPECIFICATIONS.md`
 
 ### Contract
 
-- [ ] **SPEC-01**: `docs/SPECIFICATIONS.md` is the approved behavior contract; application code implements it (trigger model)
+- [x] **SPEC-01**: `docs/SPECIFICATIONS.md` is the approved behavior contract; application code implements it (trigger model)
 
 ### Authentication
 
@@ -86,11 +86,11 @@ Filled by roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SUP-01 | Phase 1 | Pending |
-| SUP-02 | Phase 1 | Pending |
-| SUP-03 | Phase 1 | Pending |
-| SUP-04 | Phase 1 | Pending |
-| SPEC-01 | Phase 1 | Pending |
+| SUP-01 | Phase 1 | Complete |
+| SUP-02 | Phase 1 | Complete |
+| SUP-03 | Phase 1 | Complete |
+| SUP-04 | Phase 1 | Complete |
+| SPEC-01 | Phase 1 | Complete |
 | AUTH-04 | Phase 2 | Pending |
 | OPS-01 | Phase 2 | Pending |
 | OPS-02 | Phase 2 | Pending |

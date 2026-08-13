@@ -6,7 +6,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 
 ## Phases
 
-- [ ] **Phase 1: Supply chain** — Make/CI/GoReleaser/image identical in spirit to groot-trigger; SPEC is the contract
+- [x] **Phase 1: Supply chain** — Make/CI/GoReleaser/image identical in spirit to groot-trigger; SPEC is the contract
 - [ ] **Phase 2: Process** — Config topologies, slog, fail-closed, healthz/readyz
 - [ ] **Phase 3: Identity** — SQLite users, web session, hashed api_key
 - [ ] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML
@@ -26,8 +26,8 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: Copy groot-trigger packaging (Make, Docker, GoReleaser, golangci, CI) renamed to gfs
-- [ ] 01-02: Stub `cmd/gfs` + VERSION + `make test` / `make ci` green
+- [x] 01-01: Copy groot-trigger packaging (Make, Docker, GoReleaser, golangci, CI) renamed to gfs
+- [x] 01-02: Stub `cmd/gfs` + VERSION + `make test` / `make ci` green
 
 ### Phase 2: Process
 **Goal:** Operators can start gfs with a topology; the process refuses bad config and answers probes.
@@ -103,7 +103,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Supply chain | 0/2 | Not started | - |
+| 1. Supply chain | 2/2 | Complete | 2026-08-12 |
 | 2. Process | 0/1 | Not started | - |
 | 3. Identity | 0/1 | Not started | - |
 | 4. VPS home | 0/2 | Not started | - |

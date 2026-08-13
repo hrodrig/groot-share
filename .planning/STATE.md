@@ -3,10 +3,10 @@ gsd_state_version: '1.0'
 status: planning
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 9
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 22
 ---
 
 # Project State
@@ -16,38 +16,37 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 1 — Supply chain
+**Current focus:** Phase 2 — Process
 
 ## Current Position
 
-Phase: 1 of 6 (Supply chain)
-Plan: 0 of 2 in current phase
+Phase: 2 of 6 (Process)
+Plan: 0 of 1 in current phase
 Status: Ready to plan
-Last activity: 2026-08-12 — GSD init: consensus, SPEC, requirements, roadmap
+Last activity: 2026-08-12 — Phase 1 supply chain: `make ci` green, stub `cmd/gfs version`
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 22%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 2
 - Average duration: —
-- Total execution time: 0 hours
+- Total execution time: —
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1 Supply chain | 2 | 2 | — |
 
 ## Accumulated Context
 
 ### Decisions
 
-- Three topologies; VPS is transit when S3 exists
-- Cluster `upload.s3` preferred; HTTP also possible
-- Supply chain copied from groot-trigger
-- Local git commits only (no push) for this kickoff
+- Packaging copied from groot-trigger; binary **gfs**; COVER_MIN=60
+- Local commits only; no push
+- HTTP listen is Phase 2
 
 ### Pending Todos
 
@@ -57,14 +56,8 @@ None yet.
 
 None yet.
 
-## Deferred Items
-
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| *(none)* | | | |
-
 ## Session Continuity
 
-Last session: 2026-08-12 21:00
-Stopped at: Project initialized; Phase 1 ready to plan
-Resume file: None
+Last session: 2026-08-12
+Stopped at: Phase 1 complete; Phase 2 ready to discuss/plan
+Resume file: .planning/phases/01-supply-chain/01-CONTEXT.md
