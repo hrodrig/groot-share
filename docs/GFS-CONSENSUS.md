@@ -43,7 +43,7 @@ Deploy-time choice. **No per-upload “also S3” flag.**
 
 | Topology | gfs? | Who receives the `.tar` | Where it lives | Who lists |
 |----------|------|-------------------------|----------------|-----------|
-| **VPS only** | yes | gfs HTTP (trigger / groot / laptops) | VPS disk (**home**) | gfs (local) |
+| **VPS only** | yes | gfs HTTP (trigger / groot / laptops / bastion) | VPS disk (**home**) | gfs (local) |
 | **S3 only** | **no** | groot / trigger `upload.s3` | the bucket (Contabo, AWS, MinIO, R2, …) | S3 client (Cyberduck, aws cli, rclone, …) |
 | **VPS + S3** | yes | see ingest below | VPS disk = **transit**; bucket = **home** | gfs, **from the bucket** |
 
@@ -57,7 +57,7 @@ Both doors exist. **S3-direct is preferred** when the producer already has clust
 |----------|------|--------|
 | trigger / CronJob / groot with in-cluster Secret | **`upload.s3` → bucket** (preferred) | Multi-GB never touches the VPS. Listing still sees it (list from S3). |
 | same producer, optional | HTTP → gfs → staging → S3 | Possible; worse for large archives. |
-| laptop (no long-lived keys) | HTTP → gfs → staging → S3 | Only path. |
+| laptop or bastion (no long-lived keys) | HTTP → gfs → staging → S3 | Laptop/bastion path without bucket creds on the operator machine |
 
 HTTP ingest on VPS + S3:
 
@@ -94,7 +94,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 | 7 | Auth model | Per user: **login + password** (web) and **login + api_key** (upload API). Trigger’s shared `GROOT_TRIGGER_API_KEY` is a different secret (can start a cluster collect). |
 | 8 | Audit | Required (who uploaded/downloaded/deleted/analyzed; timestamps; useful request metadata). Never log secrets. |
 | 9 | LLM credentials (phase 2) | Each user may store **their own** provider credentials (BYOK) to interact with archives; encrypted at rest; not a single global team key for user chats. |
-| 10 | Origins | **Both** from day one: in-cluster (trigger / CronJob) **and** laptops. |
+| 10 | Origins | **Three classes** from day one: in-cluster (trigger / CronJob), **bastion** (groot-selfhosted Docker / cron / systemd), and laptops. |
 | 11 | gfs host | First gfs is a **VPS** (topologies that include gfs). Not a substitute for trigger inside the cluster. |
 
 ---

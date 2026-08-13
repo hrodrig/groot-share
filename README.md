@@ -19,17 +19,17 @@
 
 ## The problem
 
-Teams on a **shared Kubernetes cluster** need **one catalog** of [groot](https://github.com/hrodrig/groot) diagnostic `.tar.gz` files — for incidents, RCA, and handoffs. Archives are often **several GB**. Producers are **laptops** (adhoc collect) and **in-cluster** jobs ([groot-trigger](https://github.com/hrodrig/groot-trigger), CronJob).
+Teams on a **shared Kubernetes cluster** need **one catalog** of [groot](https://github.com/hrodrig/groot) diagnostic `.tar.gz` files — for incidents, RCA, and handoffs. Archives are often **several GB**. Producers include **laptops** (adhoc collect), **bastion hosts** (Docker / cron / systemd via [groot-selfhosted](https://github.com/hrodrig/groot-selfhosted)), and **in-cluster** jobs ([groot-trigger](https://github.com/hrodrig/groot-trigger), CronJob).
 
 The usual shortcuts fail:
 
 - **Put the same S3-compatible bucket key on every laptop** — revoke or leak hits the **whole** bucket; many providers (Contabo, Hetzner, Wasabi, MinIO, …) do not give you per-engineer IAM for free.
-- **“Just use Cyberduck”** — no per-user audit, retention, or upload API keyed to usernames; cluster and laptop uploads stay disconnected unless you glue them.
+- **“Just use Cyberduck”** — no per-user audit, retention, or upload API keyed to usernames; bastion, laptop, and cluster uploads stay disconnected unless you glue them.
 - **“Run only groot-trigger”** — great for **starting** a collect; it does **not** list, download, or retain archives ([trigger SPEC](https://github.com/hrodrig/groot-trigger/blob/main/docs/SPECIFICATIONS.md)).
 
 ## How gfs solves it
 
-**gfs** is a small **VPS service**: login + scoped API keys, HTTP ingest, Captures UI, audit log, and retention — in front of groot archives. Laptops never need long-lived `AWS_*`. On **vps-s3**, the cluster still prefers **`groot upload.s3` straight to the bucket** (multi-GB skips the VPS); gfs **lists the same prefix** so HTTP and S3 ingest appear in one place.
+**gfs** is a small **VPS service**: login + scoped API keys, HTTP ingest, Captures UI, audit log, and retention — in front of groot archives. **Laptops and bastion hosts** never need long-lived `AWS_*` on every operator machine. On **vps-s3**, the cluster still prefers **`groot upload.s3` straight to the bucket** (multi-GB skips the VPS); bastions may HTTP POST to gfs or use `upload.s3` / `upload.sftp` per [groot-selfhosted](https://github.com/hrodrig/groot-selfhosted) playbook. gfs **lists the same prefix** so HTTP, S3, and (future) SFTP ingest appear in one place.
 
 **gfs is not universal.** If you have **only** a bucket and no VPS, the better path is **S3 only** (groot `upload.s3` + S3 client) — **do not deploy gfs**. Full decision matrix with trade-offs: **[docs/ALTERNATIVES.md](docs/ALTERNATIVES.md)**.
 
@@ -39,7 +39,8 @@ The usual shortcuts fail:
 |-----------|-------------|
 | Bucket only, no VPS, operators use S3 tools | **S3 only** — [groot-selfhosted s3-contabo example](https://github.com/hrodrig/groot-selfhosted/tree/main/run/examples/s3-contabo) |
 | VPS, archives on disk, small team | **gfs `vps`** |
-| Bucket + laptops without `AWS_*` + cluster multi-GB | **gfs `vps-s3`** + cluster `upload.s3` |
+| Bucket + laptops/bastions without `AWS_*` + cluster multi-GB | **gfs `vps-s3`** + cluster `upload.s3` |
+| Scheduled or bastion collect (jump host) | **groot-selfhosted** standalone / Docker → gfs HTTP or `upload.s3` |
 | “Generate capture” button in cluster | **groot-trigger** + one of the storage rows above |
 | SFTP drop box today | **groot `upload.sftp`** playbook; gfs watcher [planned](.planning/ROADMAP.md) |
 

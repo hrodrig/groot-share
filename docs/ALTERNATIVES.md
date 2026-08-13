@@ -17,7 +17,7 @@ Typical pain:
 | **Bucket keys on every laptop** | Many S3-compatible providers (Contabo, Hetzner Object Storage, Wasabi, MinIO, RGW, …) issue **one key pair per bucket**. Revoke one leaked laptop → rotate for **everyone**. A leak often means **full bucket** access. |
 | **No team-facing door** | `aws s3 cp` and Cyberduck work for power users, but there is no per-user login, audit trail, or retention policy unless you build it. |
 | **Multi-GB archives** | A collect can be several gigabytes. Hairpinning cluster → VPS → bucket when the cluster could write **directly to S3** wastes bandwidth and disk. |
-| **Two producers** | Archives come from **laptops** (adhoc collect) and from **in-cluster** jobs ([groot-trigger](https://github.com/hrodrig/groot-trigger), CronJob). They should land in the **same catalog** without duplicating secrets. |
+| **Three producer classes** | Archives come from **laptops** (adhoc collect), **bastion hosts** (groot on a jump box — Docker, cron, or systemd via [groot-selfhosted](https://github.com/hrodrig/groot-selfhosted)), and **in-cluster** jobs ([groot-trigger](https://github.com/hrodrig/groot-trigger), CronJob). They should land in the **same catalog** without duplicating secrets. |
 | **Trigger is not storage** | groot-trigger starts a collect Job and returns `202` — by design it does **not** list, download, or retain archives ([trigger SPEC](https://github.com/hrodrig/groot-trigger/blob/main/docs/SPECIFICATIONS.md)). |
 
 **gfs** targets teams that accept a **VPS** as an authenticated HTTP door while keeping **long-lived object-store credentials off laptops** (and optionally off the cluster except one in-cluster Secret for `upload.s3`).
@@ -27,7 +27,7 @@ Typical pain:
 ## How gfs solves it
 
 ```
-  laptop                          cluster (trigger / CronJob)
+  laptop / bastion                 cluster (trigger / CronJob)
     │  HTTP + session / api_key          │  upload.s3 (preferred when bucket exists)
     ▼                                    ▼
 ┌─────────────────────────────────────────────────────────┐
@@ -70,6 +70,7 @@ Use this first. Details below.
 | Small team; **one VPS**; archives stay on disk; no object store | **[VPS only](#vps-only-gfs-on-disk)** — gfs `GFS_TOPOLOGY=vps` | Simple home on VPS; HTTP auth without bucket ops |
 | Team bucket **and** laptops must upload **without** `AWS_*`; multi-GB from cluster | **[VPS + S3](#vps--s3-gfs--bucket-home)** — gfs + cluster `upload.s3` to same prefix | Laptops → gfs HTTP; cluster → S3 direct; gfs lists bucket |
 | On-demand collect **button in cluster** only; archives go elsewhere | **[groot-trigger](https://github.com/hrodrig/groot-trigger)** + your storage path | Trigger fires Job; pair with S3 only, SFTP, or gfs — trigger alone is not a catalog |
+| **Bastion / jump host** with kubeconfig (Docker, cron, systemd) | **[groot-selfhosted](https://github.com/hrodrig/groot-selfhosted) standalone** → gfs HTTP or `upload.s3` / `upload.sftp` | Common ops pattern; same catalog as laptops and cluster |
 | Scheduled collects only; no gfs UI yet | **[groot-selfhosted](https://github.com/hrodrig/groot-selfhosted)** CronJob / Helm | Operator packaging; add gfs later if you need a web door |
 | Legacy SFTP drop box; no gfs | **[SFTP inbox](#sftp-drop-groot-uploadsftp--sshd)** — groot `upload.sftp` + OpenSSH | Today: selfhosted playbook; gfs Phase 8 will **watch** inbox, not run SFTP |
 | Need full DLP, SSO, document workflow | **Enterprise file platform** (SharePoint, Box, …) or **self-hosted Nextcloud** | gfs is a thin archive door, not a collaboration suite |
@@ -102,7 +103,7 @@ Use this first. Details below.
 |--|--|
 | **Pros** | Simplest gfs deploy; no AWS SDK on host; good for labs and small teams |
 | **Cons** | VPS disk is durability boundary; multi-GB hairpin if cluster could have used S3; backup/DR is your problem |
-| **Cluster path** | trigger/CronJob can HTTP POST to gfs (or SFTP watcher in Phase 8) |
+| **Cluster path** | trigger/CronJob can HTTP POST to gfs, **`upload.s3`**, or SFTP; bastion can HTTP POST or use `upload.s3` / `upload.sftp` per playbook |
 
 **Best when:** You have a VPS, no bucket (or bucket not worth the complexity), archive volume fits disk budget.
 
@@ -116,7 +117,7 @@ Use this first. Details below.
 |--|--|
 | **Pros** | Durable home in bucket; laptops never get bucket keys; cluster multi-GB skips VPS transit; one Captures list |
 | **Cons** | More moving parts (staging, transit retry, endpoint/path-style quirks); VPS still required for auth UI |
-| **Ingest preference** | Cluster → **S3 direct**; laptop → **HTTP → gfs → staging → bucket** |
+| **Ingest preference** | Cluster → **S3 direct**; laptop or bastion → **HTTP → gfs → staging → bucket** (or `upload.s3` / `upload.sftp` from bastion when configured) |
 
 **Best when:** Production-like setup — team door on VPS, bytes at rest in object storage.
 
@@ -178,7 +179,7 @@ See [GFS-CONSENSUS § VPS + S3 ingest](GFS-CONSENSUS.md#vps--s3-ingest) for tran
 |--|--|
 | **Pros** | Native bucket browser; IAM integration (AWS) |
 | **Cons** | Not groot-aware; no `keep_last` semantics for capture names; mixed vendor UX |
-| **vs gfs** | **Better** if you already live in AWS IAM and S3 is the only interface. **Worse** for a flat team + mixed laptop/cluster producers without IdP. |
+| **vs gfs** | **Better** if you already live in AWS IAM and S3 is the only interface. **Worse** for a flat team + mixed laptop/bastion/cluster producers without IdP. |
 
 ---
 

@@ -10,7 +10,7 @@
 
 ## 1. Problem
 
-A ~20-person team on a shared cluster wants one place for groot `.tar.gz` archives without putting S3-compatible keys on every laptop. Archives can be several GB. An in-cluster **groot-trigger** Job can already `upload.s3` (multipart). gfs is the authenticated door when a VPS exists.
+A ~20-person team on a shared cluster wants one place for groot `.tar.gz` archives without putting S3-compatible keys on every laptop. Archives can be several GB. Producers include laptops, **bastion hosts** (groot-selfhosted Docker/cron/systemd), and in-cluster jobs — **groot-trigger** can `upload.s3` (multipart). gfs is the authenticated door when a VPS exists.
 
 ## 2. Goals / non-goals
 
@@ -38,7 +38,7 @@ A ~20-person team on a shared cluster wants one place for groot `.tar.gz` archiv
 ## 3. Architecture
 
 ```
-laptop                         cluster (trigger / CronJob)
+laptop / bastion                 cluster (trigger / CronJob)
   │ HTTP + api_key                    │ upload.s3 (preferred when bucket exists)
   ▼                                   ▼
 ┌─────────────────┐              ┌─────────────┐
