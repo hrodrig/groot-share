@@ -11,7 +11,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 3: Identity** — SQLite users, web session, hashed api_key (completed 2026-08-12)
 - [x] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML (completed 2026-08-12)
 - [x] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist (completed 2026-08-12)
-- [ ] **Phase 6: Housekeeping** — Audit log + retention job
+- [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
 
 ## Phase Details
 
@@ -120,11 +120,11 @@ Plans:
   1. Upload/download/delete produce audit rows without secrets
   2. Retention deletes home objects when either keep_last or max_age_days fires (defaults 20 / 90)
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 06-01: Audit table + retention job
+- [x] 06-01: Audit table + retention job
 
 ## Progress
 
@@ -138,4 +138,4 @@ Plans:
 | 3. Identity | 1/1 | Complete    | 2026-08-12 |
 | 4. VPS home | 2/2 | Complete    | 2026-08-12 |
 | 5. Bucket home | 2/2 | Complete    | 2026-08-12 |
-| 6. Housekeeping | 0/1 | Not started | - |
+| 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |

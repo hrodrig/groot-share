@@ -49,8 +49,8 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### Audit and retention
 
-- [ ] **AUD-01**: gfs records who uploaded, downloaded, or deleted, with timestamps and useful request metadata; never secrets
-- [ ] **RET-01**: Retention job deletes when **either** keep_last=N **or** max_age_days=D fires (defaults 20 / 90); in VPS + S3 it deletes **home** (bucket)
+- [x] **AUD-01**: gfs records who uploaded, downloaded, or deleted, with timestamps and useful request metadata; never secrets
+- [x] **RET-01**: Retention job deletes when **either** keep_last=N **or** max_age_days=D fires (defaults 20 / 90); in VPS + S3 it deletes **home** (bucket)
 
 ### Operations
 
@@ -109,8 +109,8 @@ Filled by roadmap.
 | STOR-03 | Phase 5 | Complete |
 | STOR-04 | Phase 5 | Complete |
 | STOR-05 | Phase 5 | Complete |
-| AUD-01 | Phase 6 | Pending |
-| RET-01 | Phase 6 | Pending |
+| AUD-01 | Phase 6 | Complete |
+| RET-01 | Phase 6 | Complete |
 
 **Coverage:**
 
