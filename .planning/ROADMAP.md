@@ -8,7 +8,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 
 - [x] **Phase 1: Supply chain** — Make/CI/GoReleaser/image identical in spirit to groot-trigger; SPEC is the contract
 - [x] **Phase 2: Process** — Config topologies, slog, fail-closed, healthz/readyz (completed 2026-08-12)
-- [ ] **Phase 3: Identity** — SQLite users, web session, hashed api_key
+- [x] **Phase 3: Identity** — SQLite users, web session, hashed api_key (completed 2026-08-12)
 - [ ] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML
 - [ ] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist
 - [ ] **Phase 6: Housekeeping** — Audit log + retention job
@@ -62,11 +62,13 @@ Plans:
   2. api_key is shown once at creation and stored hashed; Bearer / X-API-Key accepted on upload routes
   3. Audit/log output never contains the raw password or api_key
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 03-01: SQLite users, password hash, api_key hash, session cookie, bootstrap admin
+- [x] 03-01-PLAN.md
+
+- [x] 03-01: SQLite users, password hash, api_key hash, session cookie, bootstrap admin
 
 ### Phase 4: VPS home
 
@@ -129,8 +131,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Supply chain | 2/2 | Complete | 2026-08-12 |
-| 2. Process | 1/1 | Complete    | 2026-08-12 |
-| 3. Identity | 0/1 | Not started | - |
+| 2. Process | 1/1 | Complete   | 2026-08-12 |
+| 3. Identity | 1/1 | Complete    | 2026-08-12 |
 | 4. VPS home | 0/2 | Not started | - |
 | 5. Bucket home | 0/2 | Not started | - |
 | 6. Housekeeping | 0/1 | Not started | - |

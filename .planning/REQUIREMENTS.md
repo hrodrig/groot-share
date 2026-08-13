@@ -22,9 +22,9 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can log in to the web UI with username + password and get a session cookie. Empty user table: create one admin from `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD` or refuse start; no well-known default password; ignore bootstrap env once users exist
-- [ ] **AUTH-02**: User can upload a `.tar.gz` with username + api_key (header or equivalent; full secret shown only at creation; stored hashed)
-- [ ] **AUTH-03**: Passwords are hashed in SQLite; audit rows never contain secrets
+- [x] **AUTH-01**: User can log in to the web UI with username + password and get a session cookie. Empty user table: create one admin from `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD` or refuse start; no well-known default password; ignore bootstrap env once users exist
+- [x] **AUTH-02**: User can upload a `.tar.gz` with username + api_key (header or equivalent; full secret shown only at creation; stored hashed)
+- [x] **AUTH-03**: Passwords are hashed in SQLite; audit rows never contain secrets
 - [x] **AUTH-04**: Process fails closed if required operator secrets for the configured topology are missing (same spirit as trigger empty API key)
 
 ### Ingest
@@ -95,9 +95,9 @@ Filled by roadmap.
 | OPS-01 | Phase 2 | Complete |
 | OPS-02 | Phase 2 | Complete |
 | OPS-03 | Phase 2 | Complete |
-| AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 3 | Pending |
-| AUTH-03 | Phase 3 | Pending |
+| AUTH-01 | Phase 3 | Complete |
+| AUTH-02 | Phase 3 | Complete |
+| AUTH-03 | Phase 3 | Complete |
 | ING-01 | Phase 4 | Pending |
 | ING-03 | Phase 4 | Pending |
 | STOR-01 | Phase 4 | Pending |
