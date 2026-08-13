@@ -227,7 +227,7 @@ func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
-	_ = loginTmpl.Execute(w, map[string]any{"CSS": template.CSS(layoutCSS), "Error": msg})
+	_ = loginTmpl.Execute(w, map[string]any{"CSS": template.CSS(layoutCSS), "Error": loginErrorCopy(msg)})
 }
 
 func writeJSONError(w http.ResponseWriter, code int, msg string) {
@@ -241,26 +241,38 @@ func wantsJSON(r *http.Request) bool {
 	return strings.Contains(a, "application/json")
 }
 
-var loginTmpl = template.Must(template.New("login").Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs login</title><style>{{.CSS}}</style></head>
-<body><main>
-<h1>gfs</h1>
-<p class="muted">Sign in to list and download groot archives.</p>
-{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+var pageFuncs = template.FuncMap{
+	"humansize": humanSize,
+}
+
+var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — sign in</title><style>{{.CSS}}</style></head>
+<body class="gate">
+<a class="skip" href="#main">Skip to content</a>
+<main id="main">
+<div class="sheet">
+<p class="eyebrow">Archive door</p>
+<h1 class="mark">gfs</h1>
+<p class="muted">Sign in to list and download groot captures.</p>
+{{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
 <form method="post" action="/login">
 <label>Username <input name="username" autocomplete="username" required></label>
 <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
 <button type="submit">Sign in</button>
 </form>
+</div>
 </main></body></html>
 `))
 
-var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
+var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs</title><style>{{.CSS}}</style></head>
-<body><main>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<main id="main">
 <header class="bar">
   <div>
-    <h1>gfs</h1>
+    <p class="eyebrow">Archive door</p>
+    <h1 class="mark">gfs</h1>
     <p class="muted">Signed in as {{.Username}}{{if .Admin}} (admin){{end}}</p>
   </div>
   <form method="post" action="/logout"><button class="ghost" type="submit">Sign out</button></form>
@@ -269,39 +281,41 @@ var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
 <h2>Upload</h2>
 <form method="post" action="/v1/archives" enctype="multipart/form-data">
 <label>groot .tar.gz <input type="file" name="file" accept=".tar.gz,.tgz,application/gzip" required></label>
-<button type="submit">Upload</button>
+<button type="submit">Upload capture</button>
 </form>
 </section>
 <section>
 <h2>Archives</h2>
 {{if .Items}}
-<table>
+<table class="manifest">
 <thead><tr><th>Name</th><th>Source</th><th>Size</th><th>When</th><th></th></tr></thead>
 <tbody>
 {{range .Items}}
 <tr>
   <td>{{.Key}}</td>
-  <td class="muted">{{.Source}}</td>
-  <td>{{.Size}}</td>
+  <td><span class="stamp">{{.Source}}</span></td>
+  <td>{{humansize .Size}}</td>
   <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
   <td>
-    <a href="/v1/archives/{{.ID}}/file">Download</a>
-    <form method="post" action="/v1/archives/{{.ID}}/delete" style="display:inline">
-      <button class="ghost" type="submit">Delete</button>
-    </form>
+    <div class="actions">
+      <a href="/v1/archives/{{.ID}}/file">Download</a>
+      <form method="post" action="/v1/archives/{{.ID}}/delete">
+        <button class="ghost" type="submit">Delete</button>
+      </form>
+    </div>
   </td>
 </tr>
 {{end}}
 </tbody>
 </table>
 {{else}}
-<p class="empty">No archives yet.</p>
+<p class="empty">No captures yet. Upload a groot .tar.gz to start the list.</p>
 {{end}}
 </section>
 <section>
-<h2>Audit</h2>
+<h2>Activity</h2>
 {{if .Audit}}
-<table>
+<table class="audit">
 <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Object</th></tr></thead>
 <tbody>
 {{range .Audit}}
@@ -315,7 +329,7 @@ var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
 </tbody>
 </table>
 {{else}}
-<p class="empty">No audit rows yet.</p>
+<p class="empty">No activity yet.</p>
 {{end}}
 </section>
 </main></body></html>
