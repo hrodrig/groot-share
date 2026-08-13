@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -97,6 +98,15 @@ func TestRequestBaseURLHTTP(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Host = "localhost:8080"
 	if got := requestBaseURL(r); got != "http://localhost:8080" {
+		t.Fatalf("base url %q", got)
+	}
+}
+
+func TestRequestBaseURLTLS(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Host = "gfs.example.com"
+	r.TLS = &tls.ConnectionState{}
+	if got := requestBaseURL(r); got != "https://gfs.example.com" {
 		t.Fatalf("base url %q", got)
 	}
 }

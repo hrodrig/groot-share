@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] — 2026-08-13
 
+### Fixed
+
+- Release CI: extra tests so merged coverage stays ≥80% on Linux runners (was 79.9% at the gate)
+
 ### Added
 
 - RBAC: roles `viewer`, `uploader`, `admin` with permission checks on all authenticated routes

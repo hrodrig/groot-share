@@ -40,6 +40,14 @@ func TestRunInvalidTopology(t *testing.T) {
 	}
 }
 
+func TestRunMissingDataDir(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", "")
+	if code := run(nil); code != 1 {
+		t.Fatalf("want 1 got %d", code)
+	}
+}
+
 func TestRunMissingBootstrap(t *testing.T) {
 	t.Setenv("GFS_TOPOLOGY", "vps")
 	t.Setenv("GFS_DATA_DIR", t.TempDir())
