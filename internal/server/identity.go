@@ -276,11 +276,12 @@ var homeTmpl = template.Must(template.New("home").Parse(`<!DOCTYPE html>
 <h2>Archives</h2>
 {{if .Items}}
 <table>
-<thead><tr><th>Name</th><th>Size</th><th>When</th><th></th></tr></thead>
+<thead><tr><th>Name</th><th>Source</th><th>Size</th><th>When</th><th></th></tr></thead>
 <tbody>
 {{range .Items}}
 <tr>
   <td>{{.Key}}</td>
+  <td class="muted">{{.Source}}</td>
   <td>{{.Size}}</td>
   <td class="muted">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</td>
   <td><a href="/v1/archives/{{.ID}}/file">Download</a></td>

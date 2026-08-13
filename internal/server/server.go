@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/store"
 )
@@ -16,6 +17,7 @@ import (
 type Server struct {
 	Cfg   config.Config
 	Store *store.Store
+	Blobs blob.Store
 	Ready func() bool
 }
 
@@ -33,8 +35,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/users", s.requireAuth(s.handleCreateUser))
 	mux.HandleFunc("GET /v1/archives", s.requireAuth(s.handleListArchives))
 	mux.HandleFunc("POST /v1/archives", s.requireAuth(s.handleUpload))
-	mux.HandleFunc("GET /v1/archives/{id}", s.requireAuth(s.handleDownload))
-	mux.HandleFunc("GET /v1/archives/{id}/file", s.requireAuth(s.handleDownload))
+	mux.HandleFunc("GET /v1/archives/{id...}", s.requireAuth(s.handleDownload))
 	return s.accessLog(mux)
 }
 

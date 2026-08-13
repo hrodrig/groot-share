@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/logging"
 	"github.com/hrodrig/groot-share/internal/server"
@@ -61,7 +62,20 @@ func run(args []string) int {
 		slog.Info("identity ready", "users", n)
 	}
 
-	httpSrv := newHTTPServer(cfg, st)
+	blobs, err := openBlobs(cfg)
+	if err != nil {
+		slog.Error("s3 client", "error", err)
+		return 1
+	}
+	app := newApp(cfg, st, blobs)
+	httpSrv := &http.Server{
+		Addr:              cfg.ListenAddr,
+		Handler:           app.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	if blobs != nil {
+		go app.RetryLoop(context.Background(), 30*time.Second)
+	}
 	slog.Info("starting",
 		"version", version,
 		"listen", cfg.ListenAddr,
@@ -71,23 +85,45 @@ func run(args []string) int {
 	return listenAndServe(httpSrv)
 }
 
-func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
-	srv := &server.Server{
+func openBlobs(cfg config.Config) (blob.Store, error) {
+	if cfg.Topology != config.TopologyVPSS3 {
+		return nil, nil
+	}
+	return blob.NewS3(context.Background(), blob.S3Config{
+		Bucket:    cfg.S3Bucket,
+		Region:    cfg.S3Region,
+		Endpoint:  cfg.S3Endpoint,
+		PathStyle: cfg.S3PathStyle,
+	})
+}
+
+func newApp(cfg config.Config, st *store.Store, blobs blob.Store) *server.Server {
+	return &server.Server{
 		Cfg:   cfg,
 		Store: st,
+		Blobs: blobs,
 		Ready: func() bool {
 			if !st.Ping(context.Background()) {
 				return false
 			}
-			if cfg.Topology == config.TopologyVPSS3 {
+			if cfg.Topology != config.TopologyVPSS3 {
+				return true
+			}
+			if blobs == nil {
 				return cfg.S3Bucket != "" && config.S3CredsPresent()
 			}
-			return true
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return blobs.HeadBucket(ctx) == nil
 		},
 	}
+}
+
+func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
+	app := newApp(cfg, st, nil)
 	return &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           srv.Handler(),
+		Handler:           app.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 }

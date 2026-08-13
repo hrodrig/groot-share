@@ -30,6 +30,17 @@ CREATE TABLE IF NOT EXISTS archives (
   uploaded_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS transit (
+  id TEXT PRIMARY KEY,
+  key TEXT NOT NULL,
+  s3_key TEXT NOT NULL UNIQUE,
+  size INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  path TEXT NOT NULL,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  last_error TEXT NOT NULL DEFAULT ''
+);
 `
 
 func (s *Store) migrate() error {

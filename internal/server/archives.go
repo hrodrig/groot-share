@@ -10,7 +10,6 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/hrodrig/groot-share/internal/store"
@@ -29,7 +28,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	items, err := s.Store.ListArchives(r.Context())
+	items, err := s.listItems(r.Context())
 	if err != nil {
 		slog.Error("list archives", "error", err)
 		http.Error(w, "internal", http.StatusInternalServerError)
@@ -45,7 +44,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListArchives(w http.ResponseWriter, r *http.Request) {
-	items, err := s.Store.ListArchives(r.Context())
+	items, err := s.listItems(r.Context())
 	if err != nil {
 		slog.Error("list archives", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "internal")
@@ -80,7 +79,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = src.Close() }()
-	a, err := s.Store.Ingest(r.Context(), src, key, u.ID)
+	a, err := s.ingestBody(r.Context(), src, key, u.ID)
 	if err != nil {
 		if isMaxBytes(err) {
 			writeJSONError(w, http.StatusRequestEntityTooLarge, "too_large")
@@ -100,31 +99,32 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	a, err := s.Store.ArchiveByID(r.Context(), id)
+	id := downloadID(r)
+	rc, a, err := s.openDownload(r.Context(), id)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	p, err := s.Store.BlobPath(a.ID)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	f, err := os.Open(p)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	defer func() { _ = f.Close() }()
+	defer func() { _ = rc.Close() }()
+	serveBlob(w, r, a, rc)
+}
+
+func serveBlob(w http.ResponseWriter, r *http.Request, a store.Archive, rc io.ReadCloser) {
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, a.Key))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	http.ServeContent(w, r, a.Key, a.CreatedAt, f)
+	if rs, ok := rc.(io.ReadSeeker); ok {
+		http.ServeContent(w, r, a.Key, a.CreatedAt, rs)
+		return
+	}
+	if a.Size > 0 {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", a.Size))
+	}
+	_, _ = io.Copy(w, rc)
 }
 
 func archiveJSON(a store.Archive) map[string]any {
-	return map[string]any{
+	out := map[string]any{
 		"id":             a.ID,
 		"key":            a.Key,
 		"size":           a.Size,
@@ -132,6 +132,10 @@ func archiveJSON(a store.Archive) map[string]any {
 		"created_at":     a.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 		"source":         a.Source,
 	}
+	if a.Storage != "" {
+		out["storage"] = a.Storage
+	}
+	return out
 }
 
 type readCloser struct {
