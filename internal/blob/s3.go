@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 )
 
 // S3 talks to an S3-compatible bucket (AWS, MinIO, Contabo, …).
@@ -209,5 +210,15 @@ func (c *S3) Delete(ctx context.Context, key string) error {
 func isNotFound(err error) bool {
 	var nf *types.NotFound
 	var nsk *types.NoSuchKey
-	return errors.As(err, &nf) || errors.As(err, &nsk)
+	if errors.As(err, &nf) || errors.As(err, &nsk) {
+		return true
+	}
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "NotFound", "NoSuchKey", "404":
+			return true
+		}
+	}
+	return false
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/store"
 )
@@ -25,6 +26,14 @@ func TestRunVersion(t *testing.T) {
 
 func TestRunMissingTopology(t *testing.T) {
 	t.Setenv("GFS_TOPOLOGY", "")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	if code := run(nil); code != 1 {
+		t.Fatalf("want 1 got %d", code)
+	}
+}
+
+func TestRunInvalidTopology(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "nope")
 	t.Setenv("GFS_DATA_DIR", t.TempDir())
 	if code := run(nil); code != 1 {
 		t.Fatalf("want 1 got %d", code)
@@ -89,6 +98,52 @@ func TestNewHTTPServerReadyzVPSS3MissingCreds(t *testing.T) {
 	srv.Handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("readyz %d", rr.Code)
+	}
+}
+
+func TestOpenBlobsVPSOnly(t *testing.T) {
+	blobs, err := openBlobs(config.Config{Topology: config.TopologyVPS})
+	if err != nil || blobs != nil {
+		t.Fatalf("vps blobs %+v %v", blobs, err)
+	}
+}
+
+func TestOpenBlobsVPSS3(t *testing.T) {
+	t.Setenv("AWS_ACCESS_KEY_ID", "ak")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "sk")
+	blobs, err := openBlobs(config.Config{
+		Topology: config.TopologyVPSS3,
+		S3Bucket: "lab",
+		S3Region: "us-east-1",
+	})
+	if err != nil || blobs == nil {
+		t.Fatalf("vps-s3 blobs %v %v", blobs, err)
+	}
+}
+
+func TestNewAppReadyWithMemoryBlob(t *testing.T) {
+	dir := t.TempDir()
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+	mem := blob.NewMemory()
+	cfg := config.Config{
+		Topology: config.TopologyVPSS3,
+		DataDir:  dir,
+		S3Bucket: "lab",
+	}
+	app := newApp(cfg, st, mem, "test")
+	if !app.Ready() {
+		t.Fatal("ready with memory blob")
+	}
+}
+
+func TestListenAndServeBadAddr(t *testing.T) {
+	srv := &http.Server{Addr: "127.0.0.1:0\n", Handler: http.NewServeMux()}
+	if code := listenAndServe(srv); code != 1 {
+		t.Fatalf("code %d", code)
 	}
 }
 

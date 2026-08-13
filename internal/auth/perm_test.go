@@ -25,6 +25,15 @@ func TestCanSessionMatrix(t *testing.T) {
 	}
 }
 
+func TestValidRoleAndScope(t *testing.T) {
+	if ValidRole(Role("root")) {
+		t.Fatal("invalid role")
+	}
+	if ValidKeyScope(KeyScope("admin")) {
+		t.Fatal("invalid scope")
+	}
+}
+
 func TestCanAPIKeyMatrix(t *testing.T) {
 	if Can(RoleAdmin, PermArchivesRead, AuthAPIKey, KeyScopeUpload) {
 		t.Fatal("upload key cannot read")

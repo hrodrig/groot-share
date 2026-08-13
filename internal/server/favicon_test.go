@@ -43,10 +43,3 @@ func TestLoginPageFaviconHead(t *testing.T) {
 		t.Fatalf("favicon head missing: %s", body[:min(500, len(body))])
 	}
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

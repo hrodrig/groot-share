@@ -11,14 +11,23 @@ import (
 	"testing"
 
 	"github.com/hrodrig/groot-share/internal/auth"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 func TestUsersCRUD(t *testing.T) {
 	s, st := identServer(t)
 	admin := loginCookie(t, s)
+	view := createUserViaAPI(t, s, admin, "view", "view-secret-1", "viewer")
+	listUsersContains(t, s, admin, "view")
+	getUserRole(t, s, admin, view.ID, "viewer")
+	patchUserRole(t, s, st, admin, view.ID, auth.RoleUploader)
+	deactivateUser(t, s, st, admin, view.ID)
+}
 
-	createBody := `{"username":"view","password":"view-secret-1","role":"viewer"}`
-	req := httptest.NewRequest(http.MethodPost, "/v1/users", strings.NewReader(createBody))
+func createUserViaAPI(t *testing.T, s *Server, admin *http.Cookie, username, password, role string) store.User {
+	t.Helper()
+	body := `{"username":"` + username + `","password":"` + password + `","role":"` + role + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/users", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(admin)
 	rr := httptest.NewRecorder()
@@ -27,52 +36,65 @@ func TestUsersCRUD(t *testing.T) {
 		t.Fatalf("create %d %s", rr.Code, rr.Body.String())
 	}
 	var created map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &created); err != nil || created["role"] != "viewer" {
+	if err := json.Unmarshal(rr.Body.Bytes(), &created); err != nil || created["role"] != role {
 		t.Fatalf("created %v", created)
 	}
-
-	list := httptest.NewRequest(http.MethodGet, "/v1/users", nil)
-	list.AddCookie(admin)
-	rr = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rr, list)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"view"`) {
-		t.Fatalf("list %d %s", rr.Code, rr.Body.String())
-	}
-
-	view, err := st.UserByUsername(context.Background(), "view")
+	u, err := s.Store.UserByUsername(context.Background(), username)
 	if err != nil {
 		t.Fatal(err)
 	}
-	get := httptest.NewRequest(http.MethodGet, "/v1/users/"+itoa(view.ID), nil)
-	get.AddCookie(admin)
-	rr = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rr, get)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"viewer"`) {
+	return u
+}
+
+func listUsersContains(t *testing.T, s *Server, admin *http.Cookie, username string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/v1/users", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"`+username+`"`) {
+		t.Fatalf("list %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func getUserRole(t *testing.T, s *Server, admin *http.Cookie, id int64, role string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/v1/users/"+itoa(id), nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"`+role+`"`) {
 		t.Fatalf("get %d %s", rr.Code, rr.Body.String())
 	}
+}
 
-	patch := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(view.ID),
-		strings.NewReader(`{"role":"uploader"}`))
-	patch.Header.Set("Content-Type", "application/json")
-	patch.AddCookie(admin)
-	rr = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rr, patch)
+func patchUserRole(t *testing.T, s *Server, st *store.Store, admin *http.Cookie, id int64, want auth.Role) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(id),
+		strings.NewReader(`{"role":"`+string(want)+`"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("patch %d %s", rr.Code, rr.Body.String())
 	}
-	got, err := st.UserByID(context.Background(), view.ID)
-	if err != nil || got.Role != auth.RoleUploader {
+	got, err := st.UserByID(context.Background(), id)
+	if err != nil || got.Role != want {
 		t.Fatalf("patched %+v %v", got, err)
 	}
+}
 
-	del := httptest.NewRequest(http.MethodDelete, "/v1/users/"+itoa(view.ID), nil)
-	del.AddCookie(admin)
-	rr = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rr, del)
+func deactivateUser(t *testing.T, s *Server, st *store.Store, admin *http.Cookie, id int64) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodDelete, "/v1/users/"+itoa(id), nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("delete %d", rr.Code)
 	}
-	got, err = st.UserByID(context.Background(), view.ID)
+	got, err := st.UserByID(context.Background(), id)
 	if err != nil || got.Active {
 		t.Fatalf("inactive %+v", got)
 	}

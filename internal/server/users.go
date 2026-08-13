@@ -54,35 +54,52 @@ func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePatchUser(w http.ResponseWriter, r *http.Request) {
+	id, u, ok := s.loadUserForPatch(w, r)
+	if !ok {
+		return
+	}
+	var body patchUserBody
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
+	if !s.applyPatchUserFields(w, r, id, u, body) {
+		return
+	}
+	s.writeUserJSON(w, r, id)
+}
+
+type patchUserBody struct {
+	Role     *string `json:"role"`
+	Active   *bool   `json:"active"`
+	Password string  `json:"password"`
+}
+
+func (s *Server) loadUserForPatch(w http.ResponseWriter, r *http.Request) (int64, store.User, bool) {
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
-		return
+		return 0, store.User{}, false
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeJSONError(w, http.StatusNotFound, "not_found")
-			return
+			return 0, store.User{}, false
 		}
 		writeJSONError(w, http.StatusInternalServerError, "internal")
-		return
+		return 0, store.User{}, false
 	}
-	var body struct {
-		Role     *string `json:"role"`
-		Active   *bool   `json:"active"`
-		Password string  `json:"password"`
-	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "bad_request")
-		return
-	}
+	return id, u, true
+}
+
+func (s *Server) applyPatchUserFields(w http.ResponseWriter, r *http.Request, id int64, u store.User, body patchUserBody) bool {
 	newRole := u.Role
 	if body.Role != nil {
 		newRole = auth.Role(*body.Role)
 		if !auth.ValidRole(newRole) {
 			writeJSONError(w, http.StatusBadRequest, "bad_request")
-			return
+			return false
 		}
 	}
 	newActive := u.Active
@@ -93,14 +110,14 @@ func (s *Server) handlePatchUser(w http.ResponseWriter, r *http.Request) {
 		if err := s.Store.GuardLastAdmin(r.Context(), id, newRole, newActive); err != nil {
 			if errors.Is(err, store.ErrLastAdmin) {
 				writeJSONError(w, http.StatusConflict, "last_admin")
-				return
+				return false
 			}
 			writeJSONError(w, http.StatusInternalServerError, "internal")
-			return
+			return false
 		}
 		if err := s.Store.UpdateUser(r.Context(), id, newRole, newActive); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "internal")
-			return
+			return false
 		}
 		s.recordUserAudit(r, "user.update", strconv.FormatInt(id, 10), u.Username)
 	}
@@ -108,13 +125,17 @@ func (s *Server) handlePatchUser(w http.ResponseWriter, r *http.Request) {
 		hash, err := auth.HashPassword(body.Password)
 		if err != nil {
 			writeJSONError(w, http.StatusBadRequest, "bad_request")
-			return
+			return false
 		}
 		if err := s.Store.SetPassword(r.Context(), id, hash); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "internal")
-			return
+			return false
 		}
 	}
+	return true
+}
+
+func (s *Server) writeUserJSON(w http.ResponseWriter, r *http.Request, id int64) {
 	updated, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "internal")

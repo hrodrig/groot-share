@@ -47,12 +47,12 @@ func TestNoticeFromQueryUploadedName(t *testing.T) {
 		t.Fatalf("basename name: %q %q", kind, text)
 	}
 	q.Set("name", "my file.tar.gz")
-	kind, text = noticeFromQuery(q)
+	_, text = noticeFromQuery(q)
 	if text != "Capture my-file.tar.gz uploaded. You can send another." {
 		t.Fatalf("spaces: %q", text)
 	}
 	q.Set("name", "bad\u0000name")
-	kind, text = noticeFromQuery(q)
+	_, text = noticeFromQuery(q)
 	if text != "Capture badname uploaded. You can send another." {
 		t.Fatalf("control char: %q", text)
 	}
@@ -67,12 +67,12 @@ func TestNoticeFromQueryDuplicateName(t *testing.T) {
 		t.Fatalf("%q %q", kind, text)
 	}
 	q.Set("name", "my file.tar.gz")
-	kind, text = noticeFromQuery(q)
+	_, text = noticeFromQuery(q)
 	if text != "Capture my-file.tar.gz is already uploaded (same content). Check Captures or pick another file." {
 		t.Fatalf("spaces: %q", text)
 	}
 	q.Del("name")
-	kind, text = noticeFromQuery(q)
+	_, text = noticeFromQuery(q)
 	if text != "This file is already uploaded (same content). Check Captures or pick another file." {
 		t.Fatalf("no name: %q", text)
 	}

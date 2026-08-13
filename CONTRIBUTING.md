@@ -22,7 +22,7 @@ make lint-fix
 make ci
 ```
 
-Maintainers before tag: `make release-check` (`COVER_MIN=60` until tests grow; raise toward 80).
+Maintainers before tag: `make release-check` (`COVER_MIN=80`).
 
 Release (when a GitHub remote exists): PR `develop` → `main`, annotated tag `vX.Y.Z` on `main` → `.github/workflows/release.yml` publishes `ghcr.io/hrodrig/gfs:vX.Y.Z`.
 

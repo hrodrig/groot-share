@@ -55,15 +55,23 @@ func ValidKeyScope(s KeyScope) bool {
 // Can reports whether role/method/scope may perform perm.
 func Can(role Role, perm Permission, method AuthMethod, scope KeyScope) bool {
 	if method == AuthAPIKey {
-		switch perm {
-		case PermArchivesWrite:
-			return scope == KeyScopeUpload && (role == RoleUploader || role == RoleAdmin)
-		case PermArchivesRead, PermAuditRead:
-			return scope == KeyScopeRead && (role == RoleViewer || role == RoleUploader || role == RoleAdmin)
-		default:
-			return false
-		}
+		return canAPIKey(role, perm, scope)
 	}
+	return canSession(role, perm)
+}
+
+func canAPIKey(role Role, perm Permission, scope KeyScope) bool {
+	switch perm {
+	case PermArchivesWrite:
+		return scope == KeyScopeUpload && (role == RoleUploader || role == RoleAdmin)
+	case PermArchivesRead, PermAuditRead:
+		return scope == KeyScopeRead && (role == RoleViewer || role == RoleUploader || role == RoleAdmin)
+	default:
+		return false
+	}
+}
+
+func canSession(role Role, perm Permission) bool {
 	switch perm {
 	case PermArchivesRead, PermAuditRead:
 		return role == RoleViewer || role == RoleUploader || role == RoleAdmin
