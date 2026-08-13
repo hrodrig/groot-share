@@ -3,7 +3,10 @@ package server
 import (
 	"fmt"
 	"html/template"
+	"net/url"
 	"strings"
+
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 // Design system: neutral slate surfaces, one institutional accent, hairline
@@ -575,6 +578,25 @@ func statsLine(count int, total int64) string {
 	return fmt.Sprintf("%d %s · %s total", count, noun, humanSize(total))
 }
 
+// noticeFromQuery maps flash-notice query params to (kind, text). Only fixed
+// notice tokens are accepted; optional name= is basename-validated for uploads.
+func noticeFromQuery(q url.Values) (kind, text string) {
+	switch q.Get("notice") {
+	case "uploaded":
+		if raw := strings.TrimSpace(q.Get("name")); raw != "" {
+			return "ok", fmt.Sprintf("Capture %s uploaded. You can send another.", store.SanitizeArchiveKey(raw))
+		}
+		return "ok", "Capture uploaded. You can send another."
+	case "duplicate":
+		if raw := strings.TrimSpace(q.Get("name")); raw != "" {
+			return "err", fmt.Sprintf("Capture %s is already uploaded (same content). Check Captures or pick another file.", store.SanitizeArchiveKey(raw))
+		}
+		return "err", "This file is already uploaded (same content). Check Captures or pick another file."
+	default:
+		return noticeCopy(q.Get("notice"))
+	}
+}
+
 // noticeCopy maps a flash-notice query token to (kind, text). Unknown tokens
 // render nothing, so no user input is ever reflected into the page.
 func noticeCopy(token string) (kind, text string) {
@@ -643,8 +665,7 @@ func appFootHTML(version string) template.HTML {
 	return template.HTML(
 		`<footer class="app-foot"><p>gfs v` + template.HTMLEscapeString(v) +
 			` · <a href="https://github.com/hrodrig/groot" rel="noopener noreferrer">groot</a>` +
-			` · <a href="https://github.com/hrodrig/groot-share" rel="noopener noreferrer">groot-share</a>` +
-			` · <a href="https://groot-share.hermesrodriguez.com" rel="noopener noreferrer">groot-share.hermesrodriguez.com</a></p></footer>`,
+			` · <a href="https://github.com/hrodrig/groot-share" rel="noopener noreferrer">groot-share</a></p></footer>`,
 	)
 }
 

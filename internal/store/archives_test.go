@@ -58,11 +58,20 @@ func TestIngestEmpty(t *testing.T) {
 }
 
 func TestSanitizeKey(t *testing.T) {
-	if sanitizeKey("/tmp/../secret.tar.gz") != "secret.tar.gz" {
-		t.Fatal(sanitizeKey("/tmp/../secret.tar.gz"))
+	cases := map[string]string{
+		"/tmp/../secret.tar.gz":           "secret.tar.gz",
+		"":                                "archive.tar.gz",
+		"my file.tar.gz":                  "my-file.tar.gz",
+		"foo@#bar$.tar.gz":                "foobar.tar.gz",
+		"kel-capture-AZKB335001.tar.gz":   "kel-capture-AZKB335001.tar.gz",
+		" spaced  .tar.gz":                 "spaced-.tar.gz",
+		"bad\u0000name.tar.gz":            "badname.tar.gz",
+		"../../../etc/passwd":             "passwd",
 	}
-	if sanitizeKey("") != "archive.tar.gz" {
-		t.Fatal(sanitizeKey(""))
+	for in, want := range cases {
+		if got := sanitizeKey(in); got != want {
+			t.Fatalf("sanitizeKey(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

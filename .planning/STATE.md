@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 6
-current_phase_name: Housekeeping
-status: completed
-stopped_at: Phase 2 process complete; make ci green
-last_updated: "2026-08-13T02:41:02.637Z"
-last_activity: 2026-08-12
-last_activity_desc: Phase 6 complete
+milestone: v1.1
+milestone_name: RBAC
+current_phase: 7
+current_phase_name: Users CRUD + RBAC
+status: planned
+stopped_at: Phase 7 planned — execute 07-01 tomorrow
+last_updated: "2026-08-13T15:15:00.000Z"
+last_activity: 2026-08-13
+last_activity_desc: Phase 8 SFTP inbox watcher planned (watcher over groot upload.sftp drop dir)
 progress:
-  total_phases: 6
-  completed_phases: 5
-  total_plans: 9
-  completed_plans: 7
+  total_phases: 8
+  completed_phases: 6
+  total_plans: 14
+  completed_plans: 9
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 2 — Process
+**Current focus:** Phase 7 — Users CRUD + RBAC
 
 ## Current Position
 
-Phase: 6 of 6 (Housekeeping)
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-08-12 — Phase 6 complete
+Phase: 7 of 8 (Users CRUD + RBAC)
+Plan: 07-01 not started
+Status: Planned — ready for `/gsd-execute-phase` or manual execution
+Last activity: 2026-08-13 — Phase 7 planning complete
 
-Progress: [██░░░░░░░░] 22%
+Progress: [███████░░░] 75% (6/8 phases; 9/14 plans)
 
 ## Performance Metrics
 
@@ -47,30 +47,36 @@ Progress: [██░░░░░░░░] 22%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 Supply chain | 2 | 2 | — |
-| 2 | 1 | - | - |
-| 3 | 1 | - | - |
-| 4 | 2 | - | - |
-| 5 | 2 | - | - |
-| 6 | 1 | - | - |
+| 2 Process | 1 | 1 | — |
+| 3 Identity | 1 | 1 | — |
+| 4 VPS home | 2 | 2 | — |
+| 5 Bucket home | 2 | 2 | — |
+| 6 Housekeeping | 1 | 1 | — |
+| 7 RBAC | 0 | 3 | — |
+| 8 SFTP watcher | 0 | 2 | — |
 
 ## Accumulated Context
 
 ### Decisions
 
-- Packaging copied from groot-trigger; binary **gfs**; COVER_MIN=60
-- Local commits only; no push
-- HTTP listen is Phase 2
+- Phase 7 roles locked: viewer / uploader / admin
+- api_key scopes: upload | read (no admin scope)
+- Migration: admin flag → role; non-admins become uploader
+- Three PRs: 07-01 core, 07-02 CRUD API, 07-03 UI + keys
+- Target tag: v0.2.0 after 07-03
+- Phase 8 SFTP watcher: poll `GFS_SFTP_INBOX` (groot `remote_dir/inbox`); no SFTP server in gfs; target v0.3.0
 
 ### Pending Todos
 
-None yet.
+- Execute `.planning/phases/07-rbac/07-01-PLAN.md`
+- Backlog 999.1: docs/man page (parallel OK)
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ## Session Continuity
 
-Last session: 2026-08-13T01:32:40.653Z
-Stopped at: Phase 2 process complete; make ci green
-Resume file: .planning/phases/02-process/02-01-SUMMARY.md
+Last session: 2026-08-13
+Stopped at: Phase 7 planned
+Resume file: `.planning/phases/07-rbac/07-01-PLAN.md`

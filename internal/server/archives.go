@@ -9,6 +9,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hrodrig/groot-share/internal/store"
@@ -46,7 +47,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	page := parsePage(r)
 	pageItems, pager := paginateSlice(items, page, pageSize)
 	applySortQuery(&pager, sortField, sortAsc)
-	noticeKind, noticeText := noticeCopy(r.URL.Query().Get("notice"))
+	noticeKind, noticeText := noticeFromQuery(r.URL.Query())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := pageShellData(s.Version)
 	data["Username"] = u.Username
@@ -66,7 +67,7 @@ func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	noticeKind, noticeText := noticeCopy(r.URL.Query().Get("notice"))
+	noticeKind, noticeText := noticeFromQuery(r.URL.Query())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := pageShellData(s.Version)
 	data["Username"] = u.Username
@@ -121,7 +122,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		var dup *store.DuplicateError
 		if errors.As(err, &dup) {
 			if isBrowserForm(r) {
-				http.Redirect(w, r, "/upload?notice=duplicate", http.StatusSeeOther)
+				http.Redirect(w, r, "/upload?notice=duplicate&name="+url.QueryEscape(store.SanitizeArchiveKey(key)), http.StatusSeeOther)
 				return
 			}
 			writeJSONDuplicate(w, dup.Existing)
@@ -145,7 +146,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	s.recordAudit(r, "upload", a)
 	if isBrowserForm(r) {
-		http.Redirect(w, r, "/upload?notice=uploaded", http.StatusSeeOther)
+		http.Redirect(w, r, "/upload?notice=uploaded&name="+url.QueryEscape(a.Key), http.StatusSeeOther)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

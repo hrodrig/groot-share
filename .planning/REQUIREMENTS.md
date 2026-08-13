@@ -33,6 +33,10 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 - [x] **ING-02**: In topology VPS + S3, an in-cluster groot/trigger `upload.s3` to the same prefix is accepted as a first-class ingest (preferred for multi-GB); listing includes those objects
 - [x] **ING-03**: No per-upload “also S3” flag; topology is deploy-time config
 
+### Ingest (v1.2 — Phase 8)
+
+- [ ] **ING-04**: SFTP inbox watcher — groot `upload.sftp` drops into `GFS_SFTP_INBOX`; gfs ingests with `source=sftp`; Captures shows SFTP pill; dedupe + audit; vps and vps-s3
+
 ### Storage
 
 - [x] **STOR-01**: Topology VPS only: uploaded bytes live on VPS disk (home); listing is local
@@ -58,6 +62,10 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 - [x] **OPS-02**: `GET /readyz` readiness (SQLite reachable; bucket reachable when S3 configured)
 - [x] **OPS-03**: slog JSON logs (groot-trigger / gghstats style)
 
+## v1.1 Requirements (Phase 7 — RBAC)
+
+- [ ] **AUTH-05**: Roles `viewer` / `uploader` / `admin` enforced on all authenticated routes; api_key scopes `upload` / `read`; admin CRUD users via `/v1/users`; last-admin guard; self-service password + api_key revoke
+
 ## v2 Requirements
 
 Deferred. Tracked, not in current roadmap.
@@ -65,7 +73,7 @@ Deferred. Tracked, not in current roadmap.
 - **ANLZ-01**: Analyze / compare from gfs UI
 - **ANLZ-02**: Per-user BYOK LLM credentials, encrypted at rest
 - **CLI-01**: `groot upload --gfs` with api_key, never AWS keys
-- **AUTH-05**: OIDC / richer roles (`uploader` / `viewer` / `admin`) / api_key scopes
+- **AUTH-06**: OIDC / SSO
 - **STOR-06**: Presigned PUT laptop → bucket (only after a spike against that provider)
 - **LIST-04**: Presigned GET download (spike per endpoint)
 
@@ -111,13 +119,17 @@ Filled by roadmap.
 | STOR-05 | Phase 5 | Complete |
 | AUD-01 | Phase 6 | Complete |
 | RET-01 | Phase 6 | Complete |
+| AUTH-05 | Phase 7 | Planned |
+| ING-04 | Phase 8 | Planned |
 
 **Coverage:**
 
 - v1 requirements: 25 total
-- Mapped to phases: 25
+- v1.1 requirements: 1 (AUTH-05)
+- v1.2 requirements: 1 (ING-04)
+- Mapped to phases: 27
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-08-12*  
-*Last updated: 2026-08-12 after initialization*
+*Last updated: 2026-08-13 — ING-04 SFTP watcher (Phase 8)*

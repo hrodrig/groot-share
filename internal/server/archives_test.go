@@ -127,7 +127,7 @@ func TestUploadBrowserFormRedirect(t *testing.T) {
 		t.Fatalf("code %d want 303", rr.Code)
 	}
 	loc := rr.Header().Get("Location")
-	if loc != "/upload?notice=uploaded" {
+	if loc != "/upload?notice=uploaded&name=job.tar.gz" {
 		t.Fatalf("location %q", loc)
 	}
 }
@@ -189,11 +189,11 @@ func TestUploadDuplicateBrowserForm(t *testing.T) {
 		s.Handler().ServeHTTP(rr, req)
 		return rr
 	}
-	if rr := post(); rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/upload?notice=uploaded" {
+	if rr := post(); rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/upload?notice=uploaded&name=job.tar.gz" {
 		t.Fatalf("first %d loc=%q", rr.Code, rr.Header().Get("Location"))
 	}
 	rr := post()
-	if rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/upload?notice=duplicate" {
+	if rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/upload?notice=duplicate&name=job.tar.gz" {
 		t.Fatalf("dup %d loc=%q", rr.Code, rr.Header().Get("Location"))
 	}
 }

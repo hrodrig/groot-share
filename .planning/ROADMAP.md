@@ -12,6 +12,8 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML (completed 2026-08-12)
 - [x] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist (completed 2026-08-12)
 - [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
+- [ ] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (planned 2026-08-13)
+- [ ] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (planned 2026-08-13)
 
 ## Phase Details
 
@@ -126,10 +128,59 @@ Plans:
 
 - [x] 06-01: Audit table + retention job
 
+### Phase 7: Users CRUD + RBAC
+
+**Goal:** Admins manage users; roles enforce permissions on every route; api_keys are scoped to upload or read only.
+**Depends on:** Phase 6
+**Requirements:** AUTH-05
+**Success Criteria** (what must be TRUE):
+
+  1. Roles `viewer`, `uploader`, `admin` enforced on upload/list/download/delete/audit/user routes
+  2. api_key scope `upload` cannot download; scope `read` cannot upload; neither can delete or manage users
+  3. Admin can CRUD users via `/v1/users`; inactive users cannot authenticate
+  4. Last admin cannot be removed or demoted
+  5. Admin HTML at `/admin/users`; self-service at `/settings`
+
+**Plans:** 0/3 plans complete
+
+Plans:
+
+- [ ] 07-01: RBAC core — schema migration, perm.go, restrict existing routes, SPEC §6.1
+- [ ] 07-02: Users CRUD API + PATCH `/v1/me` + last-admin guard
+- [ ] 07-03: api_key list/revoke + scoped create + admin/settings HTML
+
+Context: `.planning/phases/07-rbac/07-CONTEXT.md`
+
+### Phase 8: SFTP inbox watcher
+
+**Goal:** Captures from groot `upload.sftp` appear in gfs with `source=sftp` via an inbox directory watcher (no SFTP server in gfs).
+**Depends on:** Phase 7 (recommended — delete/list RBAC applies to SFTP archives too)
+**Requirements:** ING-04
+**Success Criteria** (what must be TRUE):
+
+  1. With `GFS_SFTP_INBOX` set, a stable `*.tar.gz` in the inbox is ingested, listed, and downloadable
+  2. Captures Source column shows **SFTP** (distinct pill); JSON list has `"source":"sftp"`
+  3. Duplicate content (SHA256) skips re-ingest and removes the inbox file; audit row uses actor `sftp`
+  4. On `vps-s3`, SFTP objects land under `{prefix}sftp/...` and list correctly alongside HTTP and cluster S3 keys
+  5. Watcher off when `GFS_SFTP_INBOX` unset — no behavior change for HTTP-only deploys
+
+**Plans:** 0/2 plans complete
+
+Plans:
+
+- [ ] 08-01: Config + watcher loop + ingest with `source=sftp` (vps + vps-s3)
+- [ ] 08-02: UI pill + SPEC/README/CHANGELOG
+
+Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
+
+## Backlog
+
+- [ ] **999.1: Audit fixes (2026-08-12)** — prioritized findings from the independent audit: packaged docs (man page / README / CHANGELOG), api_key scope decision, login rate limiting, session purge, error mapping, CI gates. Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
+
 ## Progress
 
 **Execution Order:**
-1 → 2 → 3 → 4 → 5 → 6
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -139,3 +190,5 @@ Plans:
 | 4. VPS home | 2/2 | Complete    | 2026-08-12 |
 | 5. Bucket home | 2/2 | Complete    | 2026-08-12 |
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
+| 7. RBAC | 0/3 | Planned | — |
+| 8. SFTP watcher | 0/2 | Planned | — |

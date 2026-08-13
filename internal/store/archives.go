@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Archive is a listed groot tarball (VPS home metadata or a prefix object).
@@ -258,7 +259,40 @@ func sanitizeKey(key string) string {
 	if key == "" || key == "." || key == "/" {
 		return "archive.tar.gz"
 	}
+	var b strings.Builder
+	b.Grow(len(key))
+	for _, r := range key {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '-', r == '_':
+			b.WriteRune(r)
+		case unicode.IsSpace(r):
+			b.WriteRune('-')
+		}
+	}
+	key = collapseDashes(strings.Trim(b.String(), "-._"))
+	if key == "" {
+		return "archive.tar.gz"
+	}
+	if len(key) > 200 {
+		key = key[:200]
+		key = strings.Trim(key, "-._")
+	}
+	if key == "" {
+		return "archive.tar.gz"
+	}
 	return key
+}
+
+// SanitizeArchiveKey normalizes a client-provided capture filename for storage and display.
+func SanitizeArchiveKey(key string) string {
+	return sanitizeKey(key)
+}
+
+func collapseDashes(s string) string {
+	for strings.Contains(s, "--") {
+		s = strings.ReplaceAll(s, "--", "-")
+	}
+	return s
 }
 
 // ListArchives returns newest first.
