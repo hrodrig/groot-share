@@ -1,0 +1,122 @@
+# Requirements: gfs
+
+**Defined:** 2026-08-12  
+**Core Value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
+
+Canonical product freeze: `docs/GFS-CONSENSUS.md`.  
+Canonical behavior contract: `docs/SPECIFICATIONS.md`.  
+Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
+
+## v1 Requirements
+
+### Supply chain
+
+- [ ] **SUP-01**: Repo builds with GNU Make targets matching groot-trigger (`build`, `test`, `cover`, `fmt-check`, `lint`, `gocyclo`, `ci`, `govulncheck`, `grype`, `docker-build-amd64`, `goreleaser-check`, `release-check`)
+- [ ] **SUP-02**: GoReleaser publishes `v`-prefixed tags; CGO_ENABLED=0; linux/darwin/freebsd/openbsd amd64+arm64; distroless image
+- [ ] **SUP-03**: CI on `main`/`develop` runs fmt-check + golangci-lint + gocyclo + test (trigger workflow shape)
+- [ ] **SUP-04**: English-only artifacts; `AGENTS.md` / project guide points implementers at `docs/SPECIFICATIONS.md`
+
+### Contract
+
+- [ ] **SPEC-01**: `docs/SPECIFICATIONS.md` is the approved behavior contract; application code implements it (trigger model)
+
+### Authentication
+
+- [ ] **AUTH-01**: User can log in to the web UI with username + password and get a session cookie
+- [ ] **AUTH-02**: User can upload a `.tar.gz` with username + api_key (header or equivalent; full secret shown only at creation; stored hashed)
+- [ ] **AUTH-03**: Passwords are hashed in SQLite; audit rows never contain secrets
+- [ ] **AUTH-04**: Process fails closed if required operator secrets for the configured topology are missing (same spirit as trigger empty API key)
+
+### Ingest
+
+- [ ] **ING-01**: User can HTTP-upload a groot `.tar.gz` to gfs (laptops; optional cluster path)
+- [ ] **ING-02**: In topology VPS + S3, an in-cluster groot/trigger `upload.s3` to the same prefix is accepted as a first-class ingest (preferred for multi-GB); listing includes those objects
+- [ ] **ING-03**: No per-upload “also S3” flag; topology is deploy-time config
+
+### Storage
+
+- [ ] **STOR-01**: Topology VPS only: uploaded bytes live on VPS disk (home); listing is local
+- [ ] **STOR-02**: Topology VPS + S3: HTTP ingest lands on local staging, copies to the bucket, deletes staging; listing is the bucket; in-flight staging is not a listed groot file
+- [ ] **STOR-03**: If the bucket copy fails, the HTTP upload still succeeded (object stays in transit) and gfs retries; local-only is not the happy state
+- [ ] **STOR-04**: Staging disk is for in-flight objects only, not the retention set
+- [ ] **STOR-05**: S3-compatible endpoint + path-style when required (Contabo, MinIO, …); AWS virtual-hosted also works
+
+### List and download
+
+- [ ] **LIST-01**: Authenticated web user can list archives (respect visibility config; admin sees all)
+- [ ] **LIST-02**: Authenticated web user can download an archive
+- [ ] **LIST-03**: MVP UI is server-rendered / vanilla HTML (no SPA framework)
+
+### Audit and retention
+
+- [ ] **AUD-01**: gfs records who uploaded, downloaded, or deleted, with timestamps and useful request metadata; never secrets
+- [ ] **RET-01**: Retention job deletes when **either** keep_last=N **or** max_age_days=D fires (defaults 20 / 90); in VPS + S3 it deletes **home** (bucket)
+
+### Operations
+
+- [ ] **OPS-01**: `GET /healthz` liveness without auth
+- [ ] **OPS-02**: `GET /readyz` readiness (SQLite reachable; bucket reachable when S3 configured)
+- [ ] **OPS-03**: slog JSON logs (groot-trigger / gghstats style)
+
+## v2 Requirements
+
+Deferred. Tracked, not in current roadmap.
+
+- **ANLZ-01**: Analyze / compare from gfs UI
+- **ANLZ-02**: Per-user BYOK LLM credentials, encrypted at rest
+- **CLI-01**: `groot upload --gfs` with api_key, never AWS keys
+- **AUTH-05**: OIDC / richer roles (`uploader` / `viewer` / `admin`) / api_key scopes
+- **STOR-06**: Presigned PUT laptop → bucket (only after a spike against that provider)
+- **LIST-04**: Presigned GET download (spike per endpoint)
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| gfs in topology S3 only | Humans use S3 clients; groot `upload.s3` already works |
+| Mass-distribute `AWS_*` to laptops | The problem gfs exists to avoid |
+| HTTP server inside groot CLI | One-shot collector philosophy |
+| WebDAV as gfs substitute | groot #97 is a different sink |
+| Download proxy / status API in groot-trigger | Trigger SPEC non-goal |
+| Replace CronJob collect | groot-selfhosted |
+
+## Traceability
+
+Filled by roadmap.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SUP-01 | Phase 1 | Pending |
+| SUP-02 | Phase 1 | Pending |
+| SUP-03 | Phase 1 | Pending |
+| SUP-04 | Phase 1 | Pending |
+| SPEC-01 | Phase 1 | Pending |
+| AUTH-04 | Phase 2 | Pending |
+| OPS-01 | Phase 2 | Pending |
+| OPS-02 | Phase 2 | Pending |
+| OPS-03 | Phase 2 | Pending |
+| AUTH-01 | Phase 3 | Pending |
+| AUTH-02 | Phase 3 | Pending |
+| AUTH-03 | Phase 3 | Pending |
+| ING-01 | Phase 4 | Pending |
+| ING-03 | Phase 4 | Pending |
+| STOR-01 | Phase 4 | Pending |
+| LIST-01 | Phase 4 | Pending |
+| LIST-02 | Phase 4 | Pending |
+| LIST-03 | Phase 4 | Pending |
+| ING-02 | Phase 5 | Pending |
+| STOR-02 | Phase 5 | Pending |
+| STOR-03 | Phase 5 | Pending |
+| STOR-04 | Phase 5 | Pending |
+| STOR-05 | Phase 5 | Pending |
+| AUD-01 | Phase 6 | Pending |
+| RET-01 | Phase 6 | Pending |
+
+**Coverage:**
+- v1 requirements: 25 total
+- Mapped to phases: 25
+- Unmapped: 0
+
+---
+*Requirements defined: 2026-08-12*  
+*Last updated: 2026-08-12 after initialization*
