@@ -25,7 +25,7 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 - [ ] **AUTH-01**: User can log in to the web UI with username + password and get a session cookie
 - [ ] **AUTH-02**: User can upload a `.tar.gz` with username + api_key (header or equivalent; full secret shown only at creation; stored hashed)
 - [ ] **AUTH-03**: Passwords are hashed in SQLite; audit rows never contain secrets
-- [ ] **AUTH-04**: Process fails closed if required operator secrets for the configured topology are missing (same spirit as trigger empty API key)
+- [x] **AUTH-04**: Process fails closed if required operator secrets for the configured topology are missing (same spirit as trigger empty API key)
 
 ### Ingest
 
@@ -54,9 +54,9 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### Operations
 
-- [ ] **OPS-01**: `GET /healthz` liveness without auth
-- [ ] **OPS-02**: `GET /readyz` readiness (SQLite reachable; bucket reachable when S3 configured)
-- [ ] **OPS-03**: slog JSON logs (groot-trigger / gghstats style)
+- [x] **OPS-01**: `GET /healthz` liveness without auth
+- [x] **OPS-02**: `GET /readyz` readiness (SQLite reachable; bucket reachable when S3 configured)
+- [x] **OPS-03**: slog JSON logs (groot-trigger / gghstats style)
 
 ## v2 Requirements
 
@@ -91,10 +91,10 @@ Filled by roadmap.
 | SUP-03 | Phase 1 | Complete |
 | SUP-04 | Phase 1 | Complete |
 | SPEC-01 | Phase 1 | Complete |
-| AUTH-04 | Phase 2 | Pending |
-| OPS-01 | Phase 2 | Pending |
-| OPS-02 | Phase 2 | Pending |
-| OPS-03 | Phase 2 | Pending |
+| AUTH-04 | Phase 2 | Complete |
+| OPS-01 | Phase 2 | Complete |
+| OPS-02 | Phase 2 | Complete |
+| OPS-03 | Phase 2 | Complete |
 | AUTH-01 | Phase 3 | Pending |
 | AUTH-02 | Phase 3 | Pending |
 | AUTH-03 | Phase 3 | Pending |
@@ -113,6 +113,7 @@ Filled by roadmap.
 | RET-01 | Phase 6 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 25 total
 - Mapped to phases: 25
 - Unmapped: 0
