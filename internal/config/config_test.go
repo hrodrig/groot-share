@@ -235,6 +235,36 @@ func TestRetentionDefaults(t *testing.T) {
 	}
 }
 
+func TestParseIntRejectsOverflow(t *testing.T) {
+	if parseInt("nope", 20) != 20 {
+		t.Fatal("invalid")
+	}
+	if parseInt("0", 20) != 20 {
+		t.Fatal("non-positive")
+	}
+	// Larger than int64 → ParseInt error → default (also covers 64→int bound).
+	if parseInt("99999999999999999999", 20) != 20 {
+		t.Fatal("overflow")
+	}
+	if parseInt("7", 20) != 7 {
+		t.Fatal("ok")
+	}
+}
+
+func TestLoadFromEnvKeepLastOverflow(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_KEEP_LAST", "99999999999999999999")
+	t.Setenv("GFS_MAX_AGE_DAYS", "99999999999999999999")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 20 || cfg.MaxAgeDays != 90 {
+		t.Fatalf("overflow should default %+v", cfg)
+	}
+}
+
 func TestLoadFromEnvInvalidKeepLast(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("GFS_TOPOLOGY", "vps")

@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -82,8 +83,8 @@ func LoadFromEnv() (Config, error) {
 		BootstrapAdminName: ClipPlain(envOr("GFS_BOOTSTRAP_ADMIN_NAME", DefaultBootstrapName), maxNameRunes),
 		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
 		MaxUploadBytes:     parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
-		KeepLast:           int(parseInt64(os.Getenv("GFS_KEEP_LAST"), 20)),
-		MaxAgeDays:         int(parseInt64(os.Getenv("GFS_MAX_AGE_DAYS"), 90)),
+		KeepLast:           parseInt(os.Getenv("GFS_KEEP_LAST"), 20),
+		MaxAgeDays:         parseInt(os.Getenv("GFS_MAX_AGE_DAYS"), 90),
 		RetentionEvery:     parseDuration(os.Getenv("GFS_RETENTION_EVERY"), time.Hour),
 		StagingGrace:       parseDuration(os.Getenv("GFS_STAGING_GRACE"), 24*time.Hour),
 		LoginSimple:        parseBool(os.Getenv("GFS_LOGIN_SIMPLE"), false),
@@ -132,6 +133,14 @@ func parseInt64(s string, def int64) int64 {
 		return def
 	}
 	return n
+}
+
+func parseInt(s string, def int) int {
+	n := parseInt64(s, int64(def))
+	if n > math.MaxInt {
+		return def
+	}
+	return int(n)
 }
 
 func parseDuration(s string, def time.Duration) time.Duration {

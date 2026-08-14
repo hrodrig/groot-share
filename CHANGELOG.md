@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Build on Go 1.26.6 (stdlib CVEs reported against 1.26.5)
+- Clamp `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` to `int` (CodeQL integer conversion)
 
 ### Added
 
