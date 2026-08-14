@@ -42,7 +42,21 @@ type Config struct {
 	MaxAgeDays        int
 	RetentionEvery    time.Duration
 	StagingGrace      time.Duration
+
+	// LoginSimple hides product chrome on /login (no hero, no gfs title/favicon).
+	LoginSimple bool
+	// BrandSub replaces the app-bar tag ("archive door"). Empty → default. "-" hides.
+	BrandSub string
+	// Footer replaces the authenticated footer. Empty → default. "-" hides.
+	Footer string
 }
+
+const (
+	// DefaultBrandSub is the app-bar tag when GFS_BRAND_SUB is unset.
+	DefaultBrandSub  = "archive door"
+	maxBrandSubRunes = 32
+	maxFooterRunes   = 120
+)
 
 // LoadFromEnv reads configuration. Returns error if topology/data dir are
 // invalid or if vps-s3 is missing required bucket/creds (fail closed).
@@ -66,6 +80,9 @@ func LoadFromEnv() (Config, error) {
 		MaxAgeDays:        int(parseInt64(os.Getenv("GFS_MAX_AGE_DAYS"), 90)),
 		RetentionEvery:    parseDuration(os.Getenv("GFS_RETENTION_EVERY"), time.Hour),
 		StagingGrace:      parseDuration(os.Getenv("GFS_STAGING_GRACE"), 24*time.Hour),
+		LoginSimple:       parseBool(os.Getenv("GFS_LOGIN_SIMPLE"), false),
+		BrandSub:          strings.TrimSpace(os.Getenv("GFS_BRAND_SUB")),
+		Footer:            strings.TrimSpace(os.Getenv("GFS_FOOTER")),
 	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)
@@ -121,6 +138,41 @@ func parseDuration(s string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+// DisplayBrandSub returns the app-bar tag. Empty env → default; "-" hides.
+func DisplayBrandSub(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return DefaultBrandSub
+	}
+	return ClipPlain(raw, maxBrandSubRunes)
+}
+
+// DisplayFooter returns custom footer text. Empty → default chrome (caller);
+// "-" hides.
+func DisplayFooter(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "-" {
+		return ""
+	}
+	return ClipPlain(raw, maxFooterRunes)
+}
+
+// ClipPlain collapses whitespace, treats "-" as empty, and caps rune length.
+func ClipPlain(s string, max int) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if s == "-" {
+		return ""
+	}
+	if max <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) > max {
+		return string(r[:max])
+	}
+	return s
 }
 
 func parseBool(s string, def bool) bool {

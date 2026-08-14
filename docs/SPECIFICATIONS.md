@@ -108,6 +108,9 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | first admin only; required when the user table is empty |
 | `GFS_MAX_UPLOAD_BYTES` | default 32GiB; stream cap (`http.MaxBytesReader`) |
+| `GFS_LOGIN_SIMPLE` | `true`: `/login` is a white form only (no hero, no gfs title/favicon). Default off |
+| `GFS_BRAND_SUB` | App-bar tag after the wordmark. Default `archive door`. Short string (e.g. `ACME CORP`). `-` hides |
+| `GFS_FOOTER` | Authenticated footer. Default `gfs vX · groot · groot-share`. Plain text replaces it. `-` hides |
 
 Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit.
 

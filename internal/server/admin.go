@@ -32,7 +32,7 @@ func (s *Server) handleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	mergeActorData(data, ac)
 	data["BaseURL"] = requestBaseURL(r)
 	data["Nav"] = "admin"
@@ -161,7 +161,7 @@ var adminUsersTmpl = template.Must(template.New("admin").Funcs(pageFuncs).Parse(
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>

@@ -55,7 +55,7 @@ func (s *Server) handleActivityGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	mergeActorData(data, ac)
 	data["Audit"] = events
 	data["Pager"] = pv

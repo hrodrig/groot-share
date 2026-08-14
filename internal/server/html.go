@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
@@ -158,10 +159,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   border-left: 2px solid var(--brand);
   transform: translateX(-50%);
 }
-.crate-lg { width: 30px; height: 24px; border-width: 2.5px; }
-.crate-lg::before { top: 5px; border-top-width: 2.5px; }
-.crate-lg::after { top: 7px; border-left-width: 2.5px; }
-
 /* ---- app bar ---- */
 .appbar {
   position: sticky;
@@ -518,26 +515,78 @@ table.grid {
 .empty-sub { margin: 0; color: var(--muted); font-size: 14px; }
 
 /* ---- login gate ---- */
-body.gate { min-height: 100vh; display: grid; place-items: center; }
-.gate-wrap { width: min(24rem, calc(100% - 32px)); padding: 32px 0; }
-.gate-brand {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  margin-bottom: 6px;
+html:has(body.gate) { background: #07090c; }
+body.gate {
+  --bg: transparent;
+  --surface: rgb(19 26 33 / 0.78);
+  --surface-2: rgb(15 21 28 / 0.9);
+  --ink: #e6e9ed;
+  --muted: #c5ccd4;
+  --faint: #9aa3ad;
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.18);
+  --shadow: 0 16px 48px rgb(0 0 0 / 0.45);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background-color: #07090c;
+  background-image: url("/static/login-hero.jpg");
+  background-size: cover;
+  background-position: center 42%;
+  background-repeat: no-repeat;
 }
-.wordmark-lg { font: 650 26px/1 var(--sans); letter-spacing: 0.01em; }
-.gate-sub {
-  margin: 0 0 22px;
-  text-align: center;
-  color: var(--muted); font-size: 14px;
+body.gate::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(7 9 12 / 0.42), rgb(7 9 12 / 0.58));
+  pointer-events: none;
+  z-index: 0;
 }
-.gate-card { padding: 24px; }
+.gate-wrap {
+  position: relative;
+  z-index: 1;
+  width: min(24rem, calc(100% - 32px));
+  padding: 32px 0;
+}
+.gate-tools { z-index: 5; }
+body.gate .theme-toggle {
+  color: #e6e9ed;
+  background: rgb(19 26 33 / 0.55);
+  border-color: rgb(255 255 255 / 0.16);
+}
+.gate-card {
+  padding: 24px;
+  margin-bottom: 0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
 .gate-card form { margin: 0; }
-.gate-foot {
-  margin: 18px 0 0;
-  text-align: center;
-  color: var(--faint);
-  font: 500 12px/1 var(--mono);
-  letter-spacing: 0.06em;
+html:has(body.gate.gate-simple) { background: #fff; }
+body.gate.gate-simple {
+  --bg: #fff;
+  --surface: #fff;
+  --surface-2: #f4f6f8;
+  --ink: #1a1f24;
+  --muted: #5c6670;
+  --faint: #8b949e;
+  --line: #e4e7eb;
+  --line-strong: #cfd4da;
+  --shadow: 0 8px 24px rgb(16 24 40 / 0.08);
+  background: #fff;
+  background-image: none;
+}
+body.gate.gate-simple::before { display: none; }
+body.gate.gate-simple .theme-toggle {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+body.gate.gate-simple .gate-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .alert {
   margin: 0 0 16px;
@@ -705,5 +754,30 @@ func pageShellData(version string) map[string]any {
 		"Version":           displayVersion(version),
 		"PagerSizes":        HTMLPageSizes,
 		"AppFoot":           appFootHTML(version),
+		"BrandSub":          config.DefaultBrandSub,
+		"LoginTitle":        "gfs — Sign in",
+		"GateClass":         "gate",
 	}
+}
+
+func (s *Server) pageShell() map[string]any {
+	data := pageShellData(s.Version)
+	data["BrandSub"] = config.DisplayBrandSub(s.Cfg.BrandSub)
+	data["AppFoot"] = s.footerHTML()
+	if s.Cfg.LoginSimple {
+		data["LoginTitle"] = "Sign in"
+		data["GateClass"] = "gate gate-simple"
+		data["FaviconHead"] = template.HTML("")
+	}
+	return data
+}
+
+func (s *Server) footerHTML() template.HTML {
+	if strings.TrimSpace(s.Cfg.Footer) == "-" {
+		return ""
+	}
+	if text := config.DisplayFooter(s.Cfg.Footer); text != "" {
+		return template.HTML(`<footer class="app-foot"><p>` + template.HTMLEscapeString(text) + `</p></footer>`)
+	}
+	return appFootHTML(s.Version)
 }

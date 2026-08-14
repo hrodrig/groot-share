@@ -153,6 +153,88 @@ func TestGetLoginForm(t *testing.T) {
 	if !strings.Contains(body, `class="input-group"`) || !strings.Contains(body, `id="pw-toggle"`) || !strings.Contains(body, `id="theme-toggle"`) {
 		t.Fatalf("login polish missing: %s", body)
 	}
+	if !strings.Contains(body, `/static/login-hero.jpg`) {
+		t.Fatal("login hero background missing")
+	}
+	if strings.Contains(body, `wordmark-lg`) || strings.Contains(body, `gate-brand`) {
+		t.Fatal("duplicate login wordmark still present")
+	}
+	if !strings.Contains(body, `gfs — Sign in`) || !strings.Contains(body, `/static/favicon.svg?v=`) {
+		t.Fatal("default login chrome missing")
+	}
+}
+
+func TestGetLoginSimpleHidesProductChrome(t *testing.T) {
+	s, _ := identServer(t)
+	s.Cfg.LoginSimple = true
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/login", nil))
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK || !strings.Contains(body, `id="login-password"`) || !strings.Contains(body, `id="theme-toggle"`) {
+		t.Fatalf("%d %s", rr.Code, body)
+	}
+	if !strings.Contains(body, `gate-simple`) {
+		t.Fatal("simple gate class missing")
+	}
+	if strings.Contains(body, `gfs — Sign in`) || strings.Contains(body, `/static/favicon`) || strings.Contains(body, `theme-color`) {
+		t.Fatal("simple login still shows product chrome")
+	}
+	if !strings.Contains(body, `<title>Sign in</title>`) {
+		t.Fatal("simple login title")
+	}
+}
+
+func sessionCookieFor(t *testing.T, s *Server) *http.Cookie {
+	t.Helper()
+	login := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"root","password":"correct-horse"}`))
+	login.Header.Set("Content-Type", "application/json")
+	login.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, login)
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == sessionCookie {
+			return c
+		}
+	}
+	t.Fatal("no session cookie")
+	return nil
+}
+
+func TestHomeBrandSubAndFooter(t *testing.T) {
+	s, _ := identServer(t)
+	s.Cfg.BrandSub = "ACME CORP"
+	s.Cfg.Footer = "Internal archive"
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	home.AddCookie(sessionCookieFor(t, s))
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, home)
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK {
+		t.Fatalf("code %d", rr.Code)
+	}
+	if !strings.Contains(body, "ACME CORP") {
+		t.Fatal("brand sub missing")
+	}
+	if strings.Contains(body, "archive door") || strings.Contains(body, "groot-share") {
+		t.Fatal("default chrome still present")
+	}
+	if !strings.Contains(body, "Internal archive") {
+		t.Fatal("custom footer missing")
+	}
+}
+
+func TestHomeHideBrandSubAndFooter(t *testing.T) {
+	s, _ := identServer(t)
+	s.Cfg.BrandSub = "-"
+	s.Cfg.Footer = "-"
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	home.AddCookie(sessionCookieFor(t, s))
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, home)
+	body := rr.Body.String()
+	if strings.Contains(body, "archive door") || strings.Contains(body, `class="app-foot"`) {
+		t.Fatal("hidden chrome still present")
+	}
 }
 
 func TestHomeRequiresAuth(t *testing.T) {

@@ -34,6 +34,21 @@ func TestFaviconStatic(t *testing.T) {
 	}
 }
 
+func TestLoginHeroStatic(t *testing.T) {
+	s := &Server{Version: "0.1.0-test"}
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/static/login-hero.jpg", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("code %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "jpeg") {
+		t.Fatalf("content-type %q", ct)
+	}
+	if rr.Body.Len() < 1024 {
+		t.Fatalf("hero too small: %d", rr.Body.Len())
+	}
+}
+
 func TestLoginPageFaviconHead(t *testing.T) {
 	s, _ := identServer(t)
 	rr := httptest.NewRecorder()

@@ -92,6 +92,9 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	t.Setenv("GFS_S3_BUCKET", "")
 	t.Setenv("AWS_ACCESS_KEY_ID", "")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "")
+	t.Setenv("GFS_LOGIN_SIMPLE", "")
+	t.Setenv("GFS_BRAND_SUB", "")
+	t.Setenv("GFS_FOOTER", "")
 	cfg, err := LoadFromEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -101,6 +104,45 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	}
 	if cfg.LogFormat != "json" || cfg.LogLevel != "info" {
 		t.Fatalf("log defaults: %+v", cfg)
+	}
+	if cfg.LoginSimple || cfg.BrandSub != "" || cfg.Footer != "" {
+		t.Fatalf("brand defaults: %+v", cfg)
+	}
+}
+
+func TestLoadFromEnvBranding(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_LOGIN_SIMPLE", "true")
+	t.Setenv("GFS_BRAND_SUB", "ACME CORP")
+	t.Setenv("GFS_FOOTER", "Internal archive")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.LoginSimple || cfg.BrandSub != "ACME CORP" || cfg.Footer != "Internal archive" {
+		t.Fatalf("branding: %+v", cfg)
+	}
+}
+
+func TestDisplayBrandSub(t *testing.T) {
+	if DisplayBrandSub("") != DefaultBrandSub {
+		t.Fatal(DisplayBrandSub(""))
+	}
+	if DisplayBrandSub("-") != "" {
+		t.Fatal("hide")
+	}
+	if DisplayBrandSub("  ACME CORP  ") != "ACME CORP" {
+		t.Fatal(DisplayBrandSub("  ACME CORP  "))
+	}
+}
+
+func TestClipPlain(t *testing.T) {
+	if ClipPlain("a\nb\tc", 32) != "a b c" {
+		t.Fatal(ClipPlain("a\nb\tc", 32))
+	}
+	if got := ClipPlain("ABCDEFGHIJ", 4); got != "ABCD" {
+		t.Fatal(got)
 	}
 }
 

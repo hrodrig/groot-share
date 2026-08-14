@@ -26,7 +26,7 @@ const actorKey ctxKey = 1
 
 func (s *Server) handleLoginGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	data["Error"] = ""
 	_ = loginTmpl.Execute(w, data)
 }
@@ -229,7 +229,7 @@ func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	data["Error"] = loginErrorCopy(msg)
 	_ = loginTmpl.Execute(w, data)
 }
@@ -258,13 +258,12 @@ var pageFuncs = template.FuncMap{
 }
 
 var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Sign in</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
-<body class="gate">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.LoginTitle}}</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
+<body class="{{.GateClass}}">
 <a class="skip" href="#main">Skip to content</a>
 <div class="gate-tools">{{.ThemeToggle}}</div>
 <main id="main" class="gate-wrap">
-<div class="gate-brand"><span class="crate crate-lg" aria-hidden="true"></span><span class="wordmark-lg">gfs</span></div>
-<p class="gate-sub">Sign in to the archive door</p>
+<h1 class="visually-hidden">Sign in</h1>
 <div class="card gate-card">
 {{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
 <form method="post" action="/login">
@@ -273,7 +272,6 @@ var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DO
 <button class="btn btn-block" type="submit">Sign in</button>
 </form>
 </div>
-<p class="gate-foot">gfs — groot files share</p>
 </main>
 {{.ThemeToggleScript}}
 ` + passwordToggleScript + `
@@ -290,7 +288,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>
@@ -425,7 +423,7 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>
@@ -502,7 +500,7 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>
