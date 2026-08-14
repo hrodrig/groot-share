@@ -65,6 +65,9 @@ func apiKeyJSON(k store.APIKeyRecord) map[string]any {
 	if !k.CreatedAt.IsZero() {
 		out["created_at"] = k.CreatedAt.UTC().Format("2006-01-02T15:04:05Z")
 	}
+	if !k.LastUsedAt.IsZero() {
+		out["last_used_at"] = k.LastUsedAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
 	return out
 }
 

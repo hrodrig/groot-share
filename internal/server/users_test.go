@@ -26,7 +26,7 @@ func TestUsersCRUD(t *testing.T) {
 
 func createUserViaAPI(t *testing.T, s *Server, admin *http.Cookie, username, password, role string) store.User {
 	t.Helper()
-	body := `{"username":"` + username + `","password":"` + password + `","role":"` + role + `"}`
+	body := `{"username":"` + username + `","name":"` + username + `","password":"` + password + `","role":"` + role + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/users", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(admin)
@@ -165,7 +165,7 @@ func TestLastAdminCannotDemote(t *testing.T) {
 func TestInactiveUserCannotLogin(t *testing.T) {
 	s, st := identServer(t)
 	admin := loginCookie(t, s)
-	createBody := `{"username":"gone","password":"gone-secret-1","role":"viewer"}`
+	createBody := `{"username":"gone","name":"Gone","password":"gone-secret-1","role":"viewer"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/users", strings.NewReader(createBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(admin)
@@ -216,6 +216,61 @@ func TestPatchMePassword(t *testing.T) {
 	s.Handler().ServeHTTP(rr, login)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("login new password %d", rr.Code)
+	}
+}
+
+func TestPatchUserUsername(t *testing.T) {
+	s, st := identServer(t)
+	admin := loginCookie(t, s)
+	view := createUserViaAPI(t, s, admin, "view", "view-secret-1", "viewer")
+	req := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(view.ID),
+		strings.NewReader(`{"username":"view2"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("patch username %d %s", rr.Code, rr.Body.String())
+	}
+	got, err := st.UserByID(context.Background(), view.ID)
+	if err != nil || got.Username != "view2" {
+		t.Fatalf("got %+v %v", got, err)
+	}
+	taken := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(view.ID),
+		strings.NewReader(`{"username":"root"}`))
+	taken.Header.Set("Content-Type", "application/json")
+	taken.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, taken)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("taken %d %s", rr.Code, rr.Body.String())
+	}
+	empty := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(view.ID),
+		strings.NewReader(`{"username":"  "}`))
+	empty.Header.Set("Content-Type", "application/json")
+	empty.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, empty)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("empty username %d", rr.Code)
+	}
+	tooLong := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(view.ID),
+		strings.NewReader(`{"username":"`+strings.Repeat("a", 65)+`"}`))
+	tooLong.Header.Set("Content-Type", "application/json")
+	tooLong.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, tooLong)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("long username %d", rr.Code)
+	}
+	blankName := httptest.NewRequest(http.MethodPatch, "/v1/users/"+itoa(view.ID),
+		strings.NewReader(`{"name":""}`))
+	blankName.Header.Set("Content-Type", "application/json")
+	blankName.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, blankName)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("empty name %d", rr.Code)
 	}
 }
 

@@ -22,16 +22,16 @@ func testStore(t *testing.T) *Store {
 func TestEnsureAdminThenNoOp(t *testing.T) {
 	st := testStore(t)
 	ctx := context.Background()
-	if err := st.EnsureAdmin(ctx, "", ""); err == nil {
+	if err := st.EnsureAdmin(ctx, "", "", ""); err == nil {
 		t.Fatal("empty table without env should fail")
 	}
-	if err := st.EnsureAdmin(ctx, "root", "short"); err == nil {
+	if err := st.EnsureAdmin(ctx, "root", "short", ""); err == nil {
 		t.Fatal("short password")
 	}
-	if err := st.EnsureAdmin(ctx, "root", "correct-horse"); err != nil {
+	if err := st.EnsureAdmin(ctx, "root", "correct-horse", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.EnsureAdmin(ctx, "other", "another-pass"); err != nil {
+	if err := st.EnsureAdmin(ctx, "other", "another-pass", ""); err != nil {
 		t.Fatal(err)
 	}
 	n, err := st.UserCount(ctx)
@@ -42,6 +42,9 @@ func TestEnsureAdminThenNoOp(t *testing.T) {
 	if err != nil || u.Role != auth.RoleAdmin {
 		t.Fatalf("user %+v %v", u, err)
 	}
+	if u.Name != DefaultName {
+		t.Fatalf("default name %q", u.Name)
+	}
 }
 
 func TestSessionRoundTrip(t *testing.T) {
@@ -51,7 +54,7 @@ func TestSessionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
+	u, err := st.CreateUser(ctx, "alice", "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +84,7 @@ func TestAPIKeyStoredHashed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
+	u, err := st.CreateUser(ctx, "alice", "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}

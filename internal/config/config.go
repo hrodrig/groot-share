@@ -36,12 +36,14 @@ type Config struct {
 
 	BootstrapAdmin    string
 	BootstrapPassword string
-	CookieSecure      bool
-	MaxUploadBytes    int64
-	KeepLast          int
-	MaxAgeDays        int
-	RetentionEvery    time.Duration
-	StagingGrace      time.Duration
+	// BootstrapAdminName is the first admin display name. Empty → Administrator.
+	BootstrapAdminName string
+	CookieSecure       bool
+	MaxUploadBytes     int64
+	KeepLast           int
+	MaxAgeDays         int
+	RetentionEvery     time.Duration
+	StagingGrace       time.Duration
 
 	// LoginSimple hides product chrome on /login (no hero, no gfs title/favicon).
 	LoginSimple bool
@@ -53,9 +55,12 @@ type Config struct {
 
 const (
 	// DefaultBrandSub is the app-bar tag when GFS_BRAND_SUB is unset.
-	DefaultBrandSub  = "archive door"
-	maxBrandSubRunes = 32
-	maxFooterRunes   = 120
+	DefaultBrandSub = "archive door"
+	// DefaultBootstrapName is the first-admin display name when GFS_BOOTSTRAP_ADMIN_NAME is unset.
+	DefaultBootstrapName = "Administrator"
+	maxBrandSubRunes     = 32
+	maxFooterRunes       = 120
+	maxNameRunes         = 80
 )
 
 // LoadFromEnv reads configuration. Returns error if topology/data dir are
@@ -63,26 +68,27 @@ const (
 func LoadFromEnv() (Config, error) {
 	topo := Topology(strings.ToLower(strings.TrimSpace(os.Getenv("GFS_TOPOLOGY"))))
 	cfg := Config{
-		ListenAddr:        envOr("GFS_LISTEN", ":8080"),
-		Topology:          topo,
-		DataDir:           strings.TrimSpace(os.Getenv("GFS_DATA_DIR")),
-		LogFormat:         strings.ToLower(envOr("GFS_LOG_FORMAT", "json")),
-		LogLevel:          strings.ToLower(envOr("GFS_LOG_LEVEL", "info")),
-		S3Bucket:          strings.TrimSpace(os.Getenv("GFS_S3_BUCKET")),
-		S3Region:          envOr("GFS_S3_REGION", "us-east-1"),
-		S3Endpoint:        strings.TrimSpace(os.Getenv("GFS_S3_ENDPOINT")),
-		S3Prefix:          envOr("GFS_S3_PREFIX", "captures/"),
-		BootstrapAdmin:    strings.TrimSpace(os.Getenv("GFS_BOOTSTRAP_ADMIN")),
-		BootstrapPassword: os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
-		CookieSecure:      parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
-		MaxUploadBytes:    parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
-		KeepLast:          int(parseInt64(os.Getenv("GFS_KEEP_LAST"), 20)),
-		MaxAgeDays:        int(parseInt64(os.Getenv("GFS_MAX_AGE_DAYS"), 90)),
-		RetentionEvery:    parseDuration(os.Getenv("GFS_RETENTION_EVERY"), time.Hour),
-		StagingGrace:      parseDuration(os.Getenv("GFS_STAGING_GRACE"), 24*time.Hour),
-		LoginSimple:       parseBool(os.Getenv("GFS_LOGIN_SIMPLE"), false),
-		BrandSub:          strings.TrimSpace(os.Getenv("GFS_BRAND_SUB")),
-		Footer:            strings.TrimSpace(os.Getenv("GFS_FOOTER")),
+		ListenAddr:         envOr("GFS_LISTEN", ":8080"),
+		Topology:           topo,
+		DataDir:            strings.TrimSpace(os.Getenv("GFS_DATA_DIR")),
+		LogFormat:          strings.ToLower(envOr("GFS_LOG_FORMAT", "json")),
+		LogLevel:           strings.ToLower(envOr("GFS_LOG_LEVEL", "info")),
+		S3Bucket:           strings.TrimSpace(os.Getenv("GFS_S3_BUCKET")),
+		S3Region:           envOr("GFS_S3_REGION", "us-east-1"),
+		S3Endpoint:         strings.TrimSpace(os.Getenv("GFS_S3_ENDPOINT")),
+		S3Prefix:           envOr("GFS_S3_PREFIX", "captures/"),
+		BootstrapAdmin:     strings.TrimSpace(os.Getenv("GFS_BOOTSTRAP_ADMIN")),
+		BootstrapPassword:  os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
+		BootstrapAdminName: ClipPlain(envOr("GFS_BOOTSTRAP_ADMIN_NAME", DefaultBootstrapName), maxNameRunes),
+		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
+		MaxUploadBytes:     parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
+		KeepLast:           int(parseInt64(os.Getenv("GFS_KEEP_LAST"), 20)),
+		MaxAgeDays:         int(parseInt64(os.Getenv("GFS_MAX_AGE_DAYS"), 90)),
+		RetentionEvery:     parseDuration(os.Getenv("GFS_RETENTION_EVERY"), time.Hour),
+		StagingGrace:       parseDuration(os.Getenv("GFS_STAGING_GRACE"), 24*time.Hour),
+		LoginSimple:        parseBool(os.Getenv("GFS_LOGIN_SIMPLE"), false),
+		BrandSub:           strings.TrimSpace(os.Getenv("GFS_BRAND_SUB")),
+		Footer:             strings.TrimSpace(os.Getenv("GFS_FOOTER")),
 	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)
@@ -149,6 +155,15 @@ func DisplayBrandSub(raw string) string {
 	return ClipPlain(raw, maxBrandSubRunes)
 }
 
+// DisplayUserName returns the bootstrap display name. Empty → Administrator.
+func DisplayUserName(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return DefaultBootstrapName
+	}
+	return ClipPlain(raw, maxNameRunes)
+}
+
 // DisplayFooter returns custom footer text. Empty → default chrome (caller);
 // "-" hides.
 func DisplayFooter(raw string) string {
@@ -160,17 +175,17 @@ func DisplayFooter(raw string) string {
 }
 
 // ClipPlain collapses whitespace, treats "-" as empty, and caps rune length.
-func ClipPlain(s string, max int) string {
+func ClipPlain(s string, maxRunes int) string {
 	s = strings.Join(strings.Fields(s), " ")
 	if s == "-" {
 		return ""
 	}
-	if max <= 0 {
+	if maxRunes <= 0 {
 		return ""
 	}
 	r := []rune(s)
-	if len(r) > max {
-		return string(r[:max])
+	if len(r) > maxRunes {
+		return string(r[:maxRunes])
 	}
 	return s
 }

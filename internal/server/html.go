@@ -10,6 +10,8 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
+const appWhoTmpl = `      <span class="who"{{if .Name}} title="{{.Name}}"{{end}}>{{.DisplayName}} <span class="role">{{.Role}}</span></span>`
+
 const appNavTmpl = `
       <nav class="appnav" aria-label="Primary">
         <a href="/" {{if eq .Nav "captures"}}aria-current="page"{{end}}>Captures</a>
@@ -200,7 +202,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   border-left: 1px solid var(--line-strong);
 }
 .appbar-side { display: flex; align-items: center; gap: 12px; }
-.who { color: var(--muted); font-size: 14px; }
+.who { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .role {
   display: inline-block;
   font: 600 11px/1 var(--mono);
@@ -218,7 +220,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .wrap { max-width: 72rem; margin: 0 auto; padding: 28px 24px 32px; width: 100%; }
 .page-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; margin-bottom: 20px;
+  gap: 16px; margin-bottom: 24px;
 }
 .page-head h1 {
   margin: 0;
@@ -235,7 +237,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 }
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  padding: 16px 20px 12px;
+  padding: 18px 24px 14px;
   border-bottom: 1px solid var(--line);
 }
 .card-head h2 {
@@ -245,7 +247,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   color: var(--muted);
 }
 .card-head .hint { margin: 0; color: var(--faint); font-size: 13px; }
-.card-body { padding: 16px 20px 20px; }
+.card-body { padding: 20px 24px 24px; }
+.card-stack { display: flex; flex-direction: column; gap: 20px; }
+.card-stack .stack-form { margin: 0; }
+.key-reveal { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.key-reveal .key-once { margin: 0; width: 100%; }
 
 /* ---- buttons ---- */
 .btn {
@@ -292,11 +298,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .theme-toggle .is-hidden { display: none; }
 
 /* ---- forms ---- */
-.field { display: block; margin: 0 0 14px; }
-.field span {
+.field { display: block; margin: 0 0 16px; }
+.field > span:first-child {
   display: block; margin-bottom: 6px;
   font: 550 13px/1.3 var(--sans);
   color: var(--muted);
+}
+.field-hint {
+  display: block;
+  margin: 6px 0 0;
+  font: 400 12px/1.45 var(--sans);
+  color: var(--faint);
 }
 .field input {
   display: block; width: 100%;
@@ -308,6 +320,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   font: inherit;
 }
 .field input:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.field input:read-only {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: default;
+}
 .field select {
   display: block; width: 100%;
   padding: 9px 12px;
@@ -318,7 +335,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   font: inherit;
 }
 .stack-form { max-width: 28rem; }
+.stack-form .btn { margin-top: 4px; }
 .inline-form { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.inline-form input {
+  width: 11rem;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
 .key-once {
   margin: 0 0 16px; padding: 12px 14px;
   border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
@@ -506,8 +534,11 @@ table.grid {
 }
 .notice-ok { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
 .notice-ok::before { background: var(--ok); }
+.notice-warn { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); font-weight: 600; font-size: 15px; }
+.notice-warn::before { background: var(--warn); }
 .notice-err { background: var(--err-soft); border-color: var(--err); color: var(--err); }
 .notice-err::before { background: var(--err); }
+.card-stack .notice { margin-bottom: 0; }
 
 /* ---- empty states ---- */
 .empty { padding: 36px 20px; text-align: center; }
@@ -612,7 +643,7 @@ dialog#confirm-dialog {
 dialog#confirm-dialog::backdrop { background: rgb(16 24 40 / 0.45); }
 .dialog-card { padding: 20px; margin: 0; }
 .dialog-title { margin: 0 0 6px; font-size: 16px; font-weight: 650; }
-.dialog-text { margin: 0 0 18px; color: var(--muted); font-size: 14px; word-break: break-all; }
+.dialog-text { margin: 0 0 18px; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .dialog-actions .btn { margin: 0; }
 

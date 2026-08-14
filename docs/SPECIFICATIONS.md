@@ -107,6 +107,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | AWS creds | env `AWS_*` on the VPS only |
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | first admin only; required when the user table is empty |
+| `GFS_BOOTSTRAP_ADMIN_NAME` | first admin display name (default `Administrator`) |
 | `GFS_MAX_UPLOAD_BYTES` | default 32GiB; stream cap (`http.MaxBytesReader`) |
 | `GFS_LOGIN_SIMPLE` | `true`: `/login` is a white form only (no hero, no gfs title/favicon). Default off |
 | `GFS_BRAND_SUB` | App-bar tag after the wordmark. Default `archive door`. Short string (e.g. `ACME CORP`). `-` hides |
@@ -117,9 +118,9 @@ Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions 
 ## 6. Auth detail
 
 - Password: argon2id or bcrypt; never log
-- api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once
+- api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once; `last_used_at` updated on successful key auth (list via Settings / `GET /v1/me/api-keys`)
 - Session: httpOnly cookie; Secure when TLS
-- Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
+- Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). Display name from `GFS_BOOTSTRAP_ADMIN_NAME` (default `Administrator`). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
 
 ### 6.1 Roles and api_key scopes (v0.2)
 
@@ -148,12 +149,18 @@ User management (admin session only):
 
 | Method | Path | Behavior |
 |--------|------|----------|
-| GET | `/v1/users` | List `{items:[{id,username,role,active,created_at}]}` |
-| POST | `/v1/users` | Create `{username,password,role?}` — default role `uploader` |
+| GET | `/v1/users` | List `{items:[{id,username,name,role,active,created_at}]}` |
+| POST | `/v1/users` | Create `{username,name,password,role?}` — `name` required; default role `uploader` |
 | GET | `/v1/users/{id}` | One user |
-| PATCH | `/v1/users/{id}` | `{role?,active?,password?}` — last active admin cannot be demoted/deactivated (`409 last_admin`) |
+| PATCH | `/v1/users/{id}` | `{role?,active?,password?,name?,username?}` — last active admin cannot be demoted/deactivated (`409 last_admin`); `username` must be unique (`409 conflict`) |
 | DELETE | `/v1/users/{id}` | Soft deactivate (`active=0`) |
+| POST | `/admin/users/{id}/activate` | HTML: set `active=1` |
+| POST | `/admin/users/{id}/username` | HTML: admin changes login id (unique) |
+| POST | `/admin/users/{id}/remove` | HTML: hard-delete an **inactive** user (sessions/keys go; username is freed) |
 | PATCH | `/v1/me` | Session only: `{password}` — change own password |
+| POST | `/settings/name` | HTML: change own display name (not login) |
+
+Display **Name** is required (max 80). The app bar shows it truncated at 30 runes, keeping the last 4 (`Juan ...egro`). Existing rows without a name are backfilled from `username`. **Username** (login) is unique; only an admin can change it. Users change their own Name in Settings.
 
 ## 7. Retention
 

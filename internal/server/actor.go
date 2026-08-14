@@ -75,7 +75,10 @@ func shellUserData(ac *Actor) map[string]any {
 		return map[string]any{}
 	}
 	return map[string]any{
+		"ActorID":        ac.User.ID,
 		"Username":       ac.User.Username,
+		"Name":           ac.User.Name,
+		"DisplayName":    ac.User.DisplayName(),
 		"Role":           string(ac.User.Role),
 		"CanDelete":      ac.Can(auth.PermArchivesDelete),
 		"CanUpload":      ac.Can(auth.PermArchivesWrite),

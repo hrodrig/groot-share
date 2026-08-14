@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/hrodrig/groot-share/internal/auth"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 func (s *Server) handleSettingsGET(w http.ResponseWriter, r *http.Request) {
@@ -42,13 +43,12 @@ func (s *Server) handleSettingsPasswordPOST(w http.ResponseWriter, r *http.Reque
 		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
 		return
 	}
-	pw := r.Form.Get("password")
-	if pw == "" {
-		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
-		return
-	}
-	hash, err := auth.HashPassword(pw)
+	hash, err := auth.HashPassword(r.Form.Get("password"))
 	if err != nil {
+		if errors.Is(err, auth.ErrPasswordTooShort) {
+			http.Redirect(w, r, "/settings?notice=pw_short", http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
 		return
 	}
@@ -57,6 +57,27 @@ func (s *Server) handleSettingsPasswordPOST(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	http.Redirect(w, r, "/settings?notice=password", http.StatusSeeOther)
+}
+
+func (s *Server) handleSettingsNamePOST(w http.ResponseWriter, r *http.Request) {
+	ac := actorFrom(r.Context())
+	if ac == nil || ac.Method != auth.AuthSession {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
+		return
+	}
+	if err := s.Store.SetName(r.Context(), ac.User.ID, r.Form.Get("name")); err != nil {
+		if errors.Is(err, store.ErrNameRequired) || errors.Is(err, store.ErrNameTooLong) {
+			http.Redirect(w, r, "/settings?notice=name", http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/settings?notice=named", http.StatusSeeOther)
 }
 
 func (s *Server) handleSettingsAPIKeyPOST(w http.ResponseWriter, r *http.Request) {
@@ -118,8 +139,14 @@ func settingsNotice(token string) (kind, text string) {
 	switch token {
 	case "password":
 		return "ok", "Password updated."
+	case "named":
+		return "ok", "Name updated."
+	case "name":
+		return "err", "Name is required (max 80 characters)."
 	case "revoked":
-		return "ok", "API key revoked."
+		return "ok", "API key deleted."
+	case "pw_short":
+		return "err", "Password must be at least 8 characters."
 	case "error":
 		return "err", "That action failed. Check the form and try again."
 	default:
@@ -143,7 +170,7 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -151,22 +178,38 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
 <main id="main" class="wrap">
 {{if .NoticeText}}<div class="notice notice-{{.NoticeKind}}" role="status">{{.NoticeText}}</div>{{end}}
 <div class="page-head">
-  <div><h1>Settings</h1><p class="sub">Account password and API keys.</p></div>
+  <div><h1>Settings</h1><p class="sub">Name, password, and API keys.</p></div>
 </div>
+<section class="card" aria-labelledby="name-h">
+  <div class="card-head"><h2 id="name-h">Name</h2></div>
+  <div class="card-body">
+  <form method="post" action="/settings/name" class="stack-form">
+    <label class="field"><span>Username</span><input value="{{.Username}}" readonly autocomplete="username"><small class="field-hint">Login id. Only an admin can change it.</small></label>
+    <label class="field"><span>Name</span><input name="name" required autocomplete="name" maxlength="80" value="{{.Name}}"><small class="field-hint">Shown in the header. Long names shorten (Juan ...egro).</small></label>
+    <button class="btn" type="submit">Update name</button>
+  </form>
+  </div>
+</section>
 <section class="card" aria-labelledby="pw-h">
   <div class="card-head"><h2 id="pw-h">Password</h2></div>
+  <div class="card-body">
   <form method="post" action="/settings/password" class="stack-form">
-    <label class="field"><span>New password</span><input name="password" type="password" required autocomplete="new-password"></label>
+    <label class="field"><span>New password</span><input name="password" type="password" required autocomplete="new-password" minlength="8"><small class="field-hint">At least 8 characters.</small></label>
     <button class="btn" type="submit">Update password</button>
   </form>
+  </div>
 </section>
 {{if .CanManageKeys}}
 <section class="card" aria-labelledby="keys-h">
-  <div class="card-head"><h2 id="keys-h">API keys</h2><p class="hint">Keys authenticate automation. The secret is shown once at creation.</p></div>
+  <div class="card-head"><h2 id="keys-h">API keys</h2></div>
+  <div class="card-body card-stack">
+  <div class="notice notice-warn" role="note">The secret is shown once. Copy it now — it cannot be recovered.</div>
   {{if .NewAPIKey}}
-  <p class="hint">Prefix <span class="mono">{{.NewAPIKeyPrefix}}</span> · scope {{.NewAPIKeyScope}}</p>
-  <div class="key-once" id="new-key">{{.NewAPIKey}}</div>
-  <button class="btn btn-quiet btn-sm" type="button" id="copy-new-key">Copy key</button>
+  <div class="key-reveal">
+    <p class="field-hint">Prefix <span class="mono">{{.NewAPIKeyPrefix}}</span> · scope {{.NewAPIKeyScope}}</p>
+    <div class="key-once" id="new-key">{{.NewAPIKey}}</div>
+    <button class="btn" type="button" id="copy-new-key">Copy key</button>
+  </div>
   {{end}}
   {{if .APIKeys}}
   <div class="table-wrap">
@@ -175,6 +218,7 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
       <th scope="col">Prefix</th>
       <th scope="col">Scope</th>
       <th scope="col">Created (UTC)</th>
+      <th scope="col">Last used (UTC)</th>
       <th scope="col"><span class="visually-hidden">Actions</span></th>
     </tr></thead>
     <tbody>
@@ -183,9 +227,10 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
       <td class="mono">{{.Prefix}}</td>
       <td>{{.Scope}}</td>
       <td class="muted tabular">{{if .CreatedAt.IsZero}}—{{else}}{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}{{end}}</td>
+      <td class="muted tabular">{{if .LastUsedAt.IsZero}}never{{else}}{{.LastUsedAt.UTC.Format "2006-01-02 15:04"}}{{end}}</td>
       <td class="actions">
-        <form method="post" action="/settings/api-keys/{{.ID}}/revoke">
-          <button class="btn btn-danger-quiet btn-sm" type="submit">Revoke</button>
+        <form method="post" action="/settings/api-keys/{{.ID}}/revoke" data-confirm="Delete API key {{.Prefix}}? Anything using it will fail immediately.">
+          <button class="btn btn-danger btn-sm" type="submit">Delete</button>
         </form>
       </td>
     </tr>
@@ -196,7 +241,7 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
   {{else if not .NewAPIKey}}
   <div class="empty"><p class="empty-title">No API keys</p></div>
   {{end}}
-  <form method="post" action="/settings/api-keys" class="stack-form" style="margin-top:16px">
+  <form method="post" action="/settings/api-keys" class="stack-form">
     <label class="field"><span>Scope</span>
       <select name="scope">
         <option value="upload">upload — POST /v1/archives only</option>
@@ -205,10 +250,21 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
     </label>
     <button class="btn" type="submit">Create API key</button>
   </form>
+  </div>
 </section>
 {{end}}
 </main>
 {{.AppFoot}}
+<dialog id="confirm-dialog" aria-labelledby="confirm-title">
+  <form method="dialog" class="dialog-card">
+    <p class="dialog-title" id="confirm-title">Delete API key</p>
+    <p class="dialog-text" id="confirm-text"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-quiet" value="cancel">Cancel</button>
+      <button class="btn btn-danger" value="ok">Delete</button>
+    </div>
+  </form>
+</dialog>
 <script>
 (function () {
   var btn = document.getElementById('copy-new-key');
@@ -219,6 +275,23 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
         btn.textContent = 'Copied';
         setTimeout(function () { btn.textContent = 'Copy key'; }, 2000);
       });
+    });
+  }
+  var dlg = document.getElementById('confirm-dialog');
+  var txt = document.getElementById('confirm-text');
+  var pending = null;
+  if (dlg && dlg.showModal) {
+    document.querySelectorAll('form[data-confirm]').forEach(function (f) {
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        pending = f;
+        txt.textContent = f.getAttribute('data-confirm');
+        dlg.showModal();
+      });
+    });
+    dlg.addEventListener('close', function () {
+      if (dlg.returnValue === 'ok' && pending) { pending.submit(); }
+      pending = null;
     });
   }
 })();

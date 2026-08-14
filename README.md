@@ -134,6 +134,7 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 | `GFS_DATA_DIR` | **Required.** SQLite + home/staging root |
 | `GFS_LISTEN` | Bind address (default `:8080`) |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | First admin when user table is empty; ignored once users exist |
+| `GFS_BOOTSTRAP_ADMIN_NAME` | First admin display name (default `Administrator`) |
 | `GFS_S3_*` + `AWS_*` | Required for `vps-s3` (bucket, endpoint, prefix, path-style) |
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | Retention (defaults 20 / 90) |
 | `GFS_MAX_UPLOAD_BYTES` | Upload cap (default 32 GiB) |

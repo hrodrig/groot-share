@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Operator chrome: `GFS_LOGIN_SIMPLE` (white `/login`, no product marks), `GFS_BRAND_SUB` (app-bar tag, default `archive door`), `GFS_FOOTER` (default family links; `-` hides)
+- User **Name** (required). Header shows it, truncated at 30 runes (`Juan ...egro`). First admin defaults to `Administrator` or `GFS_BOOTSTRAP_ADMIN_NAME`. Login (`username`) is unique; only admin can change it (Users page / `PATCH /v1/users/{id}`). Own Settings: Name only.
 
 ### Changed
 
 - Login gate uses the cropped crate + wordmark hero (~46 KiB JPEG) with a glass card; brand copy is not repeated above the form
+- Users/Settings forms: field hints, specific password/username errors, and card padding so controls are not flush to the edge
+- Admin Users: Activate and Remove on inactive accounts (JSON `DELETE` stays soft-deactivate)
+- API keys record `last_used_at` on successful auth; Settings shows Last used (UTC) or `never`
 
 ## [0.2.0] — 2026-08-13
 

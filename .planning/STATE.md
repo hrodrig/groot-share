@@ -71,6 +71,7 @@ Progress: [███████░░░] 78% (7/9 phases; 12/14 plans)
 
 - Execute `.planning/phases/08-sftp-watcher/08-01-PLAN.md`
 - Backlog 999.1: docs/man page (parallel OK)
+- Backlog 999.1 M-2: review/add rate limit on `/login` (operator 2026-08-13)
 
 ### Blockers/Concerns
 

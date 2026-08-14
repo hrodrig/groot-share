@@ -66,7 +66,7 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 	if asJSON {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "role": u.Role})
+		_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "name": u.Name, "role": u.Role})
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -93,7 +93,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"username": ac.User.Username, "role": ac.User.Role})
+	_ = json.NewEncoder(w).Encode(map[string]any{"username": ac.User.Username, "name": ac.User.Name, "role": ac.User.Role})
 }
 
 func (s *Server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +133,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Username string `json:"username"`
+		Name     string `json:"name"`
 		Password string `json:"password"`
 		Role     string `json:"role"`
 		Admin    bool   `json:"admin"`
@@ -152,13 +153,22 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	created, err := s.Store.CreateUser(r.Context(), body.Username, hash, role)
+	created, err := s.Store.CreateUser(r.Context(), body.Username, name, hash, role)
 	if err != nil {
+		if errors.Is(err, store.ErrNameRequired) || errors.Is(err, store.ErrNameTooLong) {
+			writeJSONError(w, http.StatusBadRequest, "bad_request")
+			return
+		}
 		writeJSONError(w, http.StatusConflict, "conflict")
 		return
 	}
@@ -177,6 +187,9 @@ func (s *Server) actorFromRequest(r *http.Request) *Actor {
 		ka, err := s.Store.AuthByAPIKeyHash(r.Context(), auth.HashSecret(key))
 		if err != nil {
 			return nil
+		}
+		if err := s.Store.TouchAPIKeyLastUsed(r.Context(), ka.KeyID); err != nil {
+			slog.Debug("touch api key last used", "error", err)
 		}
 		return &Actor{User: ka.User, Method: auth.AuthAPIKey, KeyScope: ka.Scope}
 	}
@@ -294,7 +307,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -429,7 +442,7 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -506,7 +519,7 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>

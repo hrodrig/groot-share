@@ -22,7 +22,7 @@ func identServer(t *testing.T) (*Server, *store.Store) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	if err := st.EnsureAdmin(context.Background(), "root", "correct-horse"); err != nil {
+	if err := st.EnsureAdmin(context.Background(), "root", "correct-horse", ""); err != nil {
 		t.Fatal(err)
 	}
 	return &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Store: st, Ready: func() bool { return true }, Version: "0.1.0-test"}, st
@@ -336,7 +336,7 @@ func TestCreateUserAdmin(t *testing.T) {
 			cookie = c
 		}
 	}
-	body := strings.NewReader(`{"username":"bob","password":"bob-secret-1"}`)
+	body := strings.NewReader(`{"username":"bob","name":"Bob","password":"bob-secret-1"}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
@@ -458,6 +458,29 @@ func TestMeUnauthorized(t *testing.T) {
 	}
 }
 
+func TestCreateUserMissingNameJSON(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	body := strings.NewReader(`{"username":"noname","password":"noname-secret-1"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("missing name %d %s", rr.Code, rr.Body.String())
+	}
+	long := strings.NewReader(`{"username":"longname","name":"` + strings.Repeat("n", 81) + `","password":"long-secret-1"}`)
+	req = httptest.NewRequest(http.MethodPost, "/v1/users", long)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("long name %d %s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestCreateUserMissingPasswordJSON(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
@@ -525,7 +548,7 @@ func TestCreateUserInvalidRoleJSON(t *testing.T) {
 func TestCreateUserDuplicateUsername(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	body := strings.NewReader(`{"username":"root","password":"other-secret-1","role":"viewer"}`)
+	body := strings.NewReader(`{"username":"root","name":"Root","password":"other-secret-1","role":"viewer"}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/users", body)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(admin)
@@ -544,8 +567,70 @@ func TestSettingsPasswordEmptyForm(t *testing.T) {
 	req.AddCookie(admin)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=error") {
-		t.Fatalf("empty password %d", rr.Code)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=pw_short") {
+		t.Fatalf("empty password %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestSettingsNameForm(t *testing.T) {
+	s, st := identServer(t)
+	admin := loginCookie(t, s)
+	form := strings.NewReader("name=Ada+Lovelace")
+	req := httptest.NewRequest(http.MethodPost, "/settings/name", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=named") {
+		t.Fatalf("name %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	u, err := st.UserByUsername(context.Background(), "root")
+	if err != nil || u.Name != "Ada Lovelace" {
+		t.Fatalf("stored %+v %v", u, err)
+	}
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	home.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, home)
+	if !strings.Contains(rr.Body.String(), "Ada Lovelace") {
+		t.Fatal("header missing updated name")
+	}
+}
+
+func TestSettingsNameErrors(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	empty := httptest.NewRequest(http.MethodPost, "/settings/name", strings.NewReader("name="))
+	empty.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	empty.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, empty)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=name") {
+		t.Fatalf("empty name %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	long := httptest.NewRequest(http.MethodPost, "/settings/name", strings.NewReader("name="+strings.Repeat("x", 81)))
+	long.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	long.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, long)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=name") {
+		t.Fatalf("long name %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	page := httptest.NewRequest(http.MethodGet, "/settings?notice=named", nil)
+	page.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, page)
+	if !strings.Contains(rr.Body.String(), "Name updated.") {
+		t.Fatal("named notice missing")
+	}
+	key := createAPIKey(t, s, admin, auth.KeyScopeUpload)
+	viaKey := httptest.NewRequest(http.MethodPost, "/settings/name", strings.NewReader("name=Nope"))
+	viaKey.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	viaKey.Header.Set("Authorization", "Bearer "+key)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, viaKey)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("api key name %d", rr.Code)
 	}
 }
 

@@ -116,7 +116,16 @@ func TestAdminAndSettingsNotices(t *testing.T) {
 		"created":     "User created.",
 		"updated":     "User updated.",
 		"deactivated": "User deactivated.",
+		"activated":   "User activated.",
+		"removed":     "User removed.",
+		"self":        "own account",
+		"active":      "Deactivate the user",
 		"last_admin":  "last active admin",
+		"pw_short":    "at least 8 characters",
+		"username":    "Username is required",
+		"name":        "Name is required",
+		"taken":       "already in use",
+		"role":        "valid role",
 		"error":       "That action failed",
 	} {
 		kind, text := adminNotice(token)
@@ -126,7 +135,10 @@ func TestAdminAndSettingsNotices(t *testing.T) {
 	}
 	for token, want := range map[string]string{
 		"password": "Password updated.",
-		"revoked":  "API key revoked.",
+		"named":    "Name updated.",
+		"name":     "Name is required",
+		"revoked":  "API key deleted.",
+		"pw_short": "at least 8 characters",
 		"error":    "That action failed",
 	} {
 		kind, text := settingsNotice(token)
@@ -241,14 +253,49 @@ func TestUploadPageWithNotice(t *testing.T) {
 func TestAdminCreateUserInvalidRoleHTML(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	form := strings.NewReader("username=bob&password=bob-secret-1&role=root")
+	form := strings.NewReader("name=Bob&username=bob&password=bob-secret-1&role=root")
 	req := httptest.NewRequest(http.MethodPost, "/admin/users/create", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(admin)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=error") {
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=role") {
 		t.Fatalf("invalid role %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestAdminCreateUserShortPasswordHTML(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	form := strings.NewReader("name=Bob&username=bob&password=123456&role=uploader")
+	req := httptest.NewRequest(http.MethodPost, "/admin/users/create", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=pw_short") {
+		t.Fatalf("short pw %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	page := httptest.NewRequest(http.MethodGet, "/admin/users?notice=pw_short", nil)
+	page.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, page)
+	if !strings.Contains(rr.Body.String(), "Password must be at least 8 characters.") {
+		t.Fatal("short password copy missing")
+	}
+}
+
+func TestAdminCreateUserTakenHTML(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	form := strings.NewReader("name=Root&username=root&password=root-secret-1&role=viewer")
+	req := httptest.NewRequest(http.MethodPost, "/admin/users/create", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=taken") {
+		t.Fatalf("taken %d loc=%s", rr.Code, rr.Header().Get("Location"))
 	}
 }
 
@@ -258,5 +305,128 @@ func TestParseUserIDBad(t *testing.T) {
 	}
 	if _, err := parseUserID("nope"); err == nil {
 		t.Fatal("non-numeric id")
+	}
+	if isUniqueViolation(nil) {
+		t.Fatal("nil unique")
+	}
+}
+
+func TestAdminUsernameHTMLErrors(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	bad := httptest.NewRequest(http.MethodPost, "/admin/users/nope/username", strings.NewReader("username=x"))
+	bad.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	bad.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, bad)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("bad id %d", rr.Code)
+	}
+	empty := httptest.NewRequest(http.MethodPost, "/admin/users/1/username", strings.NewReader("username="))
+	empty.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	empty.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, empty)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=username") {
+		t.Fatalf("empty login %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	missing := httptest.NewRequest(http.MethodPost, "/admin/users/99999/username", strings.NewReader("username=ghost"))
+	missing.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	missing.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, missing)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=error") {
+		t.Fatalf("missing user %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestAdminUsernameHTMLRename(t *testing.T) {
+	s, st := identServer(t)
+	admin := loginCookie(t, s)
+	u := createUserViaAPI(t, s, admin, "alice", "alice-secret-1", "viewer")
+	form := strings.NewReader("username=alice2")
+	req := httptest.NewRequest(http.MethodPost, "/admin/users/"+itoa(u.ID)+"/username", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("set login %d", rr.Code)
+	}
+	got, err := st.UserByID(context.Background(), u.ID)
+	if err != nil || got.Username != "alice2" {
+		t.Fatalf("login %+v %v", got, err)
+	}
+	taken := strings.NewReader("username=root")
+	req = httptest.NewRequest(http.MethodPost, "/admin/users/"+itoa(u.ID)+"/username", taken)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=taken") {
+		t.Fatalf("taken login %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestAdminRemoveGuards(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	self := httptest.NewRequest(http.MethodPost, "/admin/users/1/remove", nil)
+	self.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, self)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=self") {
+		t.Fatalf("self %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	view := createUserViaAPI(t, s, admin, "view", "view-secret-1", "viewer")
+	active := httptest.NewRequest(http.MethodPost, "/admin/users/"+itoa(view.ID)+"/remove", nil)
+	active.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, active)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=active") {
+		t.Fatalf("active %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	bad := httptest.NewRequest(http.MethodPost, "/admin/users/nope/remove", nil)
+	bad.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, bad)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("bad id %d", rr.Code)
+	}
+	missing := httptest.NewRequest(http.MethodPost, "/admin/users/99999/remove", nil)
+	missing.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, missing)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("missing %d", rr.Code)
+	}
+}
+
+func TestAdminRoleHTMLErrors(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	bad := httptest.NewRequest(http.MethodPost, "/admin/users/nope/role", strings.NewReader("role=viewer"))
+	bad.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	bad.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, bad)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("bad id %d", rr.Code)
+	}
+	invalid := httptest.NewRequest(http.MethodPost, "/admin/users/1/role", strings.NewReader("role=super"))
+	invalid.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	invalid.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, invalid)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=error") {
+		t.Fatalf("bad role %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	last := httptest.NewRequest(http.MethodPost, "/admin/users/1/role", strings.NewReader("role=viewer"))
+	last.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	last.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, last)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=last_admin") {
+		t.Fatalf("last admin %d loc=%s", rr.Code, rr.Header().Get("Location"))
 	}
 }

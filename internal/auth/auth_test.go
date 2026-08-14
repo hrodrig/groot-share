@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -24,8 +25,8 @@ func TestHashAndCheckPassword(t *testing.T) {
 }
 
 func TestHashPasswordTooShort(t *testing.T) {
-	if _, err := HashPassword("short"); err == nil {
-		t.Fatal("expected error")
+	if _, err := HashPassword("short"); !errors.Is(err, ErrPasswordTooShort) {
+		t.Fatalf("err %v", err)
 	}
 }
 

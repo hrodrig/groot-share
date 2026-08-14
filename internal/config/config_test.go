@@ -95,6 +95,7 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	t.Setenv("GFS_LOGIN_SIMPLE", "")
 	t.Setenv("GFS_BRAND_SUB", "")
 	t.Setenv("GFS_FOOTER", "")
+	t.Setenv("GFS_BOOTSTRAP_ADMIN_NAME", "")
 	cfg, err := LoadFromEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -107,6 +108,9 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	}
 	if cfg.LoginSimple || cfg.BrandSub != "" || cfg.Footer != "" {
 		t.Fatalf("brand defaults: %+v", cfg)
+	}
+	if cfg.BootstrapAdminName != DefaultBootstrapName {
+		t.Fatalf("bootstrap name %q", cfg.BootstrapAdminName)
 	}
 }
 
@@ -122,6 +126,28 @@ func TestLoadFromEnvBranding(t *testing.T) {
 	}
 	if !cfg.LoginSimple || cfg.BrandSub != "ACME CORP" || cfg.Footer != "Internal archive" {
 		t.Fatalf("branding: %+v", cfg)
+	}
+}
+
+func TestLoadFromEnvBootstrapName(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_BOOTSTRAP_ADMIN_NAME", "Ada Lovelace")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.BootstrapAdminName != "Ada Lovelace" {
+		t.Fatalf("name %q", cfg.BootstrapAdminName)
+	}
+}
+
+func TestDisplayUserName(t *testing.T) {
+	if DisplayUserName("") != DefaultBootstrapName {
+		t.Fatal(DisplayUserName(""))
+	}
+	if DisplayUserName("  Ada  ") != "Ada" {
+		t.Fatal(DisplayUserName("  Ada  "))
 	}
 }
 
