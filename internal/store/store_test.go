@@ -22,6 +22,18 @@ func TestOpenPingClose(t *testing.T) {
 	}
 }
 
+func TestParseDBTime(t *testing.T) {
+	if parseDBTime("2026-08-14 00:46:13").IsZero() {
+		t.Fatal("sqlite datetime")
+	}
+	if parseDBTime("2026-08-14T00:46:13Z").IsZero() {
+		t.Fatal("rfc3339")
+	}
+	if !parseDBTime("").IsZero() {
+		t.Fatal("empty")
+	}
+}
+
 func TestPingNil(t *testing.T) {
 	var st *Store
 	if st.Ping(context.Background()) {

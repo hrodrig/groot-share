@@ -13,7 +13,7 @@ All findings verified against `develop@dda902c`. Severity: M = medium, B = low, 
 | M-1 | Packaged man page describes **groot-trigger** (Kubernetes Jobs, `/v1/collect`, `GROOT_TRIGGER_*`) and wrong version `v0.1.1` vs `VERSION=0.1.0`. Ships in GoReleaser tarballs and BSD dists. | `contrib/man/man1/gfs.1:3-55` | open |
 | M-4 | README says "Design only. No application code yet." with all 6 phases complete. | `README.md:16-20` | open |
 | M-3 | api_key acts as a full session (download, delete, create-user, audit). SPEC §4 scopes it to the upload API. Decide: restrict code to `POST /v1/archives` or amend the SPEC. | `internal/server/identity.go:165-185` | open |
-| M-2 | No rate limiting / lockout on `/login` (bcrypt cost is the only brake). | `internal/server/identity.go:32-71` | open |
+| M-2 | No rate limiting / lockout on `/login` (bcrypt cost is the only brake). Operator re-requested 2026-08-13: review/add login rate limit. | `internal/server/identity.go` handleLoginPOST | open |
 | B-3 | BSD Make stub header reads "groot-trigger". | `Makefile:1` | open |
 
 ## P1 — hardening

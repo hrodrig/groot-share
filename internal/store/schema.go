@@ -10,6 +10,7 @@ const schemaSQL = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'uploader' CHECK(role IN ('viewer','uploader','admin')),
   active INTEGER NOT NULL DEFAULT 1,
@@ -27,7 +28,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
   key_hash TEXT NOT NULL UNIQUE,
   prefix TEXT NOT NULL,
   scope TEXT NOT NULL DEFAULT 'upload' CHECK(scope IN ('upload','read')),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_used_at TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS archives (
   id TEXT PRIMARY KEY,
@@ -72,7 +74,10 @@ func (s *Store) migrate() error {
 		return fmt.Errorf("user_version: %w", err)
 	}
 	if ver >= 1 {
-		return nil
+		if err := s.ensureAPIKeyLastUsed(); err != nil {
+			return err
+		}
+		return s.ensureUserName()
 	}
 	if hasColumn(s.db, "users", "admin") {
 		if err := migrateUsersAdminToRole(s.db); err != nil {
@@ -86,6 +91,31 @@ func (s *Store) migrate() error {
 	}
 	if _, err := s.db.Exec(`PRAGMA user_version = 1`); err != nil {
 		return fmt.Errorf("set user_version: %w", err)
+	}
+	if err := s.ensureAPIKeyLastUsed(); err != nil {
+		return err
+	}
+	return s.ensureUserName()
+}
+
+func (s *Store) ensureUserName() error {
+	if !hasColumn(s.db, "users", "name") {
+		if _, err := s.db.Exec(`ALTER TABLE users ADD COLUMN name TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add users.name: %w", err)
+		}
+	}
+	if _, err := s.db.Exec(`UPDATE users SET name = username WHERE name = ''`); err != nil {
+		return fmt.Errorf("backfill users.name: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ensureAPIKeyLastUsed() error {
+	if hasColumn(s.db, "api_keys", "last_used_at") {
+		return nil
+	}
+	if _, err := s.db.Exec(`ALTER TABLE api_keys ADD COLUMN last_used_at TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("add api_keys.last_used_at: %w", err)
 	}
 	return nil
 }

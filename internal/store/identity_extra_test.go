@@ -16,7 +16,7 @@ func TestExpiredSessionRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
+	u, err := st.CreateUser(ctx, "alice", "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestInactiveUserSessionRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
+	u, err := st.CreateUser(ctx, "alice", "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestInactiveUserAPIKeyRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
+	u, err := st.CreateUser(ctx, "alice", "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,13 +91,16 @@ func TestSetPasswordAndCreateUserValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CreateUser(ctx, "  ", hash, auth.RoleUploader); err == nil {
-		t.Fatal("empty username")
+	if _, err := st.CreateUser(ctx, "  ", "Bob", hash, auth.RoleUploader); !errors.Is(err, ErrUsernameRequired) {
+		t.Fatalf("empty username: %v", err)
 	}
-	if _, err := st.CreateUser(ctx, "bob", hash, auth.Role("superuser")); err == nil {
+	if _, err := st.CreateUser(ctx, "bob", "", hash, auth.RoleUploader); !errors.Is(err, ErrNameRequired) {
+		t.Fatalf("empty name: %v", err)
+	}
+	if _, err := st.CreateUser(ctx, "bob", "Bob", hash, auth.Role("superuser")); err == nil {
 		t.Fatal("invalid role")
 	}
-	u, err := st.CreateUser(ctx, "bob", hash, auth.RoleViewer)
+	u, err := st.CreateUser(ctx, "bob", "Bob", hash, auth.RoleViewer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +146,7 @@ func TestCreateAPIKeyInvalidScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u, err := st.CreateUser(ctx, "alice", hash, auth.RoleUploader)
+	u, err := st.CreateUser(ctx, "alice", "alice", hash, auth.RoleUploader)
 	if err != nil {
 		t.Fatal(err)
 	}

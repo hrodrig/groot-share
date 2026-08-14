@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hrodrig/groot-share/internal/auth"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 func TestCreateAPIKeyBadScope(t *testing.T) {
@@ -91,8 +93,18 @@ func TestAdminUsersPageSmoke(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("admin users %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Create user") || !strings.Contains(rr.Body.String(), "root") {
+	body := rr.Body.String()
+	if !strings.Contains(body, "Create user") || !strings.Contains(body, "root") {
 		t.Fatalf("admin page missing content")
+	}
+	if !strings.Contains(body, "At least 8 characters.") || !strings.Contains(body, `class="card-body"`) {
+		t.Fatal("create-user hints or padding missing")
+	}
+	if !strings.Contains(body, `name="name"`) {
+		t.Fatal("name field missing")
+	}
+	if strings.Contains(body, `autocomplete="name" maxlength="80" value=`) {
+		t.Fatal("create-user name must not be prefilled")
 	}
 }
 
@@ -106,8 +118,21 @@ func TestSettingsPageSmoke(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("settings %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "API keys") {
+	body := rr.Body.String()
+	if !strings.Contains(body, "API keys") {
 		t.Fatalf("settings missing keys section")
+	}
+	if !strings.Contains(body, "At least 8 characters.") {
+		t.Fatal("password hint missing")
+	}
+	if !strings.Contains(body, "Update name") {
+		t.Fatal("name form missing")
+	}
+	if !strings.Contains(body, "Login id") || !strings.Contains(body, `value="root"`) {
+		t.Fatal("username (login) missing")
+	}
+	if !strings.Contains(body, "notice-warn") || !strings.Contains(body, "cannot be recovered") {
+		t.Fatal("api key warning missing")
 	}
 }
 
@@ -115,7 +140,7 @@ func TestAdminUserHTMLFlow(t *testing.T) {
 	s, st := identServer(t)
 	admin := loginCookie(t, s)
 
-	form := strings.NewReader("username=alice&password=alice-secret-1&role=viewer")
+	form := strings.NewReader("name=Alice&username=alice&password=alice-secret-1&role=viewer")
 	req := httptest.NewRequest(http.MethodPost, "/admin/users/create", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(admin)
@@ -161,8 +186,47 @@ func TestAdminUserHTMLFlow(t *testing.T) {
 	page.AddCookie(admin)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, page)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "alice") {
+	body := rr.Body.String()
+	if rr.Code != http.StatusOK || !strings.Contains(body, "alice") {
 		t.Fatalf("admin page after deactivate")
+	}
+	if !strings.Contains(body, "/activate") || !strings.Contains(body, "/remove") {
+		t.Fatal("inactive actions missing")
+	}
+}
+
+func TestAdminUserHTMLActivateRemove(t *testing.T) {
+	s, st := identServer(t)
+	admin := loginCookie(t, s)
+	u := createUserViaAPI(t, s, admin, "alice", "alice-secret-1", "viewer")
+	id := strconv.FormatInt(u.ID, 10)
+	deact := httptest.NewRequest(http.MethodPost, "/admin/users/"+id+"/deactivate", nil)
+	deact.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, deact)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("deactivate %d", rr.Code)
+	}
+	act := httptest.NewRequest(http.MethodPost, "/admin/users/"+id+"/activate", nil)
+	act.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, act)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=activated") {
+		t.Fatalf("activate %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	deact = httptest.NewRequest(http.MethodPost, "/admin/users/"+id+"/deactivate", nil)
+	deact.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, deact)
+	rm := httptest.NewRequest(http.MethodPost, "/admin/users/"+id+"/remove", nil)
+	rm.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, rm)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "notice=removed") {
+		t.Fatalf("remove %d loc=%s", rr.Code, rr.Header().Get("Location"))
+	}
+	if _, err := st.UserByID(context.Background(), u.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("alice still present: %v", err)
 	}
 }
 
@@ -193,6 +257,9 @@ func TestSettingsPasswordAndKeyFlow(t *testing.T) {
 	if !strings.Contains(body, "gfs_") || !strings.Contains(body, "Copy key") {
 		t.Fatalf("missing one-time key display")
 	}
+	if !strings.Contains(body, "Last used") || !strings.Contains(body, "never") {
+		t.Fatal("last used column missing")
+	}
 
 	list := httptest.NewRequest(http.MethodGet, "/v1/me/api-keys", nil)
 	list.AddCookie(admin)
@@ -219,7 +286,7 @@ func TestSettingsPasswordAndKeyFlow(t *testing.T) {
 	settings.AddCookie(admin)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, settings)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "API key revoked") {
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "API key deleted") {
 		t.Fatalf("settings notice")
 	}
 }

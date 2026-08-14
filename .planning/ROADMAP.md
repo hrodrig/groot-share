@@ -12,7 +12,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 4: VPS home** — HTTP ingest, list, download, vanilla HTML (completed 2026-08-12)
 - [x] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist (completed 2026-08-12)
 - [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
-- [ ] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (planned 2026-08-13)
+- [x] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (completed 2026-08-13, shipped in v0.2.0)
 - [ ] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (planned 2026-08-13)
 - [ ] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (planned 2026-08-13)
 

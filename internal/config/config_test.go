@@ -92,6 +92,10 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	t.Setenv("GFS_S3_BUCKET", "")
 	t.Setenv("AWS_ACCESS_KEY_ID", "")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "")
+	t.Setenv("GFS_LOGIN_SIMPLE", "")
+	t.Setenv("GFS_BRAND_SUB", "")
+	t.Setenv("GFS_FOOTER", "")
+	t.Setenv("GFS_BOOTSTRAP_ADMIN_NAME", "")
 	cfg, err := LoadFromEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -101,6 +105,70 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	}
 	if cfg.LogFormat != "json" || cfg.LogLevel != "info" {
 		t.Fatalf("log defaults: %+v", cfg)
+	}
+	if cfg.LoginSimple || cfg.BrandSub != "" || cfg.Footer != "" {
+		t.Fatalf("brand defaults: %+v", cfg)
+	}
+	if cfg.BootstrapAdminName != DefaultBootstrapName {
+		t.Fatalf("bootstrap name %q", cfg.BootstrapAdminName)
+	}
+}
+
+func TestLoadFromEnvBranding(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_LOGIN_SIMPLE", "true")
+	t.Setenv("GFS_BRAND_SUB", "ACME CORP")
+	t.Setenv("GFS_FOOTER", "Internal archive")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.LoginSimple || cfg.BrandSub != "ACME CORP" || cfg.Footer != "Internal archive" {
+		t.Fatalf("branding: %+v", cfg)
+	}
+}
+
+func TestLoadFromEnvBootstrapName(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_BOOTSTRAP_ADMIN_NAME", "Ada Lovelace")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.BootstrapAdminName != "Ada Lovelace" {
+		t.Fatalf("name %q", cfg.BootstrapAdminName)
+	}
+}
+
+func TestDisplayUserName(t *testing.T) {
+	if DisplayUserName("") != DefaultBootstrapName {
+		t.Fatal(DisplayUserName(""))
+	}
+	if DisplayUserName("  Ada  ") != "Ada" {
+		t.Fatal(DisplayUserName("  Ada  "))
+	}
+}
+
+func TestDisplayBrandSub(t *testing.T) {
+	if DisplayBrandSub("") != DefaultBrandSub {
+		t.Fatal(DisplayBrandSub(""))
+	}
+	if DisplayBrandSub("-") != "" {
+		t.Fatal("hide")
+	}
+	if DisplayBrandSub("  ACME CORP  ") != "ACME CORP" {
+		t.Fatal(DisplayBrandSub("  ACME CORP  "))
+	}
+}
+
+func TestClipPlain(t *testing.T) {
+	if ClipPlain("a\nb\tc", 32) != "a b c" {
+		t.Fatal(ClipPlain("a\nb\tc", 32))
+	}
+	if got := ClipPlain("ABCDEFGHIJ", 4); got != "ABCD" {
+		t.Fatal(got)
 	}
 }
 
@@ -164,6 +232,36 @@ func TestRetentionDefaults(t *testing.T) {
 	}
 	if cfg.KeepLast != 5 || cfg.MaxAgeDays != 7 {
 		t.Fatalf("override %+v", cfg)
+	}
+}
+
+func TestParseIntRejectsOverflow(t *testing.T) {
+	if parseInt("nope", 20) != 20 {
+		t.Fatal("invalid")
+	}
+	if parseInt("0", 20) != 20 {
+		t.Fatal("non-positive")
+	}
+	// Larger than int64 → ParseInt error → default (also covers 64→int bound).
+	if parseInt("99999999999999999999", 20) != 20 {
+		t.Fatal("overflow")
+	}
+	if parseInt("7", 20) != 7 {
+		t.Fatal("ok")
+	}
+}
+
+func TestLoadFromEnvKeepLastOverflow(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_KEEP_LAST", "99999999999999999999")
+	t.Setenv("GFS_MAX_AGE_DAYS", "99999999999999999999")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 20 || cfg.MaxAgeDays != 90 {
+		t.Fatalf("overflow should default %+v", cfg)
 	}
 }
 

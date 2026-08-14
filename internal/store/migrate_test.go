@@ -27,7 +27,7 @@ func TestMigrateAdminColumnToRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	root, err := st.UserByUsername(ctx, "root")
-	if err != nil || root.Role != auth.RoleAdmin {
+	if err != nil || root.Role != auth.RoleAdmin || root.Name != "root" {
 		t.Fatalf("root %+v %v", root, err)
 	}
 	bob, err := st.UserByUsername(ctx, "bob")

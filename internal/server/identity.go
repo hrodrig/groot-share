@@ -26,7 +26,7 @@ const actorKey ctxKey = 1
 
 func (s *Server) handleLoginGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	data["Error"] = ""
 	_ = loginTmpl.Execute(w, data)
 }
@@ -66,7 +66,7 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 	if asJSON {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "role": u.Role})
+		_ = json.NewEncoder(w).Encode(map[string]any{"username": u.Username, "name": u.Name, "role": u.Role})
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -93,7 +93,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"username": ac.User.Username, "role": ac.User.Role})
+	_ = json.NewEncoder(w).Encode(map[string]any{"username": ac.User.Username, "name": ac.User.Name, "role": ac.User.Role})
 }
 
 func (s *Server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +133,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Username string `json:"username"`
+		Name     string `json:"name"`
 		Password string `json:"password"`
 		Role     string `json:"role"`
 		Admin    bool   `json:"admin"`
@@ -152,13 +153,22 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		return
+	}
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	created, err := s.Store.CreateUser(r.Context(), body.Username, hash, role)
+	created, err := s.Store.CreateUser(r.Context(), body.Username, name, hash, role)
 	if err != nil {
+		if errors.Is(err, store.ErrNameRequired) || errors.Is(err, store.ErrNameTooLong) {
+			writeJSONError(w, http.StatusBadRequest, "bad_request")
+			return
+		}
 		writeJSONError(w, http.StatusConflict, "conflict")
 		return
 	}
@@ -177,6 +187,9 @@ func (s *Server) actorFromRequest(r *http.Request) *Actor {
 		ka, err := s.Store.AuthByAPIKeyHash(r.Context(), auth.HashSecret(key))
 		if err != nil {
 			return nil
+		}
+		if err := s.Store.TouchAPIKeyLastUsed(r.Context(), ka.KeyID); err != nil {
+			slog.Debug("touch api key last used", "error", err)
 		}
 		return &Actor{User: ka.User, Method: auth.AuthAPIKey, KeyScope: ka.Scope}
 	}
@@ -229,7 +242,7 @@ func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	data["Error"] = loginErrorCopy(msg)
 	_ = loginTmpl.Execute(w, data)
 }
@@ -258,13 +271,12 @@ var pageFuncs = template.FuncMap{
 }
 
 var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Sign in</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
-<body class="gate">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.LoginTitle}}</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
+<body class="{{.GateClass}}">
 <a class="skip" href="#main">Skip to content</a>
 <div class="gate-tools">{{.ThemeToggle}}</div>
 <main id="main" class="gate-wrap">
-<div class="gate-brand"><span class="crate crate-lg" aria-hidden="true"></span><span class="wordmark-lg">gfs</span></div>
-<p class="gate-sub">Sign in to the archive door</p>
+<h1 class="visually-hidden">Sign in</h1>
 <div class="card gate-card">
 {{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
 <form method="post" action="/login">
@@ -273,7 +285,6 @@ var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DO
 <button class="btn btn-block" type="submit">Sign in</button>
 </form>
 </div>
-<p class="gate-foot">gfs — groot files share</p>
 </main>
 {{.ThemeToggleScript}}
 ` + passwordToggleScript + `
@@ -290,13 +301,13 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -425,13 +436,13 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>
@@ -502,13 +513,13 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
       <a class="brand" href="/">
         <span class="crate" aria-hidden="true"></span>
         <span class="wordmark">gfs</span>
-        <span class="brand-sub">archive door</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
       </a>
 ` + appNavTmpl + `
     </div>
     <div class="appbar-side">
       {{.ThemeToggle}}
-      <span class="who">{{.Username}} <span class="role">{{.Role}}</span></span>
+` + appWhoTmpl + `
       <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
     </div>
   </div>

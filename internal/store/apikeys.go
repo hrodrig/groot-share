@@ -12,17 +12,18 @@ import (
 
 // APIKeyRecord is a stored api_key row (never includes the secret).
 type APIKeyRecord struct {
-	ID        int64
-	UserID    int64
-	Prefix    string
-	Scope     auth.KeyScope
-	CreatedAt time.Time
+	ID         int64
+	UserID     int64
+	Prefix     string
+	Scope      auth.KeyScope
+	CreatedAt  time.Time
+	LastUsedAt time.Time
 }
 
 // ListAPIKeysByUser returns keys for one user, newest first.
 func (s *Store) ListAPIKeysByUser(ctx context.Context, userID int64) ([]APIKeyRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, user_id, prefix, scope, created_at
+		SELECT id, user_id, prefix, scope, created_at, last_used_at
 		FROM api_keys WHERE user_id = ?
 		ORDER BY id DESC`, userID)
 	if err != nil {
@@ -43,7 +44,7 @@ func (s *Store) ListAPIKeysByUser(ctx context.Context, userID int64) ([]APIKeyRe
 // APIKeyByID loads one key row.
 func (s *Store) APIKeyByID(ctx context.Context, id int64) (APIKeyRecord, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, user_id, prefix, scope, created_at
+		SELECT id, user_id, prefix, scope, created_at, last_used_at
 		FROM api_keys WHERE id = ?`, id)
 	return scanAPIKeyRecordRow(row)
 }
@@ -69,15 +70,14 @@ func scanAPIKeyRecord(sc interface {
 }) (APIKeyRecord, error) {
 	var rec APIKeyRecord
 	var scope string
-	var created string
-	err := sc.Scan(&rec.ID, &rec.UserID, &rec.Prefix, &scope, &created)
+	var created, lastUsed string
+	err := sc.Scan(&rec.ID, &rec.UserID, &rec.Prefix, &scope, &created, &lastUsed)
 	if err != nil {
 		return APIKeyRecord{}, err
 	}
 	rec.Scope = auth.KeyScope(scope)
-	if t, err := time.Parse(time.RFC3339, created); err == nil {
-		rec.CreatedAt = t
-	}
+	rec.CreatedAt = parseDBTime(created)
+	rec.LastUsedAt = parseDBTime(lastUsed)
 	return rec, nil
 }
 

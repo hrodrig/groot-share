@@ -6,12 +6,16 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ErrPasswordTooShort is returned when a password is shorter than MinPasswordLen.
+var ErrPasswordTooShort = errors.New("password must be at least 8 characters")
 
 const (
 	// MinPasswordLen is the shortest accepted password (bootstrap and create user).
@@ -35,7 +39,7 @@ func init() {
 // HashPassword returns a bcrypt hash. Rejects short passwords.
 func HashPassword(password string) (string, error) {
 	if len(password) < MinPasswordLen {
-		return "", fmt.Errorf("password must be at least %d characters", MinPasswordLen)
+		return "", ErrPasswordTooShort
 	}
 	b, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
 	if err != nil {

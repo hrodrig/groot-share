@@ -19,7 +19,7 @@ func createUserWithRole(t *testing.T, st *store.Store, username, password string
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CreateUser(context.Background(), username, hash, role); err != nil {
+	if _, err := st.CreateUser(context.Background(), username, username, hash, role); err != nil {
 		t.Fatal(err)
 	}
 }

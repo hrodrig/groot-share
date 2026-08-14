@@ -36,6 +36,19 @@ func mountFaviconRoutes(mux *http.ServeMux) {
 		http.ServeFileFS(w, r, favFS, "manifest.json")
 	})))
 	mux.Handle("GET /favicon.ico", http.RedirectHandler("/static/favicon.ico", http.StatusMovedPermanently))
+	mountUIRoutes(mux)
+}
+
+func mountUIRoutes(mux *http.ServeMux) {
+	uiFS, err := fs.Sub(assets.UIFS, "ui")
+	if err != nil {
+		panic("assets/ui: " + err.Error())
+	}
+	const cache = "no-cache, must-revalidate"
+	mux.Handle("GET /static/login-hero.jpg", withCacheControl(cache, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setStaticContentType(w, "login-hero.jpg")
+		http.ServeFileFS(w, r, uiFS, "login-hero.jpg")
+	})))
 }
 
 func setStaticContentType(w http.ResponseWriter, name string) {
@@ -46,6 +59,8 @@ func setStaticContentType(w http.ResponseWriter, name string) {
 		w.Header().Set("Content-Type", "image/png")
 	case strings.HasSuffix(name, ".ico"):
 		w.Header().Set("Content-Type", "image/x-icon")
+	case strings.HasSuffix(name, ".jpg"), strings.HasSuffix(name, ".jpeg"):
+		w.Header().Set("Content-Type", "image/jpeg")
 	}
 }
 

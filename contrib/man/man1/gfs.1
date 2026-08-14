@@ -1,6 +1,6 @@
 .\" Copyright (c) 2026 hrodrig
 .\" SPDX-License-Identifier: MIT
-.TH GFS 1 "2026-08-13" "gfs v0.2.0" "User Commands"
+.TH GFS 1 "2026-08-13" "gfs v0.2.1" "User Commands"
 .SH NAME
 gfs \- authenticated web and API door for groot diagnostic archives
 .SH SYNOPSIS
@@ -94,6 +94,10 @@ Listen address (default
 .TP
 .B GFS_BOOTSTRAP_PASSWORD
 First admin when the user table is empty (required then; ignored afterward).
+.TP
+.B GFS_BOOTSTRAP_ADMIN_NAME
+Display name for that admin (default
+.BR Administrator ).
 .TP
 .B GFS_S3_*
 Bucket, region, endpoint, prefix for topology

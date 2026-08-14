@@ -45,7 +45,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	applySortQuery(&pager, sortField, sortAsc)
 	noticeKind, noticeText := noticeFromQuery(r.URL.Query())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	mergeActorData(data, ac)
 	data["Items"] = pageItems
 	data["StatsLine"] = statsLine(len(items), total)
@@ -61,7 +61,7 @@ func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {
 	ac := actorFrom(r.Context())
 	noticeKind, noticeText := noticeFromQuery(r.URL.Query())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := pageShellData(s.Version)
+	data := s.pageShell()
 	mergeActorData(data, ac)
 	data["MaxUpload"] = s.maxUpload()
 	data["NoticeKind"] = noticeKind

@@ -6,8 +6,11 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/store"
 )
+
+const appWhoTmpl = `      <span class="who"{{if .Name}} title="{{.Name}}"{{end}}>{{.DisplayName}} <span class="role">{{.Role}}</span></span>`
 
 const appNavTmpl = `
       <nav class="appnav" aria-label="Primary">
@@ -158,10 +161,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   border-left: 2px solid var(--brand);
   transform: translateX(-50%);
 }
-.crate-lg { width: 30px; height: 24px; border-width: 2.5px; }
-.crate-lg::before { top: 5px; border-top-width: 2.5px; }
-.crate-lg::after { top: 7px; border-left-width: 2.5px; }
-
 /* ---- app bar ---- */
 .appbar {
   position: sticky;
@@ -203,7 +202,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   border-left: 1px solid var(--line-strong);
 }
 .appbar-side { display: flex; align-items: center; gap: 12px; }
-.who { color: var(--muted); font-size: 14px; }
+.who { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .role {
   display: inline-block;
   font: 600 11px/1 var(--mono);
@@ -221,7 +220,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .wrap { max-width: 72rem; margin: 0 auto; padding: 28px 24px 32px; width: 100%; }
 .page-head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; margin-bottom: 20px;
+  gap: 16px; margin-bottom: 24px;
 }
 .page-head h1 {
   margin: 0;
@@ -238,7 +237,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 }
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  padding: 16px 20px 12px;
+  padding: 18px 24px 14px;
   border-bottom: 1px solid var(--line);
 }
 .card-head h2 {
@@ -248,7 +247,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   color: var(--muted);
 }
 .card-head .hint { margin: 0; color: var(--faint); font-size: 13px; }
-.card-body { padding: 16px 20px 20px; }
+.card-body { padding: 20px 24px 24px; }
+.card-stack { display: flex; flex-direction: column; gap: 20px; }
+.card-stack .stack-form { margin: 0; }
+.key-reveal { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.key-reveal .key-once { margin: 0; width: 100%; }
 
 /* ---- buttons ---- */
 .btn {
@@ -295,11 +298,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .theme-toggle .is-hidden { display: none; }
 
 /* ---- forms ---- */
-.field { display: block; margin: 0 0 14px; }
-.field span {
+.field { display: block; margin: 0 0 16px; }
+.field > span:first-child {
   display: block; margin-bottom: 6px;
   font: 550 13px/1.3 var(--sans);
   color: var(--muted);
+}
+.field-hint {
+  display: block;
+  margin: 6px 0 0;
+  font: 400 12px/1.45 var(--sans);
+  color: var(--faint);
 }
 .field input {
   display: block; width: 100%;
@@ -311,6 +320,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   font: inherit;
 }
 .field input:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.field input:read-only {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: default;
+}
 .field select {
   display: block; width: 100%;
   padding: 9px 12px;
@@ -321,7 +335,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   font: inherit;
 }
 .stack-form { max-width: 28rem; }
+.stack-form .btn { margin-top: 4px; }
 .inline-form { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.inline-form input {
+  width: 11rem;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
 .key-once {
   margin: 0 0 16px; padding: 12px 14px;
   border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
@@ -509,8 +534,11 @@ table.grid {
 }
 .notice-ok { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
 .notice-ok::before { background: var(--ok); }
+.notice-warn { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); font-weight: 600; font-size: 15px; }
+.notice-warn::before { background: var(--warn); }
 .notice-err { background: var(--err-soft); border-color: var(--err); color: var(--err); }
 .notice-err::before { background: var(--err); }
+.card-stack .notice { margin-bottom: 0; }
 
 /* ---- empty states ---- */
 .empty { padding: 36px 20px; text-align: center; }
@@ -518,26 +546,78 @@ table.grid {
 .empty-sub { margin: 0; color: var(--muted); font-size: 14px; }
 
 /* ---- login gate ---- */
-body.gate { min-height: 100vh; display: grid; place-items: center; }
-.gate-wrap { width: min(24rem, calc(100% - 32px)); padding: 32px 0; }
-.gate-brand {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  margin-bottom: 6px;
+html:has(body.gate) { background: #07090c; }
+body.gate {
+  --bg: transparent;
+  --surface: rgb(19 26 33 / 0.78);
+  --surface-2: rgb(15 21 28 / 0.9);
+  --ink: #e6e9ed;
+  --muted: #c5ccd4;
+  --faint: #9aa3ad;
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.18);
+  --shadow: 0 16px 48px rgb(0 0 0 / 0.45);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background-color: #07090c;
+  background-image: url("/static/login-hero.jpg");
+  background-size: cover;
+  background-position: center 42%;
+  background-repeat: no-repeat;
 }
-.wordmark-lg { font: 650 26px/1 var(--sans); letter-spacing: 0.01em; }
-.gate-sub {
-  margin: 0 0 22px;
-  text-align: center;
-  color: var(--muted); font-size: 14px;
+body.gate::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(7 9 12 / 0.42), rgb(7 9 12 / 0.58));
+  pointer-events: none;
+  z-index: 0;
 }
-.gate-card { padding: 24px; }
+.gate-wrap {
+  position: relative;
+  z-index: 1;
+  width: min(24rem, calc(100% - 32px));
+  padding: 32px 0;
+}
+.gate-tools { z-index: 5; }
+body.gate .theme-toggle {
+  color: #e6e9ed;
+  background: rgb(19 26 33 / 0.55);
+  border-color: rgb(255 255 255 / 0.16);
+}
+.gate-card {
+  padding: 24px;
+  margin-bottom: 0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
 .gate-card form { margin: 0; }
-.gate-foot {
-  margin: 18px 0 0;
-  text-align: center;
-  color: var(--faint);
-  font: 500 12px/1 var(--mono);
-  letter-spacing: 0.06em;
+html:has(body.gate.gate-simple) { background: #fff; }
+body.gate.gate-simple {
+  --bg: #fff;
+  --surface: #fff;
+  --surface-2: #f4f6f8;
+  --ink: #1a1f24;
+  --muted: #5c6670;
+  --faint: #8b949e;
+  --line: #e4e7eb;
+  --line-strong: #cfd4da;
+  --shadow: 0 8px 24px rgb(16 24 40 / 0.08);
+  background: #fff;
+  background-image: none;
+}
+body.gate.gate-simple::before { display: none; }
+body.gate.gate-simple .theme-toggle {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+body.gate.gate-simple .gate-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .alert {
   margin: 0 0 16px;
@@ -563,7 +643,7 @@ dialog#confirm-dialog {
 dialog#confirm-dialog::backdrop { background: rgb(16 24 40 / 0.45); }
 .dialog-card { padding: 20px; margin: 0; }
 .dialog-title { margin: 0 0 6px; font-size: 16px; font-weight: 650; }
-.dialog-text { margin: 0 0 18px; color: var(--muted); font-size: 14px; word-break: break-all; }
+.dialog-text { margin: 0 0 18px; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .dialog-actions .btn { margin: 0; }
 
@@ -705,5 +785,30 @@ func pageShellData(version string) map[string]any {
 		"Version":           displayVersion(version),
 		"PagerSizes":        HTMLPageSizes,
 		"AppFoot":           appFootHTML(version),
+		"BrandSub":          config.DefaultBrandSub,
+		"LoginTitle":        "gfs — Sign in",
+		"GateClass":         "gate",
 	}
+}
+
+func (s *Server) pageShell() map[string]any {
+	data := pageShellData(s.Version)
+	data["BrandSub"] = config.DisplayBrandSub(s.Cfg.BrandSub)
+	data["AppFoot"] = s.footerHTML()
+	if s.Cfg.LoginSimple {
+		data["LoginTitle"] = "Sign in"
+		data["GateClass"] = "gate gate-simple"
+		data["FaviconHead"] = template.HTML("")
+	}
+	return data
+}
+
+func (s *Server) footerHTML() template.HTML {
+	if strings.TrimSpace(s.Cfg.Footer) == "-" {
+		return ""
+	}
+	if text := config.DisplayFooter(s.Cfg.Footer); text != "" {
+		return template.HTML(`<footer class="app-foot"><p>` + template.HTMLEscapeString(text) + `</p></footer>`)
+	}
+	return appFootHTML(s.Version)
 }

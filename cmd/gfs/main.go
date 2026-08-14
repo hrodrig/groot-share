@@ -54,7 +54,7 @@ func run(args []string) int {
 	}
 	defer func() { _ = st.Close() }()
 
-	if err := st.EnsureAdmin(context.Background(), cfg.BootstrapAdmin, cfg.BootstrapPassword); err != nil {
+	if err := st.EnsureAdmin(context.Background(), cfg.BootstrapAdmin, cfg.BootstrapPassword, cfg.BootstrapAdminName); err != nil {
 		fmt.Fprintf(os.Stderr, "gfs: %v\n", err)
 		return 1
 	}
