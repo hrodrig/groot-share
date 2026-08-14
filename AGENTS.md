@@ -16,5 +16,6 @@ Web/API door for groot `.tar.gz` archives when a VPS exists.
 | **groot-selfhosted** | CronJob / bastion / S3-only playbooks |
 | **groot-trigger** | In-cluster HTTP → collect Job (supply-chain template) |
 | **gfs** (this repo) | VPS only / VPS + S3: auth, ingest, list, download, audit, retention |
+| **groot-share-selfhosted** | Operator deploy for gfs: Compose, systemd, Helm (`vps` / `vps-s3`) |
 
 Product freeze: `docs/GFS-CONSENSUS.md`.
