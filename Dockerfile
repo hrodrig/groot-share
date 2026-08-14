@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Local / CI image: compile inside Docker (make docker-build).
 # Release images: GoReleaser builds static binaries, then Dockerfile.release packages them.
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.6-alpine AS builder
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download
