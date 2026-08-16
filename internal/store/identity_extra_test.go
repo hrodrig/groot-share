@@ -120,6 +120,39 @@ func TestSetPasswordAndCreateUserValidation(t *testing.T) {
 	}
 }
 
+func TestSetPasswordDeletesSessions(t *testing.T) {
+	st := testStore(t)
+	ctx := context.Background()
+	hash, err := auth.HashPassword("correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := st.CreateUser(ctx, "bob", "Bob", hash, auth.RoleViewer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, shash, err := auth.NewSessionToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CreateSession(ctx, u.ID, shash, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.UserBySessionHash(ctx, shash); err != nil {
+		t.Fatal(err)
+	}
+	newHash, err := auth.HashPassword("new-secret-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetPassword(ctx, u.ID, newHash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.UserBySessionHash(ctx, shash); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("session should be gone: %v", err)
+	}
+}
+
 func TestUserLookupNotFound(t *testing.T) {
 	st := testStore(t)
 	ctx := context.Background()

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Password change invalidates all sessions for that user; self-service also clears the cookie ([#9](https://github.com/hrodrig/groot-share/issues/9))
+
+### Changed
+
+- Document trusted reverse-proxy expectations for `Host` / `X-Forwarded-Proto` ([#8](https://github.com/hrodrig/groot-share/issues/8))
+- Refresh `SECURITY.md` supported-versions wording ([#10](https://github.com/hrodrig/groot-share/issues/10))
+- Strengthen `.env.example` bootstrap password placeholder and warning ([#11](https://github.com/hrodrig/groot-share/issues/11))
+
 ## [0.2.2] — 2026-08-16
 
 ### Security

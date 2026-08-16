@@ -12,18 +12,28 @@ read or remove arbitrary objects elsewhere in a shared bucket.
 `POST /login` is rate-limited in-process (default `GFS_LOGIN_RATE_LIMIT=20/1m` per
 client IP and per username).
 
+Password changes invalidate all sessions for that user (Settings, `PATCH /v1/me`, or
+admin password patch).
+
+## Deployment (TLS / proxy)
+
+gfs does not terminate TLS itself. Put a **trusted** reverse proxy in front (see
+[groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted)).
+
+Absolute links (copy-download URL) use `Request.Host` and, when not serving TLS
+directly, `X-Forwarded-Proto`. The proxy must overwrite those headers; do **not**
+expose gfs to untrusted clients that can set `Host` / `X-Forwarded-*`.
+
 ## Supported versions
 
 | Version | Supported |
 | ------- | --------- |
-| Latest release (when published) | Yes |
+| Latest release | Yes |
 | Older releases | No — upgrade |
-
-Until the first tagged release, treat `develop` as the security surface.
 
 ## Reporting a vulnerability
 
 **Do not open a public issue** for undisclosed vulnerabilities.
 
-- Preferred: GitHub Security Advisories on this repository (once the remote exists).
+- Preferred: GitHub Security Advisories on this repository.
 - Alternatively: contact the maintainer via [github.com/hrodrig](https://github.com/hrodrig).

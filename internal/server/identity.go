@@ -28,6 +28,10 @@ func (s *Server) handleLoginGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := s.pageShell()
 	data["Error"] = ""
+	data["Notice"] = ""
+	if r.URL.Query().Get("notice") == "password" {
+		data["Notice"] = "Password updated. Sign in again."
+	}
 	_ = loginTmpl.Execute(w, data)
 }
 
@@ -301,6 +305,7 @@ var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DO
 <main id="main" class="gate-wrap">
 <h1 class="visually-hidden">Sign in</h1>
 <div class="card gate-card">
+{{if .Notice}}<div class="notice notice-ok" role="status">{{.Notice}}</div>{{end}}
 {{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
 <form method="post" action="/login">
 <label class="field"><span>Username</span><input name="username" autocomplete="username" required autofocus></label>
