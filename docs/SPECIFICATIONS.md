@@ -69,7 +69,7 @@ Unauthenticated:
 | GET | `/healthz` | Liveness |
 | GET | `/readyz` | SQLite OK; if S3 configured, HeadBucket/list prefix must succeed |
 | GET | `/login` | Login form |
-| POST | `/login` | username + password → session cookie; fail 401 |
+| POST | `/login` | username + password → session cookie; fail `401`; rate limit → `429` |
 
 Authenticated (session cookie **or** api_key for upload API):
 
@@ -81,6 +81,8 @@ Authenticated (session cookie **or** api_key for upload API):
 | POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata |
 | GET | `/v1/archives/{id}` | Download (session); `404` if unknown |
 | GET | `/v1/archives/{id}/file` | Same bytes (HTML “download” link may use this) |
+
+On **vps-s3**, `{id}` is the object key. Download and delete accept only keys under `GFS_S3_PREFIX` (after normalize); keys outside the prefix → `404` (no raw bucket Get/Delete).
 
 Upload auth: `Authorization: Bearer <api_key>` or `X-API-Key` (trigger-style). Do not accept api_key on the query string.
 
@@ -110,6 +112,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_BOOTSTRAP_ADMIN_NAME` | first admin display name (default `Administrator`) |
 | `GFS_MAX_UPLOAD_BYTES` | default 32GiB; stream cap (`http.MaxBytesReader`) |
 | `GFS_LOGIN_SIMPLE` | `true`: `/login` is a white form only (no hero, no gfs title/favicon). Default off |
+| `GFS_LOGIN_RATE_LIMIT` | Cap on `POST /login` per client IP **and** per username (`N/duration`, default `20/1m`). `0` / `off` disables |
 | `GFS_BRAND_SUB` | App-bar tag after the wordmark. Default `archive door`. Short string (e.g. `ACME CORP`). `-` hides |
 | `GFS_FOOTER` | Authenticated footer. Default `gfs vX · groot · groot-share`. Plain text replaces it. `-` hides |
 
@@ -120,6 +123,7 @@ Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions 
 - Password: argon2id or bcrypt; never log
 - api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once; `last_used_at` updated on successful key auth (list via Settings / `GET /v1/me/api-keys`)
 - Session: httpOnly cookie; Secure when TLS
+- `POST /login` rate limit: in-process sliding window per client IP and per username (default `20/1m` via `GFS_LOGIN_RATE_LIMIT`); exceeded → `429` + `Retry-After`
 - Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). Display name from `GFS_BOOTSTRAP_ADMIN_NAME` (default `Administrator`). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
 
 ### 6.1 Roles and api_key scopes (v0.2)
@@ -170,7 +174,7 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
 
 ## 8. Observability
 
-- slog JSON to stdout (trigger/gghstats style)
+- slog JSON (or text) lines to stdout — one JSON object per line when `GFS_LOG_FORMAT=json` (no process-name prefix; parseable by jq / Vector / Fluent Bit)
 - HTTP access line with status; never api_key/password
 - Audit table: actor, action, object key/id, ts, remote IP (respect trusted proxies later; v0.1 may use RemoteAddr only)
 

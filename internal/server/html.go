@@ -730,6 +730,8 @@ func loginErrorCopy(code string) string {
 		return "Enter your username and password."
 	case "not_ready":
 		return "gfs is not ready. Try again in a moment."
+	case "rate_limited":
+		return "Too many sign-in attempts. Try again later."
 	case "":
 		return ""
 	default:

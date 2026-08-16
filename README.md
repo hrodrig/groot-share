@@ -5,7 +5,7 @@
 **📦** _Web and API door for groot `.tar.gz` archives when a VPS exists_
 
 [![Release](https://img.shields.io/github/v/release/hrodrig/groot-share?display_name=tag&label=release&logo=github)](https://github.com/hrodrig/groot-share/releases)
-[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/hrodrig/groot-share/releases)
+[![Version](https://img.shields.io/badge/version-0.2.2-blue)](https://github.com/hrodrig/groot-share/releases)
 [![Go](https://img.shields.io/badge/Go-1.26.6-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![CI](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml)
@@ -139,6 +139,7 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | Retention (defaults 20 / 90) |
 | `GFS_MAX_UPLOAD_BYTES` | Upload cap (default 32 GiB) |
 | `GFS_LOGIN_SIMPLE` | `true`: white `/login` only (no product chrome). Default off |
+| `GFS_LOGIN_RATE_LIMIT` | Cap `POST /login` per IP and per username (default `20/1m`). `0` disables |
 | `GFS_BRAND_SUB` | App-bar tag (default `archive door`). Example: `ACME CORP`. `-` hides |
 | `GFS_FOOTER` | Footer text (default `gfs vX · groot · groot-share`). `-` hides |
 

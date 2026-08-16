@@ -22,6 +22,17 @@ func NormalizePrefix(p string) string {
 	return p
 }
 
+// UnderPrefix reports whether key is under NormalizePrefix(prefix).
+// Rejects empty keys and any key containing "..".
+func UnderPrefix(prefix, key string) bool {
+	key = strings.TrimSpace(key)
+	if key == "" || strings.Contains(key, "..") {
+		return false
+	}
+	key = strings.TrimLeft(key, "/")
+	return strings.HasPrefix(key, NormalizePrefix(prefix))
+}
+
 // HTTPKey is the gfs transit object key. groot upload.s3 uses a different shape.
 func HTTPKey(prefix, id string, t time.Time) string {
 	t = t.UTC()

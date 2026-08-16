@@ -25,6 +25,12 @@ func TestHTTPKeyAndSource(t *testing.T) {
 	if NormalizePrefix("") != "captures/" || NormalizePrefix("captures") != "captures/" {
 		t.Fatal(NormalizePrefix("captures"))
 	}
+	if !UnderPrefix("captures/", "captures/a.tar.gz") {
+		t.Fatal("in-prefix")
+	}
+	if UnderPrefix("captures/", "other/a.tar.gz") || UnderPrefix("captures/", "captures/../x") || UnderPrefix("captures/", "") {
+		t.Fatal("out-of-prefix must fail")
+	}
 }
 
 func TestMemoryPutGetListHead(t *testing.T) {

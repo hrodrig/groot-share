@@ -15,6 +15,7 @@ import (
 	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/logging"
+	"github.com/hrodrig/groot-share/internal/ratelimit"
 	"github.com/hrodrig/groot-share/internal/server"
 	"github.com/hrodrig/groot-share/internal/store"
 )
@@ -100,10 +101,11 @@ func openBlobs(cfg config.Config) (blob.Store, error) {
 
 func newApp(cfg config.Config, st *store.Store, blobs blob.Store, version string) *server.Server {
 	return &server.Server{
-		Cfg:     cfg,
-		Store:   st,
-		Blobs:   blobs,
-		Version: version,
+		Cfg:        cfg,
+		Store:      st,
+		Blobs:      blobs,
+		Version:    version,
+		LoginLimit: ratelimit.New(cfg.LoginRateLimit.Requests, cfg.LoginRateLimit.Window),
 		Ready: func() bool {
 			if !st.Ping(context.Background()) {
 				return false

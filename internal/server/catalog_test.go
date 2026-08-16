@@ -176,6 +176,29 @@ func TestOpenDownloadRejectsDotDot(t *testing.T) {
 	}
 }
 
+func TestVPSS3RejectsOutsidePrefix(t *testing.T) {
+	s, mem := vpsS3Server(t)
+	if err := mem.Put(context.Background(), "other/secret.tar.gz", strings.NewReader("leak")); err != nil {
+		t.Fatal(err)
+	}
+	ck := loginCookie(t, s)
+	dl := authedGET(t, s, ck, "/v1/archives/other/secret.tar.gz/file")
+	if dl.Code != http.StatusNotFound {
+		t.Fatalf("download outside prefix %d %s", dl.Code, dl.Body.String())
+	}
+	del := httptest.NewRequest(http.MethodDelete, "/v1/archives/other/secret.tar.gz", nil)
+	del.AddCookie(ck)
+	del.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, del)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("delete outside prefix %d %s", rr.Code, rr.Body.String())
+	}
+	if _, err := mem.Head(context.Background(), "other/secret.tar.gz"); err != nil {
+		t.Fatal("object must still exist in bucket")
+	}
+}
+
 func TestVPSS3UploadDuplicate(t *testing.T) {
 	s, _ := vpsS3Server(t)
 	ck := loginCookie(t, s)

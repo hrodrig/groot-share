@@ -193,6 +193,9 @@ func TestLoadFromEnvVPSS3(t *testing.T) {
 	if cfg.S3Region != "us-east-1" || cfg.S3Prefix != "captures/" {
 		t.Fatalf("s3 defaults: %+v", cfg)
 	}
+	if cfg.LoginRateLimit.Requests != 20 || cfg.LoginRateLimit.Window != time.Minute {
+		t.Fatalf("login rate default: %+v", cfg.LoginRateLimit)
+	}
 	if !cfg.S3PathStyle {
 		t.Fatal("path-style should default true when endpoint set")
 	}
@@ -308,5 +311,28 @@ func TestLoadFromEnvDurations(t *testing.T) {
 	}
 	if cfg.StagingGrace != 24*time.Hour {
 		t.Fatalf("staging grace default %+v", cfg.StagingGrace)
+	}
+}
+
+func TestParseLimitSpec(t *testing.T) {
+	got, err := ParseLimitSpec("20/1m")
+	if err != nil || got.Requests != 20 || got.Window != time.Minute {
+		t.Fatalf("%+v %v", got, err)
+	}
+	got, err = ParseLimitSpec("0")
+	if err != nil || got.Requests != 0 {
+		t.Fatalf("disabled %+v %v", got, err)
+	}
+	if _, err := ParseLimitSpec("nope"); err == nil {
+		t.Fatal("want error")
+	}
+}
+
+func TestLoadFromEnvBadLoginRate(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_LOGIN_RATE_LIMIT", "bogus")
+	if _, err := LoadFromEnv(); err == nil || !strings.Contains(err.Error(), "GFS_LOGIN_RATE_LIMIT") {
+		t.Fatalf("err %v", err)
 	}
 }

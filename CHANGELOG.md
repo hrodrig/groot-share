@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-08-16
+
+### Security
+
+- `vps-s3` download/delete reject object keys outside `GFS_S3_PREFIX` ([#5](https://github.com/hrodrig/groot-share/issues/5))
+- Rate-limit `POST /login` per client IP and per username (default `GFS_LOGIN_RATE_LIMIT=20/1m` → `429`) ([#4](https://github.com/hrodrig/groot-share/issues/4))
+
+### Changed
+
+- Process logs emit pure slog JSON/text lines (no `gfs ` prefix) so jq and log shippers can parse stdout ([#6](https://github.com/hrodrig/groot-share/issues/6))
+
+### Fixed
+
+- Mark `github.com/aws/smithy-go` as a direct `go.mod` require (imported by `internal/blob`)
+
 ## [0.2.1] — 2026-08-13
 
 ### Fixed

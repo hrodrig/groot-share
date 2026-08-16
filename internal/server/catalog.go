@@ -195,6 +195,9 @@ func (s *Server) openDownload(ctx context.Context, id string) (io.ReadCloser, st
 }
 
 func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store.Archive, error) {
+	if !blob.UnderPrefix(s.Cfg.S3Prefix, id) {
+		return nil, store.Archive{}, store.ErrNotFound
+	}
 	rc, obj, err := s.Blobs.Get(ctx, id)
 	if err == nil {
 		return rc, objectArchive(obj), nil
