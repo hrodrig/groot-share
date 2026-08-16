@@ -2,6 +2,7 @@ package logging_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"testing"
@@ -9,15 +10,20 @@ import (
 	"github.com/hrodrig/groot-share/internal/logging"
 )
 
-func TestSetupWriterJSONPrefixed(t *testing.T) {
+func TestSetupWriterJSONLines(t *testing.T) {
 	var buf bytes.Buffer
 	logging.SetupWriter(&buf, "json", "debug")
 	slog.Info("hello")
 	out := buf.String()
-	if !strings.HasPrefix(out, "gfs ") {
-		t.Fatalf("prefix missing: %q", out)
+	if strings.HasPrefix(out, "gfs ") {
+		t.Fatalf("must not prefix lines: %q", out)
 	}
-	if !strings.Contains(out, `"msg":"hello"`) && !strings.Contains(out, "hello") {
+	line := strings.TrimSpace(out)
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(line), &payload); err != nil {
+		t.Fatalf("want parseable JSON: %v %q", err, out)
+	}
+	if payload["msg"] != "hello" {
 		t.Fatalf("msg missing: %q", out)
 	}
 }
@@ -40,7 +46,7 @@ func TestSetupWriterPartialLines(t *testing.T) {
 	var buf bytes.Buffer
 	logging.SetupWriter(&buf, "json", "info")
 	slog.Info("one")
-	if !strings.Contains(buf.String(), "gfs ") {
+	if !strings.Contains(buf.String(), `"msg":"one"`) {
 		t.Fatal(buf.String())
 	}
 }
@@ -50,13 +56,23 @@ func TestSetupDefault(t *testing.T) {
 	slog.Error("boom")
 }
 
-func TestPrefixWriterChunks(t *testing.T) {
+func TestJSONMultipleLines(t *testing.T) {
 	var buf bytes.Buffer
 	logging.SetupWriter(&buf, "json", "info")
 	slog.Info("line-a")
 	slog.Info("line-b")
 	out := buf.String()
-	if strings.Count(out, "gfs ") < 2 {
-		t.Fatalf("want 2 prefixes: %q", out)
+	if strings.Contains(out, "gfs ") {
+		t.Fatalf("prefix must be gone: %q", out)
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) < 2 {
+		t.Fatalf("want 2 lines: %q", out)
+	}
+	for _, line := range lines {
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(line), &payload); err != nil {
+			t.Fatalf("line %q: %v", line, err)
+		}
 	}
 }

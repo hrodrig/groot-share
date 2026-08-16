@@ -11,6 +11,7 @@ import (
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
+	"github.com/hrodrig/groot-share/internal/ratelimit"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
@@ -21,6 +22,8 @@ type Server struct {
 	Blobs   blob.Store
 	Ready   func() bool
 	Version string
+	// LoginLimit gates POST /login (nil = unlimited; production sets from config).
+	LoginLimit *ratelimit.Limiter
 }
 
 // Handler returns the root mux with middleware.

@@ -139,6 +139,7 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | Retention (defaults 20 / 90) |
 | `GFS_MAX_UPLOAD_BYTES` | Upload cap (default 32 GiB) |
 | `GFS_LOGIN_SIMPLE` | `true`: white `/login` only (no product chrome). Default off |
+| `GFS_LOGIN_RATE_LIMIT` | Cap `POST /login` per IP and per username (default `20/1m`). `0` disables |
 | `GFS_BRAND_SUB` | App-bar tag (default `archive door`). Example: `ACME CORP`. `-` hides |
 | `GFS_FOOTER` | Footer text (default `gfs vX · groot · groot-share`). `-` hides |
 

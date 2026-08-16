@@ -37,6 +37,13 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 		s.loginFail(w, r, asJSON, http.StatusBadRequest, "bad_request")
 		return
 	}
+	if !s.allowLoginAttempt(r, username) {
+		if secs := int(s.Cfg.LoginRateLimit.Window.Seconds()); secs > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(secs))
+		}
+		s.loginFail(w, r, asJSON, http.StatusTooManyRequests, "rate_limited")
+		return
+	}
 	if s.Store == nil {
 		s.loginFail(w, r, asJSON, http.StatusServiceUnavailable, "not_ready")
 		return
@@ -245,6 +252,22 @@ func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, 
 	data := s.pageShell()
 	data["Error"] = loginErrorCopy(msg)
 	_ = loginTmpl.Execute(w, data)
+}
+
+// allowLoginAttempt enforces per-IP and per-username caps on POST /login.
+func (s *Server) allowLoginAttempt(r *http.Request, username string) bool {
+	if s.LoginLimit == nil {
+		return true
+	}
+	ip := remoteIP(r.RemoteAddr)
+	if !s.LoginLimit.Allow("ip:" + ip) {
+		return false
+	}
+	userKey := strings.ToLower(strings.TrimSpace(username))
+	if userKey == "" {
+		userKey = "empty"
+	}
+	return s.LoginLimit.Allow("user:" + userKey)
 }
 
 func writeJSONError(w http.ResponseWriter, code int, msg string) {

@@ -8,10 +8,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/logging"
+	"github.com/hrodrig/groot-share/internal/ratelimit"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
@@ -651,5 +653,33 @@ func TestLoginFormWrongPasswordShowsError(t *testing.T) {
 	s.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "Incorrect username or password") {
 		t.Fatalf("form login fail %d body=%q", rr.Code, rr.Body.String())
+	}
+}
+
+func TestLoginRateLimited(t *testing.T) {
+	s, _ := identServer(t)
+	s.LoginLimit = ratelimit.New(2, time.Minute)
+	s.Cfg.LoginRateLimit = config.LimitSpec{Requests: 2, Window: time.Minute}
+	post := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"root","password":"wrong"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		req.RemoteAddr = "203.0.113.9:1234"
+		rr := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rr, req)
+		return rr
+	}
+	if post().Code != http.StatusUnauthorized {
+		t.Fatal("first fail")
+	}
+	if post().Code != http.StatusUnauthorized {
+		t.Fatal("second fail")
+	}
+	rr := post()
+	if rr.Code != http.StatusTooManyRequests || !strings.Contains(rr.Body.String(), "rate_limited") {
+		t.Fatalf("third %d %s", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("Retry-After") == "" {
+		t.Fatal("want Retry-After")
 	}
 }

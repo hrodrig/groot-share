@@ -52,6 +52,15 @@ type Config struct {
 	BrandSub string
 	// Footer replaces the authenticated footer. Empty → default. "-" hides.
 	Footer string
+
+	// LoginRateLimit caps POST /login per client IP and per username (0 = disabled).
+	LoginRateLimit LimitSpec
+}
+
+// LimitSpec is requests per window (0 = disabled).
+type LimitSpec struct {
+	Requests int
+	Window   time.Duration
 }
 
 const (
@@ -91,6 +100,11 @@ func LoadFromEnv() (Config, error) {
 		BrandSub:           strings.TrimSpace(os.Getenv("GFS_BRAND_SUB")),
 		Footer:             strings.TrimSpace(os.Getenv("GFS_FOOTER")),
 	}
+	var err error
+	cfg.LoginRateLimit, err = ParseLimitSpec(envOr("GFS_LOGIN_RATE_LIMIT", "20/1m"))
+	if err != nil {
+		return Config{}, fmt.Errorf("GFS_LOGIN_RATE_LIMIT: %w", err)
+	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)
 	}
@@ -108,6 +122,30 @@ func LoadFromEnv() (Config, error) {
 	pathStyleDefault := cfg.S3Endpoint != ""
 	cfg.S3PathStyle = parseBool(os.Getenv("GFS_S3_PATH_STYLE"), pathStyleDefault)
 	return cfg, nil
+}
+
+// ParseLimitSpec parses "N/1m", "N/1h", "N/30s", or "0" / empty / off (disabled).
+func ParseLimitSpec(s string) (LimitSpec, error) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" || s == "0" || s == "off" || s == "disabled" {
+		return LimitSpec{}, nil
+	}
+	parts := strings.Split(s, "/")
+	if len(parts) != 2 {
+		return LimitSpec{}, fmt.Errorf("invalid limit %q (want N/duration e.g. 20/1m)", s)
+	}
+	n, err := strconv.Atoi(parts[0])
+	if err != nil || n < 0 {
+		return LimitSpec{}, fmt.Errorf("invalid request count in %q", s)
+	}
+	if n == 0 {
+		return LimitSpec{}, nil
+	}
+	d, err := time.ParseDuration(parts[1])
+	if err != nil || d <= 0 {
+		return LimitSpec{}, fmt.Errorf("invalid duration in %q", s)
+	}
+	return LimitSpec{Requests: n, Window: d}, nil
 }
 
 // S3CredsPresent reports whether AWS keys are still set (readyz belt-and-suspenders).

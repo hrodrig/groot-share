@@ -1,4 +1,4 @@
-// Package logging configures process-wide slog (gghstats/trigger-style).
+// Package logging configures process-wide slog.
 package logging
 
 import (
@@ -8,10 +8,8 @@ import (
 	"strings"
 )
 
-const linePrefix = "gfs "
-
 // Setup configures the default slog logger. format: json|text; level: debug|info|warn|error.
-// SPEC §8: JSON to stdout (not trigger's stderr).
+// SPEC §8: JSON lines to stdout (parseable by jq / Vector / Fluent Bit).
 func Setup(format, level string) {
 	SetupWriter(os.Stdout, format, level)
 }
@@ -21,9 +19,9 @@ func SetupWriter(w io.Writer, format, level string) {
 	opts := &slog.HandlerOptions{Level: parseLevel(level)}
 	var h slog.Handler
 	if strings.EqualFold(format, "text") {
-		h = slog.NewTextHandler(&prefixWriter{w: w}, opts)
+		h = slog.NewTextHandler(w, opts)
 	} else {
-		h = slog.NewJSONHandler(&prefixWriter{w: w}, opts)
+		h = slog.NewJSONHandler(w, opts)
 	}
 	slog.SetDefault(slog.New(h))
 }
@@ -38,32 +36,5 @@ func parseLevel(level string) slog.Level {
 		return slog.LevelError
 	default:
 		return slog.LevelInfo
-	}
-}
-
-type prefixWriter struct {
-	w   io.Writer
-	acc []byte
-}
-
-func (p *prefixWriter) Write(b []byte) (int, error) {
-	n := len(b)
-	p.acc = append(p.acc, b...)
-	for {
-		idx := -1
-		for i, c := range p.acc {
-			if c == '\n' {
-				idx = i
-				break
-			}
-		}
-		if idx < 0 {
-			return n, nil
-		}
-		line := p.acc[:idx+1]
-		p.acc = append([]byte{}, p.acc[idx+1:]...)
-		if _, err := p.w.Write(append([]byte(linePrefix), line...)); err != nil {
-			return n, err
-		}
 	}
 }

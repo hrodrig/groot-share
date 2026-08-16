@@ -6,6 +6,12 @@ Web/API door for groot `.tar.gz` archives on a VPS (optional S3-compatible backe
 Treat user passwords, api_keys, and bucket credentials as sensitive. Never log them
 (see `docs/SPECIFICATIONS.md`).
 
+On topology `vps-s3`, download and delete are scoped to `GFS_S3_PREFIX` so gfs cannot
+read or remove arbitrary objects elsewhere in a shared bucket.
+
+`POST /login` is rate-limited in-process (default `GFS_LOGIN_RATE_LIMIT=20/1m` per
+client IP and per username).
+
 ## Supported versions
 
 | Version | Supported |

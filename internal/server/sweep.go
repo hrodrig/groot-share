@@ -56,6 +56,9 @@ func (s *Server) removeArchive(ctx context.Context, id string) (store.Archive, e
 }
 
 func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, error) {
+	if !blob.UnderPrefix(s.Cfg.S3Prefix, id) {
+		return store.Archive{}, store.ErrNotFound
+	}
 	obj, err := s.Blobs.Head(ctx, id)
 	if err == nil {
 		if err := s.Blobs.Delete(ctx, id); err != nil {

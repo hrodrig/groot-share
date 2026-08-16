@@ -19,6 +19,9 @@ func TestLoginErrorCopy(t *testing.T) {
 	if loginErrorCopy("unauthorized") != "Incorrect username or password." {
 		t.Fatal(loginErrorCopy("unauthorized"))
 	}
+	if loginErrorCopy("rate_limited") != "Too many sign-in attempts. Try again later." {
+		t.Fatal(loginErrorCopy("rate_limited"))
+	}
 	if loginErrorCopy("") != "" {
 		t.Fatal("empty")
 	}
