@@ -202,11 +202,20 @@ func TestPatchMePassword(t *testing.T) {
 	patch := httptest.NewRequest(http.MethodPatch, "/v1/me",
 		strings.NewReader(`{"password":"new-secret-9"}`))
 	patch.Header.Set("Content-Type", "application/json")
+	patch.Header.Set("Accept", "application/json")
 	patch.AddCookie(admin)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, patch)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("patch me %d %s", rr.Code, rr.Body.String())
+	}
+	me := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	me.Header.Set("Accept", "application/json")
+	me.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, me)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("old session must die %d %s", rr.Code, rr.Body.String())
 	}
 	login := httptest.NewRequest(http.MethodPost, "/login",
 		bytes.NewReader([]byte(`{"username":"root","password":"new-secret-9"}`)))

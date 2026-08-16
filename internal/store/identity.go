@@ -342,9 +342,15 @@ func (s *Store) RemoveUser(ctx context.Context, id int64) error {
 	return nil
 }
 
-// SetPassword replaces the bcrypt hash for one user.
+// SetPassword replaces the bcrypt hash for one user and deletes all of their sessions.
 func (s *Store) SetPassword(ctx context.Context, id int64, passwordHash string) error {
-	res, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin set password: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.ExecContext(ctx,
 		`UPDATE users SET password_hash = ? WHERE id = ?`,
 		passwordHash, id,
 	)
@@ -357,6 +363,12 @@ func (s *Store) SetPassword(ctx context.Context, id int64, passwordHash string) 
 	}
 	if n == 0 {
 		return ErrNotFound
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
+		return fmt.Errorf("delete sessions on password change: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit set password: %w", err)
 	}
 	return nil
 }

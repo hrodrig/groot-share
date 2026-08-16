@@ -123,8 +123,10 @@ Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions 
 - Password: argon2id or bcrypt; never log
 - api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once; `last_used_at` updated on successful key auth (list via Settings / `GET /v1/me/api-keys`)
 - Session: httpOnly cookie; Secure when TLS
+- Password change (Settings, `PATCH /v1/me`, or admin password patch) deletes **all** sessions for that user; self-service change also clears the browser cookie and requires re-login
 - `POST /login` rate limit: in-process sliding window per client IP and per username (default `20/1m` via `GFS_LOGIN_RATE_LIMIT`); exceeded → `429` + `Retry-After`
 - Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). Display name from `GFS_BOOTSTRAP_ADMIN_NAME` (default `Administrator`). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
+- **Reverse proxy:** gfs expects a trusted proxy for TLS. Absolute links use `Host` and (when not on TLS) `X-Forwarded-Proto`. The proxy must overwrite those headers; do not expose gfs to clients that can set them.
 
 ### 6.1 Roles and api_key scopes (v0.2)
 
@@ -161,7 +163,7 @@ User management (admin session only):
 | POST | `/admin/users/{id}/activate` | HTML: set `active=1` |
 | POST | `/admin/users/{id}/username` | HTML: admin changes login id (unique) |
 | POST | `/admin/users/{id}/remove` | HTML: hard-delete an **inactive** user (sessions/keys go; username is freed) |
-| PATCH | `/v1/me` | Session only: `{password}` — change own password |
+| PATCH | `/v1/me` | Session only: `{password}` — change own password (invalidates all sessions; clears cookie) |
 | POST | `/settings/name` | HTML: change own display name (not login) |
 
 Display **Name** is required (max 80). The app bar shows it truncated at 30 runes, keeping the last 4 (`Juan ...egro`). Existing rows without a name are backfilled from `username`. **Username** (login) is unique; only an admin can change it. Users change their own Name in Settings.

@@ -240,9 +240,11 @@ func TestSettingsPasswordAndKeyFlow(t *testing.T) {
 	pwReq.AddCookie(admin)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, pwReq)
-	if rr.Code != http.StatusSeeOther {
-		t.Fatalf("password change %d", rr.Code)
+	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "/login?notice=password") {
+		t.Fatalf("password change %d loc=%s", rr.Code, rr.Header().Get("Location"))
 	}
+
+	admin = loginAs(t, s, "root", "new-secret-99")
 
 	keyForm := strings.NewReader("scope=upload")
 	keyReq := httptest.NewRequest(http.MethodPost, "/settings/api-keys", keyForm)

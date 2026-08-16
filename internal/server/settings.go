@@ -56,7 +56,8 @@ func (s *Server) handleSettingsPasswordPOST(w http.ResponseWriter, r *http.Reque
 		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/settings?notice=password", http.StatusSeeOther)
+	s.setSessionCookie(w, "", -1)
+	http.Redirect(w, r, "/login?notice=password", http.StatusSeeOther)
 }
 
 func (s *Server) handleSettingsNamePOST(w http.ResponseWriter, r *http.Request) {

@@ -143,7 +143,9 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 | `GFS_BRAND_SUB` | App-bar tag (default `archive door`). Example: `ACME CORP`. `-` hides |
 | `GFS_FOOTER` | Footer text (default `gfs vX · groot · groot-share`). `-` hides |
 
-Copy [.env.example](.env.example) for local dev; **never commit** `.env`.
+Copy [.env.example](.env.example) for local dev; **never commit** `.env`. Change the sample bootstrap password before first start.
+
+Deploy behind a **trusted** reverse proxy for TLS ([groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted)). Absolute links use `Host` / `X-Forwarded-Proto` — the proxy must overwrite those headers (see [SECURITY.md](SECURITY.md)).
 
 [↑ Back to top](#readme-top)
 
