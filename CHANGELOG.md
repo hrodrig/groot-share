@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-08-16
+
 ### Security
 
 - Password change invalidates all sessions for that user; self-service also clears the cookie ([#9](https://github.com/hrodrig/groot-share/issues/9))
