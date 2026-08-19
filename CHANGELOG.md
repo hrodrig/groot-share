@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-08-19
+
 ### Security
 
 - `vps-s3` HTTP ingest treats object-store `Head` errors as fatal when allocating a key ([#16](https://github.com/hrodrig/groot-share/issues/16))

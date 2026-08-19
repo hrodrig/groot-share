@@ -5,10 +5,10 @@ milestone_name: SFTP watcher
 current_phase: 8
 current_phase_name: SFTP inbox watcher
 status: planned
-stopped_at: Phase 7 shipped in v0.2.0; product at v0.2.3 — next is Phase 8
-last_updated: "2026-08-19T04:50:00.000Z"
+stopped_at: Phase 7 shipped in v0.2.0; product at v0.2.4 — next is Phase 8
+last_updated: "2026-08-19T05:00:00.000Z"
 last_activity: 2026-08-19
-last_activity_desc: Audit hardening on develop (issues #16–#21); product v0.2.3
+last_activity_desc: Release v0.2.4 (audit hardening #16–#21)
 progress:
   total_phases: 9
   completed_phases: 7
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-12)
 Phase: 8 of 9 (SFTP inbox watcher)
 Plan: 08-01 not started
 Status: Planned — ready for `/gsd-execute-phase` or manual execution
-Last activity: 2026-08-19 — gfs **v0.2.3** is current release; audit hardening (#16–#21) on `develop` (Head fail-closed, SQLite pragmas, session purge, CI cover/govulncheck/grype, stuck-transit ERROR). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
+Last activity: 2026-08-19 — gfs **v0.2.4** (Head fail-closed, SQLite pragmas, session purge, PR CI cover/govulncheck/grype). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
 
 Progress: [███████░░░] 78% (7/9 phases; 12/14 plans)
 
@@ -80,5 +80,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-08-19
-Stopped at: v0.2.3 shipped; audit items #16–#21 implemented on develop (commit pending)
+Stopped at: v0.2.4 release (PR develop→main + tag)
 Resume file: `.planning/phases/08-sftp-watcher/08-01-PLAN.md`

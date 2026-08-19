@@ -19,19 +19,19 @@ GitHub: public wording only. Finding IDs (B-1, M-2, …) are OK in issues.
 | M-2 | No rate limiting on `/login` | Done v0.2.2 — [#4](https://github.com/hrodrig/groot-share/issues/4) |
 | M-5 | JSON logs prefixed with `gfs ` | Done v0.2.2 — [#6](https://github.com/hrodrig/groot-share/issues/6) |
 | B-2 | CHANGELOG stuck at stub | Done — Keep a Changelog from v0.2.0 |
-| B-3 | BSD Make stub header said groot-trigger | Done — [#17](https://github.com/hrodrig/groot-share/issues/17) |
+| B-3 | BSD Make stub header said groot-trigger | Done v0.2.4 — [#17](https://github.com/hrodrig/groot-share/issues/17) |
 | B-4 | `POST /v1/users` 401 instead of 403 | Done v0.2.0 — RBAC returns 403 |
 | B-12 | Coverage declining / gate too low | Done v0.2.0 — `COVER_MIN=80` |
 | A1 | vps-s3 download/delete outside prefix | Done v0.2.2 — [#5](https://github.com/hrodrig/groot-share/issues/5) |
 | A3 | Password change did not invalidate sessions | Done v0.2.3 — [#9](https://github.com/hrodrig/groot-share/issues/9) |
 | A4 | SECURITY.md stale | Done v0.2.3 — [#10](https://github.com/hrodrig/groot-share/issues/10) |
 | A5 | `.env.example` weak password | Done v0.2.3 — [#11](https://github.com/hrodrig/groot-share/issues/11) |
-| B-1 | `uniqueHTTPKey` Head errors fail-open | Done — [#16](https://github.com/hrodrig/groot-share/issues/16) |
-| B-7 | Expired sessions never purged | Done — [#19](https://github.com/hrodrig/groot-share/issues/19) |
-| B-8 | SQLite without foreign_keys / WAL / busy_timeout | Done — [#18](https://github.com/hrodrig/groot-share/issues/18) |
-| B-11 | CI had no cover / govulncheck / grype on PRs | Done — [#20](https://github.com/hrodrig/groot-share/issues/20) |
-| I-1 | `gfs.db` inherited umask | Done — [#18](https://github.com/hrodrig/groot-share/issues/18) |
-| I-4 | Stuck transit swept with Warn only | Done — [#21](https://github.com/hrodrig/groot-share/issues/21) |
+| B-1 | `uniqueHTTPKey` Head errors fail-open | Done v0.2.4 — [#16](https://github.com/hrodrig/groot-share/issues/16) |
+| B-7 | Expired sessions never purged | Done v0.2.4 — [#19](https://github.com/hrodrig/groot-share/issues/19) |
+| B-8 | SQLite without foreign_keys / WAL / busy_timeout | Done v0.2.4 — [#18](https://github.com/hrodrig/groot-share/issues/18) |
+| B-11 | CI had no cover / govulncheck / grype on PRs | Done v0.2.4 — [#20](https://github.com/hrodrig/groot-share/issues/20) |
+| I-1 | `gfs.db` inherited umask | Done v0.2.4 — [#18](https://github.com/hrodrig/groot-share/issues/18) |
+| I-4 | Stuck transit swept with Warn only | Done v0.2.4 — [#21](https://github.com/hrodrig/groot-share/issues/21) |
 | UX-1 | UI did not read "enterprise" | Done 2026-08-13 — design-token CSS / tickets |
 
 ## Still open
