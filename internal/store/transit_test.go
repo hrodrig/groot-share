@@ -8,7 +8,7 @@ import (
 )
 
 func TestStageTransitRetryCleanup(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	staged, err := st.Stage(ctx, bytes.NewReader([]byte("pending")), "run.tar.gz", 1)
 	if err != nil {

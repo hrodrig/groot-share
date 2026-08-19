@@ -3,6 +3,7 @@ package blob
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -60,6 +61,10 @@ func TestMemoryPutGetListHead(t *testing.T) {
 	}
 	if _, err := m.Head(ctx, "captures/a.tar.gz"); !errors.Is(err, ErrNotFound) {
 		t.Fatal(err)
+	}
+	m.HeadErr = fmt.Errorf("network")
+	if _, err := m.Head(ctx, "anything"); err == nil || err.Error() != "network" {
+		t.Fatalf("HeadErr: %v", err)
 	}
 }
 

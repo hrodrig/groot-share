@@ -56,8 +56,11 @@ func (s *Server) uniqueHTTPKey(ctx context.Context, now time.Time) (id, key stri
 		}
 		key = blob.HTTPKey(s.Cfg.S3Prefix, id, now)
 		_, err = s.Blobs.Head(ctx, key)
-		if errors.Is(err, blob.ErrNotFound) || err != nil {
+		if errors.Is(err, blob.ErrNotFound) {
 			return id, key, nil
+		}
+		if err != nil {
+			return "", "", fmt.Errorf("head: %w", err)
 		}
 	}
 	return "", "", fmt.Errorf("could not allocate object key")

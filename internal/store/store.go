@@ -37,6 +37,14 @@ func Open(dataDir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
+	if err := applySQLitePragmas(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if err := os.Chmod(dsn, 0o600); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("chmod db: %w", err)
+	}
 	st := &Store{db: db, dir: dataDir}
 	if err := st.migrate(); err != nil {
 		_ = db.Close()
@@ -74,6 +82,26 @@ func (s *Store) Ping(ctx context.Context) bool {
 		return false
 	}
 	return one == 1
+}
+
+func applySQLitePragmas(ctx context.Context, db *sql.DB) error {
+	if _, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON`); err != nil {
+		return fmt.Errorf("pragma foreign_keys: %w", err)
+	}
+	if _, err := db.ExecContext(ctx, `PRAGMA busy_timeout = 5000`); err != nil {
+		return fmt.Errorf("pragma busy_timeout: %w", err)
+	}
+	if _, err := db.ExecContext(ctx, `PRAGMA journal_mode = WAL`); err != nil {
+		return fmt.Errorf("pragma journal_mode: %w", err)
+	}
+	return nil
+}
+
+func optionalUserID(id int64) any {
+	if id <= 0 {
+		return nil
+	}
+	return id
 }
 
 func parseDBTime(s string) time.Time {

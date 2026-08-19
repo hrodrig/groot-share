@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
@@ -215,6 +216,23 @@ func TestVPSS3UploadDuplicate(t *testing.T) {
 		t.Fatalf("duplicate code %d %s", rr.Code, rr.Body.String())
 	}
 	assertStagingEmpty(t, s)
+}
+
+func TestUniqueHTTPKeyHeadErrorIsFatal(t *testing.T) {
+	s, mem := vpsS3Server(t)
+	mem.HeadErr = errors.New("forced head failure")
+	_, _, err := s.uniqueHTTPKey(context.Background(), time.Now().UTC())
+	if err == nil || !strings.Contains(err.Error(), "forced head failure") {
+		t.Fatalf("want wrapped head error, got %v", err)
+	}
+}
+
+func TestUniqueHTTPKeyNotFoundIsFree(t *testing.T) {
+	s, _ := vpsS3Server(t)
+	id, key, err := s.uniqueHTTPKey(context.Background(), time.Now().UTC())
+	if err != nil || len(id) != 32 || !strings.Contains(key, id) {
+		t.Fatalf("id=%q key=%q err=%v", id, key, err)
+	}
 }
 
 func TestStagingDirUnusedOnVPSSuccess(t *testing.T) {

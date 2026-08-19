@@ -160,7 +160,7 @@ func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO archives (id, key, size, sha256, source, uploaded_by, created_at)
 		VALUES (?, ?, ?, ?, 'http', ?, ?)`,
-		st.ID, st.Key, st.Size, st.SHA256, st.UploadedBy, st.CreatedAt.Format(time.RFC3339),
+		st.ID, st.Key, st.Size, st.SHA256, optionalUserID(st.UploadedBy), st.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		_ = os.Remove(home)
@@ -194,7 +194,7 @@ func (s *Store) InsertArchiveMeta(ctx context.Context, a Archive) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO archives (id, key, size, sha256, source, uploaded_by, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		a.ID, a.Key, a.Size, a.SHA256, source, a.UploadedBy, created,
+		a.ID, a.Key, a.Size, a.SHA256, source, optionalUserID(a.UploadedBy), created,
 	)
 	if err != nil {
 		return fmt.Errorf("insert archive meta: %w", err)

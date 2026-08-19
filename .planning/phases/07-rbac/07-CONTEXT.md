@@ -105,7 +105,7 @@ Retention sweeps remain system actor `retention` — not a human role.
 - `.planning/phases/999.1-audit-fixes/CONTEXT.md` — M-3, B-4
 - `internal/server/identity.go` — current auth surface
 - `internal/store/schema.go` — current tables
-- Independent audits: `.no-va-al-repo/auditoria-cursor-composer-25-2026-08-12.md`
+- Independent audits (2026-08-12)
 
 </canonical_refs>
 

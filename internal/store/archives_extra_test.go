@@ -11,7 +11,7 @@ import (
 )
 
 func TestFindExistingSHA256FromTransit(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	staged, err := st.Stage(ctx, bytes.NewReader([]byte("in-flight")), "run.tar.gz", 1)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestFindExistingSHA256FromTransit(t *testing.T) {
 }
 
 func TestInsertArchiveMeta(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	a := Archive{
 		ID:        "captures/2026/08/12/abc.tar.gz",
@@ -54,7 +54,7 @@ func TestInsertArchiveMeta(t *testing.T) {
 }
 
 func TestStageWithIDInvalid(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	if _, err := st.StageWithID(ctx, "not-hex", bytes.NewReader([]byte("x")), "a.tar.gz", 1); err == nil {
 		t.Fatal("invalid id")
@@ -62,9 +62,9 @@ func TestStageWithIDInvalid(t *testing.T) {
 }
 
 func TestCommitLocalPromotesStaging(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
-	staged, err := st.Stage(ctx, bytes.NewReader([]byte("commit-me")), "promote.tar.gz", 2)
+	staged, err := st.Stage(ctx, bytes.NewReader([]byte("commit-me")), "promote.tar.gz", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestDuplicateErrorString(t *testing.T) {
 }
 
 func TestCommitLocalInvalidArchiveID(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	staged := Staged{ID: "not-valid", Path: filepath.Join(st.StagingDir(), "x.partial")}
 	if _, err := st.CommitLocal(ctx, staged); err == nil {
@@ -94,7 +94,7 @@ func TestCommitLocalInvalidArchiveID(t *testing.T) {
 }
 
 func TestCommitLocalMissingStagingFile(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	id := strings.Repeat("a", 32)
 	staged := Staged{
@@ -112,7 +112,7 @@ func TestCommitLocalMissingStagingFile(t *testing.T) {
 }
 
 func TestIngestDuplicateArchive(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	body := []byte("same-content")
 	a1, err := st.Ingest(ctx, bytes.NewReader(body), "first.tar.gz", 1)
@@ -127,7 +127,7 @@ func TestIngestDuplicateArchive(t *testing.T) {
 }
 
 func TestCommitLocalDuplicateInsert(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	staged1, err := st.Stage(ctx, bytes.NewReader([]byte("one")), "a.tar.gz", 1)
 	if err != nil {

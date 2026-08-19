@@ -3,11 +3,15 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hrodrig/groot-share/internal/auth"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 func TestDeleteArchiveAPI(t *testing.T) {
@@ -73,6 +77,28 @@ func TestRetentionMaxAgeVPSS3(t *testing.T) {
 	}
 	if _, err := mem.Head(context.Background(), created.ID); err == nil {
 		t.Fatal("expected bucket object gone")
+	}
+}
+
+func TestSweepPurgesExpiredSessions(t *testing.T) {
+	s, st := identServer(t)
+	ctx := context.Background()
+	u, err := st.UserByUsername(ctx, "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, dead, err := auth.NewSessionToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CreateSession(ctx, u.ID, dead, time.Now().Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SweepOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.UserBySessionHash(ctx, dead); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("expired session still present: %v", err)
 	}
 }
 

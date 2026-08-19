@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `vps-s3` HTTP ingest treats object-store `Head` errors as fatal when allocating a key ([#16](https://github.com/hrodrig/groot-share/issues/16))
+- SQLite opens with `foreign_keys=ON`, WAL, `busy_timeout`; `gfs.db` is `chmod 0600` ([#18](https://github.com/hrodrig/groot-share/issues/18))
+
+### Changed
+
+- Retention sweep deletes expired session rows ([#19](https://github.com/hrodrig/groot-share/issues/19))
+- Stuck-transit leftovers log at ERROR with `last_error` ([#21](https://github.com/hrodrig/groot-share/issues/21))
+- PR/push CI runs the coverage gate; Security workflow runs govulncheck and directory Grype ([#20](https://github.com/hrodrig/groot-share/issues/20))
+- BSD Make stub header names gfs ([#17](https://github.com/hrodrig/groot-share/issues/17))
+
 ## [0.2.3] — 2026-08-16
 
 ### Security
