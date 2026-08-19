@@ -11,7 +11,7 @@ import (
 )
 
 func TestIngestListDownload(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	payload := []byte("not-really-gzip-but-ok")
 	a, err := st.Ingest(ctx, bytes.NewReader(payload), "run.tar.gz", 1)
@@ -40,7 +40,7 @@ func TestIngestListDownload(t *testing.T) {
 }
 
 func TestArchiveIDRejectsTraversal(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	if _, err := st.ArchiveByID(context.Background(), "../etc/passwd"); err != ErrNotFound {
 		t.Fatalf("traversal %v", err)
 	}
@@ -50,7 +50,7 @@ func TestArchiveIDRejectsTraversal(t *testing.T) {
 }
 
 func TestIngestEmpty(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	_, err := st.Ingest(context.Background(), bytes.NewReader(nil), "x.tar.gz", 1)
 	if err == nil || !strings.Contains(err.Error(), "empty") {
 		t.Fatalf("err %v", err)
@@ -77,7 +77,7 @@ func TestSanitizeKey(t *testing.T) {
 }
 
 func TestDeleteArchive(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	a, err := st.Ingest(ctx, bytes.NewReader([]byte("bye")), "gone.tar.gz", 1)
 	if err != nil {
@@ -95,7 +95,7 @@ func TestDeleteArchive(t *testing.T) {
 }
 
 func TestIngestDuplicateSHA256(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	payload := []byte("same-bytes")
 	first, err := st.Ingest(ctx, bytes.NewReader(payload), "one.tar.gz", 1)
@@ -117,7 +117,7 @@ func TestIngestDuplicateSHA256(t *testing.T) {
 }
 
 func TestIngestDuplicateAfterDelete(t *testing.T) {
-	st := testStore(t)
+	st := archiveStore(t)
 	ctx := context.Background()
 	payload := []byte("reupload-bytes")
 	a, err := st.Ingest(ctx, bytes.NewReader(payload), "once.tar.gz", 1)

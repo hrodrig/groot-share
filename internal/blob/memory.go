@@ -19,6 +19,7 @@ type Memory struct {
 	meta           map[string]Object
 	FailPuts       bool
 	FailHeadBucket bool
+	HeadErr        error
 }
 
 // NewMemory returns an empty fake bucket.
@@ -91,6 +92,9 @@ func (m *Memory) List(_ context.Context, prefix string) ([]Object, error) {
 func (m *Memory) Head(_ context.Context, key string) (Object, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.HeadErr != nil {
+		return Object{}, m.HeadErr
+	}
 	obj, ok := m.meta[key]
 	if !ok {
 		return Object{}, ErrNotFound

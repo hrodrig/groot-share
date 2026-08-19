@@ -181,6 +181,22 @@ func (s *Store) DeleteSession(ctx context.Context, tokenHash string) error {
 	return nil
 }
 
+// PurgeExpiredSessions deletes session rows whose expires_at is before now.
+func (s *Store) PurgeExpiredSessions(ctx context.Context, now time.Time) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM sessions WHERE expires_at < ?`,
+		now.UTC().Format(time.RFC3339),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("purge sessions: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("purge sessions rows: %w", err)
+	}
+	return n, nil
+}
+
 // CreateAPIKey stores a hashed key with scope.
 func (s *Store) CreateAPIKey(ctx context.Context, userID int64, keyHash, prefix string, scope auth.KeyScope) error {
 	if !auth.ValidKeyScope(scope) {

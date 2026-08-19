@@ -19,6 +19,15 @@ func testStore(t *testing.T) *Store {
 	return st
 }
 
+func archiveStore(t *testing.T) *Store {
+	t.Helper()
+	st := testStore(t)
+	if err := st.EnsureAdmin(context.Background(), "root", "correct-horse", ""); err != nil {
+		t.Fatal(err)
+	}
+	return st
+}
+
 func TestEnsureAdminThenNoOp(t *testing.T) {
 	st := testStore(t)
 	ctx := context.Background()

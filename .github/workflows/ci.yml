@@ -47,5 +47,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Test
-        run: make test
+      - name: Install bc (coverage gate)
+        run: sudo apt-get update && sudo apt-get install -y bc
+
+      - name: Test with coverage gate
+        run: make cover

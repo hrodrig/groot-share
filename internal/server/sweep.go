@@ -81,11 +81,16 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 
 // SweepOnce deletes home objects that fail keep_last or max_age, then staging leftovers.
 func (s *Server) SweepOnce(ctx context.Context) error {
+	now := time.Now().UTC()
+	if n, err := s.Store.PurgeExpiredSessions(ctx, now); err != nil {
+		slog.Error("purge sessions", "error", err)
+	} else if n > 0 {
+		slog.Info("purged expired sessions", "count", n)
+	}
 	items, err := s.listItems(ctx)
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
 	for _, a := range retain.Pick(items, s.Cfg.KeepLast, s.Cfg.MaxAgeDays, now) {
 		if _, err := s.removeArchive(ctx, a.ID); err != nil {
 			slog.Warn("retention delete failed", "id", a.ID, "error", err)
@@ -134,7 +139,7 @@ func (s *Server) sweepStaging(ctx context.Context, now time.Time) {
 		if now.Sub(tr.CreatedAt) < grace {
 			continue
 		}
-		slog.Warn("staging leftover swept", "id", tr.ID, "key", tr.Key)
+		slog.Error("staging leftover swept", "id", tr.ID, "key", tr.Key, "s3_key", tr.S3Key, "last_error", tr.LastError)
 		if err := s.Store.DeleteTransit(ctx, tr.ID); err != nil {
 			slog.Warn("staging sweep", "error", err)
 		}

@@ -198,7 +198,7 @@ Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
 ## Backlog
 
 - [x] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc.
-- [ ] **999.1: Audit fixes (2026-08-12)** — prioritized findings from the independent audit: packaged docs (man page / README / CHANGELOG), api_key scope decision, login rate limiting, session purge, error mapping, CI gates. Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
+- [ ] **999.1: remaining audit fixes** — still open: ingest 400 vs 5xx (B-5), gzip magic (B-6), cookie Secure default (B-10), loop cancel (B-13), EqualHash (B-9), crash orphans (B-14), pin release images (I-2), Uploader API (I-3). Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
 
 ## Progress
 

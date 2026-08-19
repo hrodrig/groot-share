@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +20,27 @@ func TestOpenPingClose(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "gfs.db")); err != nil {
 		t.Fatalf("db file: %v", err)
+	}
+	info, err := os.Stat(filepath.Join(dir, "gfs.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("db mode %o want 0600", info.Mode().Perm())
+	}
+	var fk, timeout, journal string
+	if err := st.db.QueryRow(`PRAGMA foreign_keys`).Scan(&fk); err != nil || fk != "1" {
+		t.Fatalf("foreign_keys=%q %v", fk, err)
+	}
+	if err := st.db.QueryRow(`PRAGMA busy_timeout`).Scan(&timeout); err != nil || timeout != "5000" {
+		t.Fatalf("busy_timeout=%q %v", timeout, err)
+	}
+	if err := st.db.QueryRow(`PRAGMA journal_mode`).Scan(&journal); err != nil || strings.ToLower(journal) != "wal" {
+		t.Fatalf("journal_mode=%q %v", journal, err)
+	}
+	_, err = st.db.Exec(`INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (99999, 'deadbeef', '2026-01-01T00:00:00Z')`)
+	if err == nil {
+		t.Fatal("expected foreign key rejection")
 	}
 }
 

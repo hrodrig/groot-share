@@ -58,7 +58,7 @@ laptop / bastion                 cluster (trigger / CronJob)
 
 **Model:** one gfs process on a VPS. SQLite = users, sessions, api_keys, audit. Inventory of files in VPS + S3 = `ListObjects` on the prefix, not a parallel catalog.
 
-Object key (both writers): `{key_prefix}{yyyy}/{mm}/{dd}/{id}.tar.gz` with `id` unique (ULID or sha256 prefix). groot `upload.s3` today keys from filename + prefix — gfs listing must accept **whatever keys already land** under the configured prefix (do not require groot to change in v0.1). HTTP ingest from gfs uses the dated-id scheme. Collision: last writer wins is unacceptable; if a key exists, HTTP ingest picks a new id.
+Object key (both writers): `{key_prefix}{yyyy}/{mm}/{dd}/{id}.tar.gz` with `id` unique (ULID or sha256 prefix). groot `upload.s3` today keys from filename + prefix — gfs listing must accept **whatever keys already land** under the configured prefix (do not require groot to change in v0.1). HTTP ingest from gfs uses the dated-id scheme. Collision: last writer wins is unacceptable; if a key exists, HTTP ingest picks a new id. A Head error other than not-found is fatal (not treated as a free key).
 
 ## 4. HTTP contract
 
@@ -116,13 +116,13 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_BRAND_SUB` | App-bar tag after the wordmark. Default `archive door`. Short string (e.g. `ACME CORP`). `-` hides |
 | `GFS_FOOTER` | Authenticated footer. Default `gfs vX · groot · groot-share`. Plain text replaces it. `-` hides |
 
-Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit.
+Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit. `gfs.db` is `chmod 0600` on open. The SQLite connection enables `foreign_keys`, WAL, and `busy_timeout`.
 
 ## 6. Auth detail
 
 - Password: argon2id or bcrypt; never log
 - api_key: opaque, hashed at rest (SHA-256 of key + pepper, or equivalent); show once; `last_used_at` updated on successful key auth (list via Settings / `GET /v1/me/api-keys`)
-- Session: httpOnly cookie; Secure when TLS
+- Session: httpOnly cookie; Secure when TLS. The retention sweep deletes session rows whose `expires_at` is in the past.
 - Password change (Settings, `PATCH /v1/me`, or admin password patch) deletes **all** sessions for that user; self-service change also clears the browser cookie and requires re-login
 - `POST /login` rate limit: in-process sliding window per client IP and per username (default `20/1m` via `GFS_LOGIN_RATE_LIMIT`); exceeded → `429` + `Retry-After`
 - Bootstrap of first admin (locked): if the user table is **empty**, require `GFS_BOOTSTRAP_ADMIN` + `GFS_BOOTSTRAP_PASSWORD`, create one **admin**, hash the password, log that bootstrap ran (**never** log the password). Display name from `GFS_BOOTSTRAP_ADMIN_NAME` (default `Administrator`). If users already exist, **ignore** those env vars (do not reset the password, do not create a second bootstrap user). Empty table + missing/blank env → refuse start (fail closed). **No** well-known default password (`admin`/`changeme` or similar). Operator should drop the env from the unit after first start; gfs does not require that.
@@ -172,7 +172,7 @@ Display **Name** is required (max 80). The app bar shows it truncated at 30 rune
 
 Job (timer in-process or cron): delete objects that violate **either** keep_last **or** max_age_days.  
 VPS only: delete files + sqlite rows if any.  
-VPS + S3: delete bucket objects (home). Staging leftovers older than a grace period are swept as incidents, not as the retention set.
+VPS + S3: delete bucket objects (home). Staging leftovers older than a grace period are swept as incidents (ERROR log including `last_error`), not as the retention set.
 
 ## 8. Observability
 
@@ -187,7 +187,7 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 - `Makefile` BSD stub + `GNUmakefile`
 - `Dockerfile` + `Dockerfile.release` (distroless, UID 65532)
 - `.goreleaser.yaml` (v-prefixed tags, CGO=0, freebsd/openbsd)
-- `.github/workflows/ci.yml` + `release.yml`
+- `.github/workflows/ci.yml` (fmt, lint, gocyclo, coverage gate) + `security.yml` (govulncheck, grype directory) + `release.yml`
 - `.golangci.yml`, `COVER_MIN` (start lower than 80 if needed; trigger raised to 80 after tests existed — gfs may start `COVER_MIN=60` and raise)
 - `govulncheck` / `gocyclo` (threshold 14) / `grype`
 - `VERSION`, `cmd/gfs/main.go`

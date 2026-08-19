@@ -153,6 +153,43 @@ func TestSetPasswordDeletesSessions(t *testing.T) {
 	}
 }
 
+func TestPurgeExpiredSessions(t *testing.T) {
+	st := testStore(t)
+	ctx := context.Background()
+	hash, err := auth.HashPassword("correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := st.CreateUser(ctx, "bob", "Bob", hash, auth.RoleViewer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, live, err := auth.NewSessionToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, dead, err := auth.NewSessionToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CreateSession(ctx, u.ID, live, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CreateSession(ctx, u.ID, dead, time.Now().Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	n, err := st.PurgeExpiredSessions(ctx, time.Now())
+	if err != nil || n != 1 {
+		t.Fatalf("purged %d %v", n, err)
+	}
+	if _, err := st.UserBySessionHash(ctx, live); err != nil {
+		t.Fatalf("live session: %v", err)
+	}
+	if _, err := st.UserBySessionHash(ctx, dead); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("dead session: %v", err)
+	}
+}
+
 func TestUserLookupNotFound(t *testing.T) {
 	st := testStore(t)
 	ctx := context.Background()

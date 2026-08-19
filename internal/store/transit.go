@@ -16,7 +16,7 @@ func (s *Store) SaveTransit(ctx context.Context, st Staged, s3Key, lastErr strin
 		INSERT INTO transit (id, key, s3_key, size, sha256, path, uploaded_by, created_at, last_error)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET last_error = excluded.last_error`,
-		st.ID, st.Key, s3Key, st.Size, st.SHA256, st.Path, st.UploadedBy,
+		st.ID, st.Key, s3Key, st.Size, st.SHA256, st.Path, optionalUserID(st.UploadedBy),
 		st.CreatedAt.UTC().Format(time.RFC3339), lastErr,
 	)
 	if err != nil {
