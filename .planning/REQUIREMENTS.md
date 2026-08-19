@@ -66,6 +66,21 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 - [x] **AUTH-05**: Roles `viewer` / `uploader` / `admin` enforced on all authenticated routes; api_key scopes `upload` / `read`; admin CRUD users via `/v1/users`; last-admin guard; self-service password + api_key revoke
 
+## Operator UX (Phase 10)
+
+Catalog polish on shipped list/upload HTML. **gfs is the incident evidence locker**, not a generic Dropbox. Not v2 analyze. **LIST-03** still applies (no SPA). May interleave with Phases 8–9.
+
+Primary facets are **cluster, capture timestamp, since-window, completeness** — not generic source/storage (those stay secondary pills).
+
+- [ ] **UX-01**: Captures dashboard — totals (count, bytes), cluster count, incomplete count when known, storage topology, primary **Upload archive**; default sort newest first; optional per-user pin strip
+- [ ] **UX-02**: Search/filters via query params; empty **no archives yet** vs **no match** + clear. Primary: cluster chips with counts, name/`since`/message search, capture window 24h/7d/30d/all. Secondary: source/storage. No Trigger/Cron/Manual origin filter until a producer field exists
+- [ ] **UX-03**: HTTP upload shows `.tar.gz`/size limit (32 GiB copy unless SPEC differs), name+size before send, progress, transit copy, cancel; duplicate called out
+- [ ] **UX-04**: Narrow viewports: table row → compact card; **Download** primary on the card; desktop table also exposes Download (not kebab-only)
+- [ ] **UX-05**: Activity is compliance-grade — filter by user/action/date; **download** events first-class; admin CSV/JSON export required
+- [ ] **UX-06**: Typed-name confirm on destructive actions; API key shown once with copy feedback; four-color state tokens (blue primary, green ready, amber transit/partial, red error/failed); `mono` for IDs/hashes/filenames/cluster
+- [ ] **UX-07**: Filename facets from groot basename (`<prefix>-<ts>[-since-<slug>]-<cluster>[-message].tar.gz`) — show cluster / capture time / since as columns or pills; optional per-user pin
+- [ ] **UX-08**: Partial-capture badge from `extras/manifest.json` job failed counts — only via cheap gzip-member peek (SPEC §11 still Open); never full unpack; unmarked if peek missing; labels Complete / `N of M jobs failed` / Failed
+
 ## v2 Requirements
 
 Deferred. Tracked in roadmap Phase 9+ and backlog.
@@ -78,8 +93,8 @@ Deferred. Tracked in roadmap Phase 9+ and backlog.
 
 ### Other v2
 
-- **ANLZ-01**: Analyze / compare from gfs UI
-- **ANLZ-02**: Per-user BYOK LLM credentials, encrypted at rest
+- **ANLZ-01**: gfs does **not** run `groot analyze`. If a producer uploaded an LLM-ready sidecar (e.g. `--output llm` Markdown next to the `.tar.gz`), gfs may list/download it like any other object — dumb locker
+- **ANLZ-02**: Per-user BYOK LLM credentials, encrypted at rest — still phase 2; still not “gfs calls groot”
 - **CLI-01**: `groot upload --gfs` with api_key, never AWS keys
 - **AUTH-06**: OIDC / SSO
 - **STOR-06**: Presigned PUT laptop / bastion → bucket (only after a spike against that provider)
@@ -132,6 +147,14 @@ Filled by roadmap.
 | SHARE-01 | Phase 9 | Planned |
 | SHARE-02 | Phase 9 | Planned |
 | SHARE-03 | Phase 9 | Planned |
+| UX-01 | Phase 10 | Planned |
+| UX-02 | Phase 10 | Planned |
+| UX-03 | Phase 10 | Planned |
+| UX-04 | Phase 10 | Planned |
+| UX-05 | Phase 10 | Planned |
+| UX-06 | Phase 10 | Planned |
+| UX-07 | Phase 10 | Planned |
+| UX-08 | Phase 10 | Planned |
 
 **Coverage:**
 
@@ -139,9 +162,10 @@ Filled by roadmap.
 - v1.1 requirements: 1 (AUTH-05)
 - v1.2 requirements: 1 (ING-04)
 - v2 mapped (Phase 9): 3 (SHARE-01..03)
-- Mapped to phases: 30
+- Operator UX (Phase 10): 8 (UX-01..08)
+- Mapped to phases: 38
 - Unmapped v2: ANLZ, CLI, AUTH-06, STOR-06, LIST-04 (backlog)
 
 ---
 *Requirements defined: 2026-08-12*  
-*Last updated: 2026-08-13 — SHARE-01..03 external share links (Phase 9, admin-only)*
+*Last updated: 2026-08-19 — Phase 10 UX lock (Captures mock layout; no SPA; no analyze; no origin-from-source)*
