@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/bcrypt" // bcrypt only; openpgp advisory GO-2026-5932 not applicable.
 )
 
 // ErrPasswordTooShort is returned when a password is shorter than MinPasswordLen.

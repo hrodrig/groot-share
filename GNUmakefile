@@ -208,18 +208,20 @@ release-check:
 	@if [ "$(STRICT_RELEASE)" = "1" ]; then $(MAKE) docker-scan; fi
 	@echo "$(GREEN)release-check OK$(RESET)"
 
-# Fail if any version surface drifts from VERSION (README badge, man page .TH, BSD ports).
+# Fail if any version surface drifts from VERSION (README badge, man page .TH, BSD ports, CHANGELOG heading).
 release-sync-check:
 	@badge=$$(grep -o 'badge/version-[0-9][0-9.]*' README.md | head -1); \
 	man=$$(grep -o '"gfs v[0-9][0-9.]*"' contrib/man/man1/gfs.1 | head -1); \
 	fport=$$(grep -o '^PORTVERSION=	[0-9][0-9.]*' contrib/freebsd/Makefile | head -1); \
 	opkg=$$(grep -o '^PKGNAME =	gfs-[0-9][0-9.]*' contrib/openbsd/port/Makefile | head -1); \
+	chead=$$(grep -o '^## \[[0-9][0-9.]*\]' CHANGELOG.md | head -1); \
 	fail=0; \
 	[ "$$badge" = "badge/version-$(VERSION)" ] || { echo "DRIFT: README badge $$badge != $(VERSION)"; fail=1; }; \
 	[ "$$man" = "\"gfs v$(VERSION)\"" ] || { echo "DRIFT: man .TH $$man != v$(VERSION)"; fail=1; }; \
 	[ "$$fport" = "PORTVERSION=	$(VERSION)" ] || { echo "DRIFT: freebsd PORTVERSION $$fport != $(VERSION)"; fail=1; }; \
 	[ "$$opkg" = "PKGNAME =	gfs-$(VERSION)" ] || { echo "DRIFT: openbsd PKGNAME $$opkg != $(VERSION)"; fail=1; }; \
-	if [ $$fail -ne 0 ]; then echo "Run 'make man-sync port-freebsd-sync port-openbsd-sync' and update README badge."; exit 1; fi; \
+	[ "$$chead" = "## [$(VERSION)]" ] || { echo "DRIFT: CHANGELOG heading $$chead != [$(VERSION)]"; fail=1; }; \
+	if [ $$fail -ne 0 ]; then echo "Run 'make man-sync port-freebsd-sync port-openbsd-sync' and update README badge + CHANGELOG."; exit 1; fi; \
 	echo "version surfaces in sync with $(VERSION)"
 
 man-sync:
