@@ -4,7 +4,6 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -90,15 +89,6 @@ func NewAPIKey() (raw, hash, prefix string, err error) {
 func HashSecret(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])
-}
-
-// EqualHash is constant-time compare for equal-length hex hashes.
-func EqualHash(a, b string) bool {
-	x, y := []byte(a), []byte(b)
-	if len(x) != len(y) {
-		return false
-	}
-	return subtle.ConstantTimeCompare(x, y) == 1
 }
 
 // NewSessionToken returns a raw cookie value and its SHA-256 hex.
