@@ -73,3 +73,40 @@ func TestOpenNotWritable(t *testing.T) {
 		t.Fatal("expected error when data dir is a file")
 	}
 }
+
+func TestOpenHomeIsFile(t *testing.T) {
+	dir := t.TempDir()
+	// Pre-create dataDir and a *file* named "home" so MkdirAll(home) fails.
+	if err := os.WriteFile(filepath.Join(dir, "home"), []byte("nope"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir); err == nil {
+		t.Fatal("expected error when home is a file")
+	}
+}
+
+func TestOpenStagingIsFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "home"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// A *file* named "staging" makes MkdirAll(staging) fail after home succeeded.
+	if err := os.WriteFile(filepath.Join(dir, "staging"), []byte("nope"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir); err == nil {
+		t.Fatal("expected error when staging is a file")
+	}
+}
+
+func TestOpenCorruptDB(t *testing.T) {
+	dir := t.TempDir()
+	// Pre-create gfs.db as a non-SQLite file: Ping succeeds (file is created/opened)
+	// but migrate()'s schema exec fails on the corrupt file.
+	if err := os.WriteFile(filepath.Join(dir, "gfs.db"), []byte("this is not a sqlite database, enough bytes to trip the header check"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir); err == nil {
+		t.Fatal("expected error when gfs.db is corrupt")
+	}
+}
