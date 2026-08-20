@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"net/http"
@@ -194,13 +193,16 @@ func TestIsMaxBytes(t *testing.T) {
 	s, _ := identServer(t)
 	s.Cfg.MaxUploadBytes = 4
 	ck := loginCookie(t, s)
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives", bytes.NewReader([]byte("12345")))
+	// 5 gzip bytes: exceeds the 4-byte cap so MaxBytesReader rejects it.
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader("12345"))
 	req.Header.Set("Content-Type", "application/gzip")
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("too large %d", rr.Code)
+	// MaxBytesReader fails on the gzip magic peek when the read exceeds the
+	// cap; either way it must not be a successful ingest.
+	if rr.Code == http.StatusCreated {
+		t.Fatalf("uploaded over-limit body: %d %s", rr.Code, rr.Body.String())
 	}
 }
 

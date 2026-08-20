@@ -11,7 +11,7 @@ import (
 func TestAuditUploadDownload(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader("audit-bytes"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", gzipPayload(t, []byte("audit-bytes")))
 	req.Header.Set("Content-Type", "application/gzip")
 	req.Header.Set("X-Gfs-Filename", "run.tar.gz")
 	req.Header.Set("Accept", "application/json")

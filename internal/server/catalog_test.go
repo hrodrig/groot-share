@@ -1,9 +1,12 @@
 package server
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +18,24 @@ import (
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/store"
 )
+
+func gzipBytes(t *testing.T, b []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(b); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func gzipPayload(t *testing.T, b []byte) io.Reader {
+	t.Helper()
+	return bytes.NewReader(gzipBytes(t, b))
+}
 
 func vpsS3Server(t *testing.T) (*Server, *blob.Memory) {
 	t.Helper()
@@ -36,7 +57,7 @@ type createdArchive struct {
 
 func postArchive(t *testing.T, s *Server, ck *http.Cookie, name, body string) createdArchive {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", gzipPayload(t, []byte(body)))
 	req.Header.Set("Content-Type", "application/gzip")
 	req.Header.Set("X-Gfs-Filename", name)
 	req.Header.Set("Accept", "application/json")
@@ -86,7 +107,7 @@ func TestVPSS3UploadListsFromPrefix(t *testing.T) {
 		t.Fatalf("list %d %s", list.Code, list.Body.String())
 	}
 	dl := authedGET(t, s, ck, "/v1/archives/"+created.ID+"/file")
-	if dl.Code != http.StatusOK || dl.Body.String() != "bucket-home-bytes" {
+	if dl.Code != http.StatusOK || dl.Body.String() != string(gzipBytes(t, []byte("bucket-home-bytes"))) {
 		t.Fatalf("dl %d %q", dl.Code, dl.Body.String())
 	}
 	objs, err := mem.List(context.Background(), "captures/")
@@ -108,7 +129,7 @@ func TestVPSS3TransitRetry(t *testing.T) {
 		t.Fatalf("staging must not be listed: %s", list.Body.String())
 	}
 	dl := authedGET(t, s, ck, "/v1/archives/"+created.ID+"/file")
-	if dl.Code != http.StatusOK || dl.Body.String() != "stuck-in-transit" {
+	if dl.Code != http.StatusOK || dl.Body.String() != string(gzipBytes(t, []byte("stuck-in-transit"))) {
 		t.Fatalf("transit dl %d %q", dl.Code, dl.Body.String())
 	}
 	mem.FailPuts = false
@@ -205,7 +226,7 @@ func TestVPSS3UploadDuplicate(t *testing.T) {
 	ck := loginCookie(t, s)
 	payload := "bucket-dup-bytes"
 	postArchive(t, s, ck, "run.tar.gz", payload)
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", gzipPayload(t, []byte(payload)))
 	req.Header.Set("Content-Type", "application/gzip")
 	req.Header.Set("X-Gfs-Filename", "run.tar.gz")
 	req.Header.Set("Accept", "application/json")
@@ -238,7 +259,7 @@ func TestUniqueHTTPKeyNotFoundIsFree(t *testing.T) {
 func TestStagingDirUnusedOnVPSSuccess(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader("local-home"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", gzipPayload(t, []byte("local-home")))
 	req.Header.Set("Content-Type", "application/gzip")
 	req.Header.Set("Accept", "application/json")
 	req.AddCookie(ck)

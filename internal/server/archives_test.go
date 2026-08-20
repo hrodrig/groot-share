@@ -39,7 +39,8 @@ func TestUploadListDownload(t *testing.T) {
 	s.Cfg.MaxUploadBytes = 1 << 20
 	ck := loginCookie(t, s)
 	payload := []byte("groot-tar-bytes")
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives", bytes.NewReader(payload))
+	gz := gzipBytes(t, payload)
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives", bytes.NewReader(gz))
 	req.Header.Set("Content-Type", "application/gzip")
 	req.Header.Set("X-Gfs-Filename", "run.tar.gz")
 	req.Header.Set("Accept", "application/json")
@@ -71,7 +72,7 @@ func TestUploadListDownload(t *testing.T) {
 	dl.AddCookie(ck)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, dl)
-	if rr.Code != http.StatusOK || rr.Body.String() != string(payload) {
+	if rr.Code != http.StatusOK || rr.Body.String() != string(gz) {
 		t.Fatalf("dl %d %q", rr.Code, rr.Body.String())
 	}
 
@@ -140,7 +141,7 @@ func TestUploadDuplicateJSON(t *testing.T) {
 	ck := loginCookie(t, s)
 	payload := []byte("dup-bytes")
 	post := func() *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodPost, "/v1/archives", bytes.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/v1/archives", gzipPayload(t, payload))
 		req.Header.Set("Content-Type", "application/gzip")
 		req.Header.Set("X-Gfs-Filename", "run.tar.gz")
 		req.Header.Set("Accept", "application/json")
@@ -252,5 +253,23 @@ func TestUploadUnauthorized(t *testing.T) {
 	s.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("code %d", rr.Code)
+	}
+}
+
+func TestUploadRejectsNonGzipBody(t *testing.T) {
+	// B-6: a raw (non-multipart) upload body must start with gzip magic bytes.
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	for _, body := range []string{"not-a-gzip", "PK\x03\x04zip-bytes", ""} {
+		req := httptest.NewRequest(http.MethodPost, "/v1/archives", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/gzip")
+		req.Header.Set("X-Gfs-Filename", "run.tar.gz")
+		req.Header.Set("Accept", "application/json")
+		req.AddCookie(ck)
+		rr := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Fatalf("non-gzip body %q: want 400, got %d (%s)", body, rr.Code, rr.Body.String())
+		}
 	}
 }
