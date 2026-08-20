@@ -96,7 +96,7 @@ func LoadFromEnv() (Config, error) {
 		BootstrapAdmin:     strings.TrimSpace(os.Getenv("GFS_BOOTSTRAP_ADMIN")),
 		BootstrapPassword:  os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
 		BootstrapAdminName: ClipPlain(envOr("GFS_BOOTSTRAP_ADMIN_NAME", DefaultBootstrapName), maxNameRunes),
-		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
+		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), true),
 		MaxUploadBytes:     parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
 		KeepLast:           parseInt(os.Getenv("GFS_KEEP_LAST"), 20),
 		MaxAgeDays:         parseInt(os.Getenv("GFS_MAX_AGE_DAYS"), 90),
