@@ -7,11 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-19
+
+### Added
+
+- External share links (Phase 9 / SHARE-01..03): admin-only time-limited download links for a single archive
+  - `POST /v1/archives/{id}/shares` — create with `expires_at` **or** `expires_in` (mutually exclusive), optional `label` and `max_uses` (`1` = one-shot); full URL returned once
+  - `GET /v1/archives/{id}/shares` — list active links (token never returned)
+  - `DELETE /v1/archives/{id}/shares/{share_id}` — revoke before expiry
+  - `GET /s/{token}` — unauthenticated streaming download proxied through gfs (works on `vps` and `vps-s3`); `404` on unknown/expired/revoked/exhausted
+  - Token is 32 random bytes (hex); only its SHA-256 hash is stored; audit logs never contain the raw token
+
+### Security
+
+- Reject raw upload bodies that are not gzip by magic-byte check (B-6)
+- Cookie `Secure` defaults to `true` (B-10)
+
 ### Changed
 
 - Lower bcrypt work factor to `MinCost` in tests via `auth.UseTestCost()`; production stays `DefaultCost` ([#13](https://github.com/hrodrig/groot-share/issues/13))
 - Cache vps-s3 object listings (5s TTL, invalidated on upload/delete/retry) to avoid a full `ListObjects` per page ([#12](https://github.com/hrodrig/groot-share/issues/12))
 - PR/push CI runs govulncheck and directory Grype in the `security` job ([#20](https://github.com/hrodrig/groot-share/issues/20))
+- Pin GoReleaser to `~2.16` instead of `latest` (I-2)
+- Ingest internal errors return `500` (not `400`) (B-5)
+- Background loops use signal-aware context instead of `context.Background()` (B-13)
+
+### Fixed
+
+- Delete removes the blob before the DB row; `GET .../delete` returns `404` instead of failing mid-way (B-14)
+
+### Removed
+
+- Dead `EqualHash` helper (B-9)
 
 ## [0.3.0] — 2026-08-19
 

@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: SFTP watcher
-current_phase: 8
-current_phase_name: SFTP inbox watcher
+milestone: v1.3
+milestone_name: External share links
+current_phase: 9
+current_phase_name: External share links
 status: complete
-stopped_at: Phase 8 SFTP watcher complete 2026-08-19 (code + docs green); Phase 10 UX locked; next up Phase 9 or 10
-last_updated: "2026-08-19T23:40:00.000Z"
+stopped_at: Phase 9 share links complete 2026-08-19 (API + store + audit + tests green); next up Phase 10 catalog UX
+last_updated: "2026-08-19T23:59:00.000Z"
 last_activity: 2026-08-19
-last_activity_desc: Phase 8 SFTP inbox watcher complete (ingest + source=sftp + pill); Phase 10 UX locked
+last_activity_desc: Phase 9 external share links complete (SHARE-01..03); v0.4.0 release prepared
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 22
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 8 SFTP watcher **complete** (2026-08-19). **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 9 share links or Phase 10 (10-01/10-02).
+**Current focus:** Phase 9 share links **complete**. **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 10 (10-01/10-02).
 
 ## Current Position
 
-Phase: 8 of 10 (SFTP inbox watcher) — **complete**
-Plan: 08-01, 08-02 complete (SUMMARY files written)
-Status: Complete. Next: Phase 9 (share links) or Phase 10 (10-01 dashboard). Phase 10 on ROADMAP (no UI code yet).
-Last activity: 2026-08-19 — Phase 8 complete + Phase 10 UX **locked**. Product still **v0.2.4** (Phase 8 targets v0.3.0, not yet tagged). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
+Phase: 9 of 10 (external share links) — **complete**
+Plan: 09-01 complete (SUMMARY written); 09-CONTEXT only (no separate 09-02)
+Status: Complete. Next: Phase 10 (10-01 dashboard). Phase 10 on ROADMAP (no UI code yet).
+Last activity: 2026-08-19 — Phase 9 complete. Product **v0.4.0** (share links; tag pending this release). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
 
-Progress: [████████░░] 80% (8/10 phases; 14/22 plans)
+Progress: [█████████░] 90% (9/10 phases; 15/22 plans)
 
 ## Performance Metrics
 
@@ -73,10 +73,10 @@ Progress: [████████░░] 80% (8/10 phases; 14/22 plans)
 
 ### Pending Todos
 
-- Phase 8 **complete** — next: Phase 9 share links (09-01) or Phase 10 (10-01 dashboard)
-- Backlog 999.1 remaining: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3, I-5
+- Phase 9 **complete** — next: Phase 10 (10-01 dashboard / evidence locker Captures)
+- Backlog 999.1: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3 **done** (shipped v0.4.0); **I-5** (openpgp unreachable false positive) remains — documented, no fix
 - After Phase 10: UX-3 role walkthrough (viewer / uploader / admin)
-- Phase 8 targets release **v0.3.0** (CHANGELOG currently `[Unreleased]`; tag pending)
+- Phase 9 shipped in **v0.4.0** (CHANGELOG tagged; see release commit)
 
 ### Blockers/Concerns
 
@@ -85,5 +85,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-08-19
-Stopped at: Phase 8 SFTP watcher complete; Phase 10 UX locked (no UI implementation yet)
-Resume file: `.planning/ROADMAP.md` (Phase 9/10) or `.planning/phases/09-external-share-links/09-CONTEXT.md`
+Stopped at: Phase 9 share links complete; Phase 10 UX locked (no UI implementation yet)
+Resume file: `.planning/ROADMAP.md` (Phase 10) or `.planning/phases/10-catalog-ux/10-CONTEXT.md`
