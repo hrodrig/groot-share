@@ -53,7 +53,7 @@ endif
 .DEFAULT_GOAL := help
 
 .PHONY: help all build test cover fmt fmt-check lint-fix lint vet run serve clean install \
-	docker-build docker-build-amd64 docker-scan goreleaser-check release-check ci \
+	docker-build docker-build-amd64 docker-scan goreleaser-check release-check release-sync-check ci \
 	gocyclo govulncheck vulncheck grype security \
 	dist-freebsd dist-openbsd port-freebsd-sync port-openbsd-sync man-sync
 
@@ -87,7 +87,8 @@ help:
 	@echo "  $(GREEN)docker-build$(RESET)       Local image ($(IMAGE))"
 	@echo "  $(GREEN)docker-scan$(RESET)        docker-build + Grype image scan"
 	@echo "  $(GREEN)goreleaser-check$(RESET)   goreleaser check"
-	@echo "  $(GREEN)release-check$(RESET)      VERSION + goreleaser + fmt-check + lint + cover + security"
+	@echo "  $(GREEN)release-check$(RESET)      VERSION + sync-check + goreleaser + fmt-check + lint + cover + security"
+	@echo "  $(GREEN)release-sync-check$(RESET) Fail if README/man/BSD ports drift from VERSION"
 	@echo ""
 	@echo "$(YELLOW)BSD ports:$(RESET)"
 	@echo "  $(GREEN)man-sync$(RESET)            Bump .TH in contrib/man from VERSION"
@@ -198,6 +199,7 @@ release-check:
 	@test -f VERSION || { echo "VERSION file is required"; exit 1; }
 	@echo "Release version: $(VERSION) (tag: $(TAG))"
 	@echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "VERSION must be semver (e.g. 0.1.0)"; exit 1; }
+	@$(MAKE) release-sync-check
 	@$(MAKE) goreleaser-check
 	@$(MAKE) fmt-check
 	@$(MAKE) lint
@@ -205,6 +207,20 @@ release-check:
 	@$(MAKE) security
 	@if [ "$(STRICT_RELEASE)" = "1" ]; then $(MAKE) docker-scan; fi
 	@echo "$(GREEN)release-check OK$(RESET)"
+
+# Fail if any version surface drifts from VERSION (README badge, man page .TH, BSD ports).
+release-sync-check:
+	@badge=$$(grep -o 'badge/version-[0-9][0-9.]*' README.md | head -1); \
+	man=$$(grep -o '"gfs v[0-9][0-9.]*"' contrib/man/man1/gfs.1 | head -1); \
+	fport=$$(grep -o '^PORTVERSION=	[0-9][0-9.]*' contrib/freebsd/Makefile | head -1); \
+	opkg=$$(grep -o '^PKGNAME =	gfs-[0-9][0-9.]*' contrib/openbsd/port/Makefile | head -1); \
+	fail=0; \
+	[ "$$badge" = "badge/version-$(VERSION)" ] || { echo "DRIFT: README badge $$badge != $(VERSION)"; fail=1; }; \
+	[ "$$man" = "\"gfs v$(VERSION)\"" ] || { echo "DRIFT: man .TH $$man != v$(VERSION)"; fail=1; }; \
+	[ "$$fport" = "PORTVERSION=	$(VERSION)" ] || { echo "DRIFT: freebsd PORTVERSION $$fport != $(VERSION)"; fail=1; }; \
+	[ "$$opkg" = "PKGNAME =	gfs-$(VERSION)" ] || { echo "DRIFT: openbsd PKGNAME $$opkg != $(VERSION)"; fail=1; }; \
+	if [ $$fail -ne 0 ]; then echo "Run 'make man-sync port-freebsd-sync port-openbsd-sync' and update README badge."; exit 1; fi; \
+	echo "version surfaces in sync with $(VERSION)"
 
 man-sync:
 	@today=$$(date +%Y-%m-%d); \

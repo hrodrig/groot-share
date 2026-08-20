@@ -186,7 +186,7 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
 
 ## 9. Supply chain (must match groot-trigger)
 
-Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot-trigger` → `gfs` / module `github.com/hrodrig/groot-share`:
+Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), renaming `groot-trigger` → `gfs` / module `github.com/hrodrig/groot-share`:
 
 - `Makefile` BSD stub + `GNUmakefile`
 - `Dockerfile` + `Dockerfile.release` (distroless, UID 65532)
