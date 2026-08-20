@@ -58,7 +58,7 @@ laptop / bastion                 cluster (trigger / CronJob)
 
 **Model:** one gfs process on a VPS. SQLite = users, sessions, api_keys, audit. Inventory of files in VPS + S3 = `ListObjects` on the prefix, not a parallel catalog.
 
-Object key (both writers): `{key_prefix}{yyyy}/{mm}/{dd}/{id}.tar.gz` with `id` unique (ULID or sha256 prefix). groot `upload.s3` today keys from filename + prefix — gfs listing must accept **whatever keys already land** under the configured prefix (do not require groot to change in v0.1). HTTP ingest from gfs uses the dated-id scheme. Collision: last writer wins is unacceptable; if a key exists, HTTP ingest picks a new id. A Head error other than not-found is fatal (not treated as a free key).
+Object key (both writers): `{key_prefix}{yyyy}/{mm}/{dd}/{id}.tar.gz` with `id` unique (ULID or sha256 prefix). groot `upload.s3` today keys from filename + prefix — gfs listing must accept **whatever keys already land** under the configured prefix (do not require groot to change in v0.1). HTTP ingest from gfs uses the dated-id scheme (`{prefix}{yyyy}/{mm}/{dd}/{32hex}.tar.gz`). SFTP inbox ingest on **vps-s3** uses `{prefix}sftp/{yyyy}/{mm}/{dd}/{32hex}.tar.gz`. Collision: last writer wins is unacceptable; if a key exists, ingest picks a new id. A Head error other than not-found is fatal (not treated as a free key).
 
 ## 4. HTTP contract
 
@@ -93,8 +93,10 @@ Upload auth: `Authorization: Bearer <api_key>` or `X-API-Key` (trigger-style). D
 - On VPS + S3: write staging, copy to bucket, delete staging; if copy fails → `201` with `storage: transit` + retry (do not `5xx` the laptop)
 - On VPS only: write home dir, `201` with `storage: local`
 
-List JSON (shape): `{ "items": [ { "id", "key", "size", "etag_or_sha256", "created_at", "source": "http"|"s3" } ] }`  
-In VPS + S3, `source=s3` includes objects groot wrote that gfs never saw over HTTP.
+**SFTP inbox (optional):** when `GFS_SFTP_INBOX` is an absolute directory, gfs polls it (`GFS_SFTP_POLL`, default 30s) and ingests stable `*.tar.gz` files (size unchanged across two polls). Success or SHA-256 duplicate → delete the inbox file. Audit `action=upload`, `actor=sftp`, `uploaded_by` empty. gfs does **not** run an SFTP server. Unset inbox → watcher off.
+
+List JSON (shape): `{ "items": [ { "id", "key", "size", "etag_or_sha256", "created_at", "source": "http"|"s3"|"sftp" } ] }`  
+In VPS + S3, `source=s3` includes objects groot wrote that gfs never saw over HTTP. `source=sftp` is a gfs inbox ingest (object key `{prefix}sftp/{yyyy}/{mm}/{dd}/{id}.tar.gz`).
 
 ## 5. Config (operator)
 
@@ -115,6 +117,8 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_LOGIN_RATE_LIMIT` | Cap on `POST /login` per client IP **and** per username (`N/duration`, default `20/1m`). `0` / `off` disables |
 | `GFS_BRAND_SUB` | App-bar tag after the wordmark. Default `archive door`. Short string (e.g. `ACME CORP`). `-` hides |
 | `GFS_FOOTER` | Authenticated footer. Default `gfs vX · groot · groot-share`. Plain text replaces it. `-` hides |
+| `GFS_SFTP_INBOX` | Absolute directory for groot `upload.sftp` drops. Empty/unset → watcher off. gfs does **not** run an SFTP server |
+| `GFS_SFTP_POLL` | Inbox poll interval (default `30s`) |
 
 Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit. `gfs.db` is `chmod 0600` on open. The SQLite connection enables `foreign_keys`, WAL, and `busy_timeout`.
 

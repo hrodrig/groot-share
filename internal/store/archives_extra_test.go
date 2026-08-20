@@ -68,7 +68,7 @@ func TestCommitLocalPromotesStaging(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := st.CommitLocal(ctx, staged)
+	a, err := st.CommitLocal(ctx, staged, "http")
 	if err != nil || a.Storage != "local" || a.Key != "promote.tar.gz" {
 		t.Fatalf("%+v %v", a, err)
 	}
@@ -88,7 +88,7 @@ func TestCommitLocalInvalidArchiveID(t *testing.T) {
 	st := archiveStore(t)
 	ctx := context.Background()
 	staged := Staged{ID: "not-valid", Path: filepath.Join(st.StagingDir(), "x.partial")}
-	if _, err := st.CommitLocal(ctx, staged); err == nil {
+	if _, err := st.CommitLocal(ctx, staged, "http"); err == nil {
 		t.Fatal("expected error")
 	}
 }
@@ -106,7 +106,7 @@ func TestCommitLocalMissingStagingFile(t *testing.T) {
 		UploadedBy: 1,
 		CreatedAt:  time.Now().UTC(),
 	}
-	if _, err := st.CommitLocal(ctx, staged); err == nil {
+	if _, err := st.CommitLocal(ctx, staged, "http"); err == nil {
 		t.Fatal("expected rename error")
 	}
 }
@@ -133,14 +133,27 @@ func TestCommitLocalDuplicateInsert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CommitLocal(ctx, staged1); err != nil {
+	if _, err := st.CommitLocal(ctx, staged1, "http"); err != nil {
 		t.Fatal(err)
 	}
 	staged2, err := st.StageWithID(ctx, staged1.ID, bytes.NewReader([]byte("two")), "b.tar.gz", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CommitLocal(ctx, staged2); err == nil {
+	if _, err := st.CommitLocal(ctx, staged2, "http"); err == nil {
 		t.Fatal("expected duplicate insert error")
+	}
+}
+
+func TestCommitLocalSFTPSource(t *testing.T) {
+	st := archiveStore(t)
+	ctx := context.Background()
+	staged, err := st.Stage(ctx, bytes.NewReader([]byte("sftp-local")), "sftp.tar.gz", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := st.CommitLocal(ctx, staged, "sftp")
+	if err != nil || a.Source != "sftp" {
+		t.Fatalf("%+v %v", a, err)
 	}
 }

@@ -5,7 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] — 2026-08-19
+
+### Added
+
+- SFTP inbox watcher: `GFS_SFTP_INBOX` + `GFS_SFTP_POLL` (default 30s) ingest stable `*.tar.gz` with `source=sftp` (Phase 8 / ING-04)
+- Captures Source pill **SFTP**; **vps-s3** object keys `{prefix}sftp/{yyyy}/{mm}/{dd}/{id}.tar.gz`
 
 ## [0.2.4] — 2026-08-19
 

@@ -78,6 +78,10 @@ func run(args []string) int {
 		go app.RetryLoop(context.Background(), 30*time.Second)
 	}
 	go app.SweepLoop(context.Background(), cfg.RetentionEvery)
+	if cfg.SFTPInbox != "" {
+		go app.WatchLoop(context.Background(), cfg.SFTPPoll)
+		slog.Info("sftp inbox watcher", "path", cfg.SFTPInbox, "poll", cfg.SFTPPoll.String())
+	}
 	slog.Info("starting",
 		"version", version,
 		"listen", cfg.ListenAddr,

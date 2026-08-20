@@ -35,7 +35,7 @@ Supply-chain reference: `/Volumes/Data/addlink/github/groot-trigger`.
 
 ### Ingest (v1.2 — Phase 8)
 
-- [ ] **ING-04**: SFTP inbox watcher — groot `upload.sftp` drops into `GFS_SFTP_INBOX`; gfs ingests with `source=sftp`; Captures shows SFTP pill; dedupe + audit; vps and vps-s3
+- [x] **ING-04**: SFTP inbox watcher — groot `upload.sftp` drops into `GFS_SFTP_INBOX`; gfs ingests with `source=sftp`; Captures shows SFTP pill; dedupe + audit; vps and vps-s3
 
 ### Storage
 
@@ -143,7 +143,7 @@ Filled by roadmap.
 | AUD-01 | Phase 6 | Complete |
 | RET-01 | Phase 6 | Complete |
 | AUTH-05 | Phase 7 | Complete |
-| ING-04 | Phase 8 | Planned |
+| ING-04 | Phase 8 | Complete |
 | SHARE-01 | Phase 9 | Planned |
 | SHARE-02 | Phase 9 | Planned |
 | SHARE-03 | Phase 9 | Planned |

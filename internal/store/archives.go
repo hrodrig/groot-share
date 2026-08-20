@@ -97,7 +97,7 @@ func (s *Store) Ingest(ctx context.Context, r io.Reader, key string, uploadedBy 
 		_ = os.Remove(st.Path)
 		return Archive{}, err
 	}
-	return s.CommitLocal(ctx, st)
+	return s.CommitLocal(ctx, st, "http")
 }
 
 // Stage writes r to staging/{id}.partial. Caller must CommitLocal or SaveTransit.
@@ -147,7 +147,8 @@ func (s *Store) StageWithID(_ context.Context, id string, r io.Reader, key strin
 }
 
 // CommitLocal promotes staging into home and inserts an archives row.
-func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
+func (s *Store) CommitLocal(ctx context.Context, st Staged, source string) (Archive, error) {
+	source = localSource(source)
 	home, err := s.BlobPath(st.ID)
 	if err != nil {
 		_ = os.Remove(st.Path)
@@ -159,8 +160,8 @@ func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
 	}
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO archives (id, key, size, sha256, source, uploaded_by, created_at)
-		VALUES (?, ?, ?, ?, 'http', ?, ?)`,
-		st.ID, st.Key, st.Size, st.SHA256, optionalUserID(st.UploadedBy), st.CreatedAt.Format(time.RFC3339),
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		st.ID, st.Key, st.Size, st.SHA256, source, optionalUserID(st.UploadedBy), st.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		_ = os.Remove(home)
@@ -171,11 +172,18 @@ func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
 		Key:        st.Key,
 		Size:       st.Size,
 		SHA256:     st.SHA256,
-		Source:     "http",
+		Source:     source,
 		Storage:    "local",
 		UploadedBy: st.UploadedBy,
 		CreatedAt:  st.CreatedAt,
 	}, nil
+}
+
+func localSource(source string) string {
+	if source == "sftp" {
+		return "sftp"
+	}
+	return "http"
 }
 
 // InsertArchiveMeta records metadata for objects stored outside VPS home (e.g. S3).

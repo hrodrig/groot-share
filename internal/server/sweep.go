@@ -76,7 +76,7 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 	if err := s.Store.DeleteTransit(ctx, tr.ID); err != nil {
 		return store.Archive{}, err
 	}
-	return store.Archive{ID: tr.S3Key, Key: tr.Key, Size: tr.Size, Source: "http", Storage: "transit"}, nil
+	return store.Archive{ID: tr.S3Key, Key: tr.Key, Size: tr.Size, Source: blob.SourceForKey(tr.S3Key), Storage: "transit"}, nil
 }
 
 // SweepOnce deletes home objects that fail keep_last or max_age, then staging leftovers.

@@ -514,6 +514,7 @@ table.grid {
   background: var(--surface-2);
 }
 .pill-http { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.pill-sftp { color: #0e7490; border-color: #0e7490; background: #cffafe; }
 .pill-s3 { color: var(--muted); }
 .pill-local { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
 .pill-transit { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }

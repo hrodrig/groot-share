@@ -22,7 +22,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist (completed 2026-08-12)
 - [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
 - [x] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (completed 2026-08-13, shipped in v0.2.0)
-- [ ] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (planned 2026-08-13)
+- [x] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (completed 2026-08-19)
 - [ ] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (planned 2026-08-13)
 - [ ] **Phase 10: Operational catalog UX** — Incident evidence locker: cluster-first catalog, upload progress, mobile cards, compliance Activity (planned 2026-08-19; vanilla HTML, no SPA)
 
@@ -175,12 +175,12 @@ Context: `.planning/phases/07-rbac/07-CONTEXT.md`
   4. On `vps-s3`, SFTP objects land under `{prefix}sftp/...` and list correctly alongside HTTP and cluster S3 keys
   5. Watcher off when `GFS_SFTP_INBOX` unset — no behavior change for HTTP-only deploys
 
-**Plans:** 0/2 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 
-- [ ] 08-01: Config + watcher loop + ingest with `source=sftp` (vps + vps-s3)
-- [ ] 08-02: UI pill + SPEC/README/CHANGELOG
+- [x] 08-01: Config + watcher loop + ingest with `source=sftp` (vps + vps-s3)
+- [x] 08-02: UI pill + SPEC/README/CHANGELOG
 
 Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 
@@ -266,6 +266,6 @@ Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `
 | 5. Bucket home | 2/2 | Complete    | 2026-08-12 |
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
 | 7. RBAC | 3/3 | Complete | 2026-08-13 |
-| 8. SFTP watcher | 0/2 | Planned | — |
+| 8. SFTP watcher | 2/2 | Complete | 2026-08-19 |
 | 9. External share links | 0/2 | Planned | — |
 | 10. Operational catalog UX | 0/6 | Planned | — |

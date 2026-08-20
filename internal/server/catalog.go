@@ -19,18 +19,40 @@ import (
 )
 
 func (s *Server) ingestBody(ctx context.Context, r io.Reader, key string, uploadedBy int64) (store.Archive, error) {
+	return s.ingestWithSource(ctx, r, key, "http", uploadedBy)
+}
+
+func (s *Server) ingestWithSource(ctx context.Context, r io.Reader, key, source string, uploadedBy int64) (store.Archive, error) {
 	if s.useBucket() {
-		return s.ingestTransit(ctx, r, key, uploadedBy)
+		return s.ingestTransit(ctx, r, key, source, uploadedBy)
 	}
-	return s.Store.Ingest(ctx, r, key, uploadedBy)
+	st, err := s.Store.Stage(ctx, r, key, uploadedBy)
+	if err != nil {
+		return store.Archive{}, err
+	}
+	if existing, err := s.Store.FindExistingSHA256(ctx, st.SHA256); err == nil {
+		_ = os.Remove(st.Path)
+		return store.Archive{}, &store.DuplicateError{Existing: existing}
+	} else if !errors.Is(err, store.ErrNotFound) {
+		_ = os.Remove(st.Path)
+		return store.Archive{}, err
+	}
+	return s.Store.CommitLocal(ctx, st, source)
 }
 
 func (s *Server) useBucket() bool {
 	return s.Blobs != nil && s.Cfg.Topology == config.TopologyVPSS3
 }
 
-func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key string, uploadedBy int64) (store.Archive, error) {
-	id, s3key, err := s.uniqueHTTPKey(ctx, time.Now().UTC())
+func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key, source string, uploadedBy int64) (store.Archive, error) {
+	now := time.Now().UTC()
+	var id, s3key string
+	var err error
+	if source == "sftp" {
+		id, s3key, err = s.uniqueSFTPKey(ctx, now)
+	} else {
+		id, s3key, err = s.uniqueHTTPKey(ctx, now)
+	}
 	if err != nil {
 		return store.Archive{}, err
 	}
@@ -45,16 +67,28 @@ func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key string, upl
 		_ = os.Remove(st.Path)
 		return store.Archive{}, err
 	}
-	return s.copyOrTransit(ctx, st, s3key)
+	return s.copyOrTransit(ctx, st, s3key, source)
 }
 
 func (s *Server) uniqueHTTPKey(ctx context.Context, now time.Time) (id, key string, err error) {
+	return s.uniqueObjectKey(ctx, now, func(id string, t time.Time) string {
+		return blob.HTTPKey(s.Cfg.S3Prefix, id, t)
+	})
+}
+
+func (s *Server) uniqueSFTPKey(ctx context.Context, now time.Time) (id, key string, err error) {
+	return s.uniqueObjectKey(ctx, now, func(id string, t time.Time) string {
+		return blob.SFTPKey(s.Cfg.S3Prefix, id, t)
+	})
+}
+
+func (s *Server) uniqueObjectKey(ctx context.Context, now time.Time, makeKey func(id string, t time.Time) string) (id, key string, err error) {
 	for range 8 {
 		id, err = store.NewArchiveID()
 		if err != nil {
 			return "", "", fmt.Errorf("id: %w", err)
 		}
-		key = blob.HTTPKey(s.Cfg.S3Prefix, id, now)
+		key = makeKey(id, now)
 		_, err = s.Blobs.Head(ctx, key)
 		if errors.Is(err, blob.ErrNotFound) {
 			return id, key, nil
@@ -66,13 +100,16 @@ func (s *Server) uniqueHTTPKey(ctx context.Context, now time.Time) (id, key stri
 	return "", "", fmt.Errorf("could not allocate object key")
 }
 
-func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key string) (store.Archive, error) {
+func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key, source string) (store.Archive, error) {
+	if source == "" {
+		source = "http"
+	}
 	a := store.Archive{
 		ID:         s3key,
 		Key:        st.Key,
 		Size:       st.Size,
 		SHA256:     st.SHA256,
-		Source:     "http",
+		Source:     source,
 		Storage:    "s3",
 		UploadedBy: st.UploadedBy,
 		CreatedAt:  st.CreatedAt,
@@ -221,7 +258,7 @@ func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store
 		Key:       tr.Key,
 		Size:      tr.Size,
 		SHA256:    tr.SHA256,
-		Source:    "http",
+		Source:    blob.SourceForKey(tr.S3Key),
 		Storage:   "transit",
 		CreatedAt: tr.CreatedAt,
 	}, nil

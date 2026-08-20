@@ -54,6 +54,15 @@ func TestLoadFromEnvFailClosed(t *testing.T) {
 			wantErr: "GFS_S3_BUCKET",
 		},
 		{
+			name: "sftp inbox relative",
+			env: map[string]string{
+				"GFS_TOPOLOGY":   "vps",
+				"GFS_DATA_DIR":   t.TempDir(),
+				"GFS_SFTP_INBOX": "inbox",
+			},
+			wantErr: "GFS_SFTP_INBOX",
+		},
+		{
 			name: "vps-s3 missing creds",
 			env: map[string]string{
 				"GFS_TOPOLOGY":  "vps-s3",
@@ -68,6 +77,7 @@ func TestLoadFromEnvFailClosed(t *testing.T) {
 			t.Setenv("GFS_TOPOLOGY", "")
 			t.Setenv("GFS_DATA_DIR", "")
 			t.Setenv("GFS_S3_BUCKET", "")
+			t.Setenv("GFS_SFTP_INBOX", "")
 			t.Setenv("AWS_ACCESS_KEY_ID", "")
 			t.Setenv("AWS_SECRET_ACCESS_KEY", "")
 			for k, v := range tc.env {
@@ -96,6 +106,8 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	t.Setenv("GFS_BRAND_SUB", "")
 	t.Setenv("GFS_FOOTER", "")
 	t.Setenv("GFS_BOOTSTRAP_ADMIN_NAME", "")
+	t.Setenv("GFS_SFTP_INBOX", "")
+	t.Setenv("GFS_SFTP_POLL", "")
 	cfg, err := LoadFromEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -111,6 +123,9 @@ func TestLoadFromEnvVPS(t *testing.T) {
 	}
 	if cfg.BootstrapAdminName != DefaultBootstrapName {
 		t.Fatalf("bootstrap name %q", cfg.BootstrapAdminName)
+	}
+	if cfg.SFTPInbox != "" || cfg.SFTPPoll != 30*time.Second {
+		t.Fatalf("sftp defaults: %+v", cfg)
 	}
 }
 
@@ -139,6 +154,22 @@ func TestLoadFromEnvBootstrapName(t *testing.T) {
 	}
 	if cfg.BootstrapAdminName != "Ada Lovelace" {
 		t.Fatalf("name %q", cfg.BootstrapAdminName)
+	}
+}
+
+func TestLoadFromEnvSFTPInbox(t *testing.T) {
+	dir := t.TempDir()
+	inbox := t.TempDir()
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", dir)
+	t.Setenv("GFS_SFTP_INBOX", inbox)
+	t.Setenv("GFS_SFTP_POLL", "15s")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SFTPInbox != inbox || cfg.SFTPPoll != 15*time.Second {
+		t.Fatalf("sftp %+v", cfg)
 	}
 }
 

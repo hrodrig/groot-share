@@ -29,7 +29,7 @@ The usual shortcuts fail:
 
 ## How gfs solves it
 
-**gfs** is a small **VPS service**: login + scoped API keys, HTTP ingest, Captures UI, audit log, and retention — in front of groot archives. **Laptops and bastion hosts** never need long-lived `AWS_*` on every operator machine. On **vps-s3**, the cluster still prefers **`groot upload.s3` straight to the bucket** (multi-GB skips the VPS); bastions may HTTP POST to gfs or use `upload.s3` / `upload.sftp` per [groot-selfhosted](https://github.com/hrodrig/groot-selfhosted) playbook. gfs **lists the same prefix** so HTTP, S3, and (future) SFTP ingest appear in one place.
+**gfs** is a small **VPS service**: login + scoped API keys, HTTP ingest, optional SFTP inbox watcher, Captures UI, audit log, and retention — in front of groot archives. **Laptops and bastion hosts** never need long-lived `AWS_*` on every operator machine. On **vps-s3**, the cluster still prefers **`groot upload.s3` straight to the bucket** (multi-GB skips the VPS); bastions may HTTP POST to gfs or use `upload.s3` / `upload.sftp` per [groot-selfhosted](https://github.com/hrodrig/groot-selfhosted) playbook. gfs **lists the same prefix** so HTTP, S3, and SFTP ingest appear in one place.
 
 **gfs is not universal.** If you have **only** a bucket and no VPS, the better path is **S3 only** (groot `upload.s3` + S3 client) — **do not deploy gfs**. Full decision matrix with trade-offs: **[docs/ALTERNATIVES.md](docs/ALTERNATIVES.md)**.
 
@@ -42,7 +42,7 @@ The usual shortcuts fail:
 | Bucket + laptops/bastions without `AWS_*` + cluster multi-GB | **gfs `vps-s3`** + cluster `upload.s3` |
 | Scheduled or bastion collect (jump host) | **groot-selfhosted** standalone / Docker → gfs HTTP or `upload.s3` |
 | “Generate capture” button in cluster | **groot-trigger** + one of the storage rows above |
-| SFTP drop box today | **groot `upload.sftp`** playbook; gfs watcher [planned](.planning/ROADMAP.md) |
+| SFTP drop box | **groot `upload.sftp`** into `GFS_SFTP_INBOX`; gfs watcher ingests (`source=sftp`). Playbook: [sftp-vps](https://github.com/hrodrig/groot-selfhosted/tree/main/run/examples/sftp-vps) |
 
 → **[Full comparison, pros/cons, and transparency about gfs limits](docs/ALTERNATIVES.md)**
 
@@ -100,12 +100,11 @@ Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **Wh
 - Server-rendered HTML: Captures, Upload, Activity, Settings, admin Users
 - HTTP ingest of groot `.tar.gz` (browser or `POST /v1/archives`)
 - Cluster archives via shared S3 prefix (`source=s3`) on **vps-s3**
+- SFTP inbox watcher (`GFS_SFTP_INBOX`) for groot `upload.sftp` — Captures pill **SFTP** (`source=sftp`)
 - Audit log (upload / download / delete / user actions; no secrets in rows)
 - Retention: `keep_last` **or** `max_age_days` (defaults 20 / 90)
 - Fail-closed config (`GFS_TOPOLOGY`, bootstrap admin, bucket creds)
 - Supply chain aligned with **groot-trigger** (GNU Make, GoReleaser, distroless, CI)
-
-**Planned:** SFTP inbox watcher (groot `upload.sftp` drop dir) — [Phase 8](.planning/ROADMAP.md).
 
 ## Quick start (local)
 
@@ -142,6 +141,8 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 | `GFS_LOGIN_RATE_LIMIT` | Cap `POST /login` per IP and per username (default `20/1m`). `0` disables |
 | `GFS_BRAND_SUB` | App-bar tag (default `archive door`). Example: `ACME CORP`. `-` hides |
 | `GFS_FOOTER` | Footer text (default `gfs vX · groot · groot-share`). `-` hides |
+| `GFS_SFTP_INBOX` | Absolute groot `upload.sftp` drop dir. Empty = off. See [sftp-vps](https://github.com/hrodrig/groot-selfhosted/tree/main/run/examples/sftp-vps) |
+| `GFS_SFTP_POLL` | Inbox poll interval (default `30s`) |
 
 Copy [.env.example](.env.example) for local dev; **never commit** `.env`. Change the sample bootstrap password before first start.
 

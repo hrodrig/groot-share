@@ -4,16 +4,16 @@ milestone: v1.2
 milestone_name: SFTP watcher
 current_phase: 8
 current_phase_name: SFTP inbox watcher
-status: planned
-stopped_at: Phase 10 UX locked 2026-08-19; GSD current remains Phase 8; product v0.2.4
+status: complete
+stopped_at: Phase 8 SFTP watcher complete 2026-08-19 (code + docs green); Phase 10 UX locked; next up Phase 9 or 10
 last_updated: "2026-08-19T23:40:00.000Z"
 last_activity: 2026-08-19
-last_activity_desc: Phase 10 locked from Captures mock (vanilla HTML, steal layout, reject SPA/analyze/origin-from-source)
+last_activity_desc: Phase 8 SFTP inbox watcher complete (ingest + source=sftp + pill); Phase 10 UX locked
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 22
-  completed_plans: 12
+  completed_plans: 14
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 8 — SFTP inbox watcher (GSD). **Phase 10 locked** — evidence locker Captures (vanilla HTML). May run 10-01/10-02 before 08-01.
+**Current focus:** Phase 8 SFTP watcher **complete** (2026-08-19). **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 9 share links or Phase 10 (10-01/10-02).
 
 ## Current Position
 
-Phase: 8 of 10 (SFTP inbox watcher)
-Plan: 08-01 not started
-Status: Planned — ready for `/gsd-execute-phase` or manual execution. Phase 10 on ROADMAP (no UI code yet).
-Last activity: 2026-08-19 — Phase 10 UX **locked**. Product still **v0.2.4**. Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
+Phase: 8 of 10 (SFTP inbox watcher) — **complete**
+Plan: 08-01, 08-02 complete (SUMMARY files written)
+Status: Complete. Next: Phase 9 (share links) or Phase 10 (10-01 dashboard). Phase 10 on ROADMAP (no UI code yet).
+Last activity: 2026-08-19 — Phase 8 complete + Phase 10 UX **locked**. Product still **v0.2.4** (Phase 8 targets v0.3.0, not yet tagged). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
 
-Progress: [███████░░░] 70% (7/10 phases; 12/22 plans)
+Progress: [████████░░] 80% (8/10 phases; 14/22 plans)
 
 ## Performance Metrics
 
@@ -73,9 +73,10 @@ Progress: [███████░░░] 70% (7/10 phases; 12/22 plans)
 
 ### Pending Todos
 
-- Execute `.planning/phases/08-sftp-watcher/08-01-PLAN.md` **or** start Phase 10 (10-01 dashboard) if catalog UX is the next ship
+- Phase 8 **complete** — next: Phase 9 share links (09-01) or Phase 10 (10-01 dashboard)
 - Backlog 999.1 remaining: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3, I-5
 - After Phase 10: UX-3 role walkthrough (viewer / uploader / admin)
+- Phase 8 targets release **v0.3.0** (CHANGELOG currently `[Unreleased]`; tag pending)
 
 ### Blockers/Concerns
 
@@ -84,5 +85,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-08-19
-Stopped at: Phase 10 UX locked (no UI implementation yet)
-Resume file: `.planning/ROADMAP.md` (Phase 10) or `.planning/phases/08-sftp-watcher/08-01-PLAN.md`
+Stopped at: Phase 8 SFTP watcher complete; Phase 10 UX locked (no UI implementation yet)
+Resume file: `.planning/ROADMAP.md` (Phase 9/10) or `.planning/phases/09-external-share-links/09-CONTEXT.md`
