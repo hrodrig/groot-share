@@ -128,7 +128,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("ingest failed", "error", err)
-		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
 	s.recordAudit(r, "upload", a)
