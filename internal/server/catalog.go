@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hrodrig/groot-share/internal/blob"
@@ -125,6 +126,7 @@ func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key, sour
 	if err := s.Store.InsertArchiveMeta(ctx, a); err != nil {
 		slog.Warn("archive meta index", "error", err, "id", a.ID)
 	}
+	s.listCache.invalidate()
 	return a, nil
 }
 
@@ -155,6 +157,7 @@ func (s *Server) RetryOnce(ctx context.Context) error {
 		if err := s.Store.DeleteTransit(ctx, tr.ID); err != nil {
 			slog.Error("transit cleanup", "error", err)
 		}
+		s.listCache.invalidate()
 	}
 	return nil
 }
@@ -178,9 +181,52 @@ func (s *Server) RetryLoop(ctx context.Context, every time.Duration) {
 	}
 }
 
+// listCache caches the vps-s3 object listing to avoid a full ListObjects on
+// every Captures page / GET /v1/archives. Zero-value is a cold, thread-safe
+// cache; it is only consulted when useBucket() is true.
+type listCache struct {
+	mu     sync.Mutex
+	items  []store.Archive
+	filled time.Time
+}
+
+// listCacheTTL bounds staleness of the cached listing.
+const listCacheTTL = 5 * time.Second
+
+func (c *listCache) get(now time.Time) ([]store.Archive, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.filled.IsZero() || now.Sub(c.filled) >= listCacheTTL {
+		return nil, false
+	}
+	return c.items, true
+}
+
+func (c *listCache) set(items []store.Archive, now time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items = items
+	c.filled = now
+}
+
+func (c *listCache) invalidate() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items = nil
+	c.filled = time.Time{}
+}
+
 func (s *Server) listItems(ctx context.Context) ([]store.Archive, error) {
 	if !s.useBucket() {
 		return s.Store.ListArchives(ctx)
+	}
+	return s.listItemsBucket(ctx)
+}
+
+func (s *Server) listItemsBucket(ctx context.Context) ([]store.Archive, error) {
+	now := time.Now()
+	if items, ok := s.listCache.get(now); ok {
+		return items, nil
 	}
 	prefix := blob.NormalizePrefix(s.Cfg.S3Prefix)
 	objs, err := s.Blobs.List(ctx, prefix)
@@ -194,6 +240,7 @@ func (s *Server) listItems(ctx context.Context) ([]store.Archive, error) {
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].CreatedAt.After(out[j].CreatedAt)
 	})
+	s.listCache.set(out, now)
 	return out, nil
 }
 

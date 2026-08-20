@@ -64,6 +64,7 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 		if err := s.Blobs.Delete(ctx, id); err != nil {
 			return store.Archive{}, err
 		}
+		s.listCache.invalidate()
 		return objectArchive(obj), nil
 	}
 	if !errors.Is(err, blob.ErrNotFound) {

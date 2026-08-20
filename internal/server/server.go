@@ -24,6 +24,8 @@ type Server struct {
 	Version string
 	// LoginLimit gates POST /login (nil = unlimited; production sets from config).
 	LoginLimit *ratelimit.Limiter
+	// listCache memoizes vps-s3 listings (zero-value = cold, safe).
+	listCache listCache
 }
 
 // Handler returns the root mux with middleware.

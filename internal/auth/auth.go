@@ -22,18 +22,31 @@ const (
 	MinPasswordLen = 8
 	apiKeyBytes    = 32
 	sessionBytes   = 32
-	bcryptCost     = bcrypt.DefaultCost
 )
+
+// bcryptCost is bcrypt.DefaultCost in production; tests lower it via UseTestCost.
+var bcryptCost = bcrypt.DefaultCost
 
 // dummyHash is used when the user is unknown so Compare still burns bcrypt time.
 var dummyHash []byte
 
 func init() {
-	h, err := bcrypt.GenerateFromPassword([]byte("dummy-password-not-used"), bcryptCost)
+	dummyHash = mustHash([]byte("dummy-password-not-used"))
+}
+
+func mustHash(pw []byte) []byte {
+	h, err := bcrypt.GenerateFromPassword(pw, bcryptCost)
 	if err != nil {
 		panic(err)
 	}
-	dummyHash = h
+	return h
+}
+
+// UseTestCost lowers the bcrypt work factor and regenerates the dummy hash.
+// Test-only: do not call from production code paths.
+func UseTestCost() {
+	bcryptCost = bcrypt.MinCost
+	dummyHash = mustHash([]byte("dummy-password-not-used"))
 }
 
 // HashPassword returns a bcrypt hash. Rejects short passwords.

@@ -52,3 +52,20 @@ jobs:
 
       - name: Test with coverage gate
         run: make cover
+
+  security:
+    name: govulncheck + grype
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: govulncheck
+        run: make govulncheck
+
+      - name: grype (directory scan, honors GRYPE_DIR_EXCLUDES)
+        run: make grype
