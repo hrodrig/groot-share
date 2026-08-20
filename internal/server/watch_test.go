@@ -51,7 +51,20 @@ func TestWatchOnceIngestsStableFile(t *testing.T) {
 	if err != nil || len(events) == 0 || events[0].Actor != "sftp" || events[0].Action != "upload" {
 		t.Fatalf("audit %+v %v", events, err)
 	}
+}
 
+func TestCapturesHTMLShowsSFTPPill(t *testing.T) {
+	s, _ := identServer(t)
+	inbox := t.TempDir()
+	s.Cfg.SFTPInbox = inbox
+	seen := map[string]int64{}
+	dropInboxTar(t, inbox, "groot-run.tar.gz", "sftp-payload-vps")
+	if err := s.WatchOnce(context.Background(), seen); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.WatchOnce(context.Background(), seen); err != nil {
+		t.Fatal(err)
+	}
 	ck := loginCookie(t, s)
 	home := httptest.NewRequest(http.MethodGet, "/", nil)
 	home.AddCookie(ck)

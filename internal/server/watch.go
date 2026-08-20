@@ -58,25 +58,7 @@ func (s *Server) WatchOnce(ctx context.Context, seen map[string]int64) error {
 		name := ent.Name()
 		path := filepath.Join(inbox, name)
 		live[path] = struct{}{}
-		if ent.IsDir() || !isInboxTar(name) {
-			continue
-		}
-		fi, err := os.Stat(path)
-		if err != nil {
-			slog.Warn("sftp stat", "path", path, "error", err)
-			continue
-		}
-		size := fi.Size()
-		prev, ok := seen[path]
-		if !ok || prev != size || size <= 0 {
-			seen[path] = size
-			continue
-		}
-		if err := s.ingestSFTPPath(ctx, path, size); err != nil {
-			slog.Warn("sftp ingest", "path", path, "error", err)
-			continue
-		}
-		delete(seen, path)
+		s.processInboxEntry(ctx, path, name, ent.IsDir(), seen)
 	}
 	for path := range seen {
 		if _, ok := live[path]; !ok {
@@ -84,6 +66,30 @@ func (s *Server) WatchOnce(ctx context.Context, seen map[string]int64) error {
 		}
 	}
 	return nil
+}
+
+// processInboxEntry handles one inbox entry: records stability size, then ingests
+// stable *.tar.gz files (removing the inbox file on success) and drops stale sizes.
+func (s *Server) processInboxEntry(ctx context.Context, path, name string, isDir bool, seen map[string]int64) {
+	if isDir || !isInboxTar(name) {
+		return
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		slog.Warn("sftp stat", "path", path, "error", err)
+		return
+	}
+	size := fi.Size()
+	prev, ok := seen[path]
+	if !ok || prev != size || size <= 0 {
+		seen[path] = size
+		return
+	}
+	if err := s.ingestSFTPPath(ctx, path, size); err != nil {
+		slog.Warn("sftp ingest", "path", path, "error", err)
+		return
+	}
+	delete(seen, path)
 }
 
 func isInboxTar(name string) bool {
