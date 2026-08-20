@@ -150,18 +150,20 @@ func TestNewAppReadyWithMemoryBlob(t *testing.T) {
 
 func TestListenAndServeBadAddr(t *testing.T) {
 	srv := &http.Server{Addr: "127.0.0.1:0\n", Handler: http.NewServeMux()}
-	if code := listenAndServe(srv); code != 1 {
+	if code := listenAndServe(context.Background(), srv); code != 1 {
 		t.Fatalf("code %d", code)
 	}
 }
 
 func TestListenAndServeShutdown(t *testing.T) {
 	srv := &http.Server{Addr: "127.0.0.1:0", Handler: http.NewServeMux()}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		_ = srv.Shutdown(context.Background())
 	}()
-	if code := listenAndServe(srv); code != 0 {
+	if code := listenAndServe(ctx, srv); code != 0 {
 		t.Fatalf("code %d", code)
 	}
 }
