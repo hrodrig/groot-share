@@ -145,7 +145,7 @@ See [GFS-CONSENSUS § VPS + S3 ingest](GFS-CONSENSUS.md#vps--s3-ingest) for tran
 |--|--|
 | **Pros** | Familiar SFTP; no gfs required for VPS-only file drop |
 | **Cons** | SSH user management; no built-in audit/RBAC like gfs; separate from HTTP UI |
-| **gfs roadmap** | Phase 8: **watcher** on `GFS_SFTP_INBOX` ingests into Captures (`source=sftp`) — gfs still **does not** run SFTP server |
+| **gfs** | Phase 8: **watcher** on `GFS_SFTP_INBOX` ingests into Captures (`source=sftp`) — gfs still **does not** run SFTP server |
 
 **Best when:** Producers already use SFTP; you may add gfs later for unified list/audit.
 

@@ -122,7 +122,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 
 ## Explicitly later (phase 2+)
 
-- `groot analyze` / compare from gfs UI
+- `groot analyze` / compare from gfs UI — gfs must **not** run analyze; at most serve a sidecar the producer already uploaded
 - BYOK LLM per user
 - Optional CLI: `groot upload --gfs` with api_key (token), never AWS keys
 - Richer roles/scopes, quotas, OIDC, etc. (ideas — not committed)
@@ -164,7 +164,7 @@ Related ops: groot-selfhosted S3 examples (e.g. `run/examples/s3-contabo/` as on
 5. Whether MVP peeks manifest on upload or only stores filename/size/sha256.
 6. Envelope encryption approach for BYOK (phase 2) — KDF from server secret vs external KMS.
 7. Monorepo vs this repo only; module layout when GSD starts.
-8. How tightly gfs should vendor/call groot (`exec` binary vs Go module import) for analyze.
+8. ~~How tightly gfs should vendor/call groot (`exec` binary vs Go module import) for analyze.~~ — **locked 2026-08-19:** **neither.** gfs does not import `groot/internal/analyze` and does not `exec` the groot binary. Collect and analyze stay in **groot**. gfs is the door (ingest / catalog / download / audit). If an LLM-ready digest should appear in the locker, **groot** (or the Job that already runs groot) **produces** it and uploads it; gfs only stores and serves those bytes.
 9. Download in VPS + S3: presigned GET vs proxy through gfs (depends on a GET spike against the operator’s S3 endpoint).
 10. Staging retry policy (interval, give-up, operator alert when stuck in transit).
 

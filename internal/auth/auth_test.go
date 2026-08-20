@@ -63,16 +63,6 @@ func TestExtractKey(t *testing.T) {
 	}
 }
 
-func TestEqualHash(t *testing.T) {
-	h := HashSecret("tok")
-	if !EqualHash(h, HashSecret("tok")) {
-		t.Fatal("equal")
-	}
-	if EqualHash(h, HashSecret("other")) {
-		t.Fatal("other")
-	}
-}
-
 func TestNewSessionToken(t *testing.T) {
 	raw, hash, err := NewSessionToken()
 	if err != nil || raw == "" || hash != HashSecret(raw) {

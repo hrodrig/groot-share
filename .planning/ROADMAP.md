@@ -1,8 +1,17 @@
 # Roadmap: gfs
 
+**Last reviewed:** 2026-08-19
+
+## Current focus
+
+| Track | Status |
+|-------|--------|
+| Product | **v0.2.4**. Phase 8 SFTP watcher planned (GSD current). Phase 9 share links after that. |
+| Operator UX | **Phase 10 locked** (2026-08-19). Evidence locker. Steal Captures layout from the v0 mock; implement in vanilla HTML. May interleave: **10-01 → 10-02** before 08-01. |
+
 ## Overview
 
-Stand up the groot-trigger supply chain, then a VPS binary that authenticates users, takes HTTP uploads onto local disk, lists and downloads them, then add S3-compatible transit (bucket is home, listing from the prefix so cluster `upload.s3` shows up), then audit and retention.
+Stand up the groot-trigger supply chain, then a VPS binary that authenticates users, takes HTTP uploads onto local disk, lists and downloads them, then add S3-compatible transit (bucket is home, listing from the prefix so cluster `upload.s3` shows up), then audit and retention. Phase 10 turns Captures into an **incident evidence locker**: find this archive now (cluster / capture window / completeness), download, paste the link into a ticket, audit who fetched it. Vanilla HTML, no SPA.
 
 ## Phases
 
@@ -13,8 +22,9 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 5: Bucket home** — Transit staging → S3; list from prefix; cluster upload.s3 coexist (completed 2026-08-12)
 - [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
 - [x] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (completed 2026-08-13, shipped in v0.2.0)
-- [ ] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (planned 2026-08-13)
+- [x] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (completed 2026-08-19)
 - [ ] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (planned 2026-08-13)
+- [ ] **Phase 10: Operational catalog UX** — Incident evidence locker: cluster-first catalog, upload progress, mobile cards, compliance Activity (planned 2026-08-19; vanilla HTML, no SPA)
 
 ## Phase Details
 
@@ -165,12 +175,12 @@ Context: `.planning/phases/07-rbac/07-CONTEXT.md`
   4. On `vps-s3`, SFTP objects land under `{prefix}sftp/...` and list correctly alongside HTTP and cluster S3 keys
   5. Watcher off when `GFS_SFTP_INBOX` unset — no behavior change for HTTP-only deploys
 
-**Plans:** 0/2 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 
-- [ ] 08-01: Config + watcher loop + ingest with `source=sftp` (vps + vps-s3)
-- [ ] 08-02: UI pill + SPEC/README/CHANGELOG
+- [x] 08-01: Config + watcher loop + ingest with `source=sftp` (vps + vps-s3)
+- [x] 08-02: UI pill + SPEC/README/CHANGELOG
 
 Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
 
@@ -195,15 +205,57 @@ Plans:
 
 Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
 
+### Phase 10: Operational catalog UX
+
+**Goal:** Captures is an **incident evidence locker** — find this `.tar.gz` under pressure, download it, paste the link into a ticket, know who fetched it. Not a generic file Dropbox. Server-rendered HTML stays; **no SPA**.
+**Depends on:** Phase 4–7 (list/upload/RBAC already shipped)
+**Requirements:** UX-01, UX-02, UX-03, UX-04, UX-05, UX-06, UX-07, UX-08
+**May interleave** with Phases 8–9. If catalog pain beats SFTP, run **10-01 then 10-02** before 08-01.
+**UX lock (2026-08-19):** Captures layout from the reviewed mock: stats → pin strip → cluster chips with counts → search + time window → table (desktop) / cards (mobile). **Download** is always a primary action (not kebab-only). Copy download URL stays (UX-2). Empty: **no archives yet** vs **no matches**. Product chrome is **gfs** + `VERSION`, not a fictional mock version. Visual: blue=primary, green=ready, amber=transit/partial, red=error/failed; `mono` for IDs/hashes/filenames/cluster.
+
+**Out of Phase 10 (explicit):**
+- Next/React/SPA / component libraries
+- `groot analyze` in-process or `exec` (GFS-CONSENSUS Q8)
+- Origin pills Trigger / Scheduled / Manual until a **producer** field exists (not inferred from `source` http/s3/sftp)
+- Secrets-redacted lock icon (groot profile, not catalog metadata)
+- Environment enum (prod/staging/dev) as a first-class facet
+
+**Honest limits:** List inventory is still keys + SQLite metadata (SPEC). **Filename parse** (cluster, capture timestamp, `since-*`, optional message) is in Phase 10. **`extras/manifest.json` peek** (job failed counts) is SPEC §11 Open — 10-06 only if cheap gzip-member read, never full unpack of multi-GB archives. Source/storage pills stay **secondary** (`http`/`s3`/`sftp`, VPS disk / object storage / in transit).
+**Success Criteria** (what must be TRUE):
+
+  1. Captures shows totals (count, bytes), cluster count, incomplete count when known, storage topology, and a primary **Upload archive** control; default sort **newest first**; optional per-user pin strip
+  2. Primary filters: **cluster** chips (counts), name/`since`/message search, capture time window (`24h`/`7d`/`30d`/all); source/storage secondary; query params persist; empty **no archives yet** vs **no match** + clear filters
+  3. Row actions: **Download** + **copy download URL** primary; pin; delete behind confirm (UX-06)
+  4. HTTP upload: `.tar.gz` / size limit visible (32 GiB copy unless SPEC says otherwise), name+size before send, progress, transit copy, cancel; duplicate called out
+  5. Narrow viewports: row → compact card; **Download** primary on the card; desktop stays a table
+  6. Activity is compliance-grade: filter user/action/date; **download** events first-class; admin **CSV/JSON export** (not optional)
+  7. Destructive actions need typed-name confirm; API key shown once with copy feedback; four-color state tokens
+  8. Completeness badge only when manifest peek exists (`Complete` / `N of M jobs failed` / all-failed `Failed`); filename-only rows stay unmarked
+
+**Plans:** 0/6 plans complete
+
+Plans:
+
+- [ ] 10-01: Captures dashboard (summary strip, CTA, newest-first, pin, copy-link + Download prominence)
+- [ ] 10-02: Cluster chips + search + time-window query params; source/storage secondary; distinct empty states
+- [ ] 10-03: Upload dropzone, progress, transit messaging, cancel, duplicate hint
+- [ ] 10-04: Responsive table → card layout (Download primary on cards)
+- [ ] 10-05: Activity filters + required admin export + settings/API-key safety + destructive confirm + visual tokens (nav grouping optional)
+- [ ] 10-06: Optional cheap `extras/manifest.json` peek → partial-capture badge (fail closed if not a groot archive)
+
+Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `admin.go`, `audit.go`. Filename parse from groot archive basename (SPEC groot §5). Update gfs SPEC when list HTML/JSON facets or manifest peek land. Do not vendor groot analyze.
+
 ## Backlog
 
 - [x] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc.
+- [ ] **UX-4: Producer origin** — Trigger / Scheduled / Manual only after groot (or sidecar) supplies it; never infer from `source` http/s3/sftp
+- [ ] **UX-3: Role walkthrough** — after Phase 10, test Captures/Upload/Activity as viewer, uploader, and admin (not a code plan)
 - [ ] **999.1: remaining audit fixes** — still open: ingest 400 vs 5xx (B-5), gzip magic (B-6), cookie Secure default (B-10), loop cancel (B-13), EqualHash (B-9), crash orphans (B-14), pin release images (I-2), Uploader API (I-3). Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
 
 ## Progress
 
 **Execution Order:**
-1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 (10 may start after 7; 10-01/10-02 before 8 if catalog UX is the next ship)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -214,5 +266,6 @@ Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
 | 5. Bucket home | 2/2 | Complete    | 2026-08-12 |
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
 | 7. RBAC | 3/3 | Complete | 2026-08-13 |
-| 8. SFTP watcher | 0/2 | Planned | — |
+| 8. SFTP watcher | 2/2 | Complete | 2026-08-19 |
 | 9. External share links | 0/2 | Planned | — |
+| 10. Operational catalog UX | 0/6 | Planned | — |

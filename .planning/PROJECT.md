@@ -58,7 +58,7 @@ Laptops never hold long-lived bucket credentials; cluster collect can still land
 - **Git:** Local commits. Do not `git push` unless explicitly asked.
 - **Logging:** slog JSON (gghstats / groot-trigger style), not groot logx.
 - **CGO:** `CGO_ENABLED=0` for release binaries (trigger pattern). SQLite: use a pure-Go driver (e.g. modernc.org/sqlite) so distroless/static builds stay CGO-free.
-- **UI (MVP):** server-rendered / vanilla HTML like trigger — no SPA framework unless a later phase says so.
+- **UI:** server-rendered / vanilla HTML like trigger — no SPA (LIST-03). Phase 10 is catalog UX on that stack, not a frontend rewrite.
 
 ## Key Decisions
 
@@ -90,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-12 after initialization*
+*Last updated: 2026-08-19 — Phase 10 operational catalog UX queued (vanilla HTML)*

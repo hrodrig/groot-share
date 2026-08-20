@@ -24,6 +24,8 @@ type Server struct {
 	Version string
 	// LoginLimit gates POST /login (nil = unlimited; production sets from config).
 	LoginLimit *ratelimit.Limiter
+	// listCache memoizes vps-s3 listings (zero-value = cold, safe).
+	listCache listCache
 }
 
 // Handler returns the root mux with middleware.
@@ -65,6 +67,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
 	mux.HandleFunc("POST /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
 	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.handleListAudit))
+	mux.HandleFunc("POST /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleCreateShare))
+	mux.HandleFunc("GET /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleListShares))
+	mux.HandleFunc("DELETE /v1/archives/{id}/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.handleRevokeShare))
+	mux.HandleFunc("GET /s/{token}", s.handleShareDownload)
 	mountFaviconRoutes(mux)
 	return s.accessLog(mux)
 }

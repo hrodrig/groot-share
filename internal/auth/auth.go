@@ -4,7 +4,6 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -22,18 +21,31 @@ const (
 	MinPasswordLen = 8
 	apiKeyBytes    = 32
 	sessionBytes   = 32
-	bcryptCost     = bcrypt.DefaultCost
 )
+
+// bcryptCost is bcrypt.DefaultCost in production; tests lower it via UseTestCost.
+var bcryptCost = bcrypt.DefaultCost
 
 // dummyHash is used when the user is unknown so Compare still burns bcrypt time.
 var dummyHash []byte
 
 func init() {
-	h, err := bcrypt.GenerateFromPassword([]byte("dummy-password-not-used"), bcryptCost)
+	dummyHash = mustHash([]byte("dummy-password-not-used"))
+}
+
+func mustHash(pw []byte) []byte {
+	h, err := bcrypt.GenerateFromPassword(pw, bcryptCost)
 	if err != nil {
 		panic(err)
 	}
-	dummyHash = h
+	return h
+}
+
+// UseTestCost lowers the bcrypt work factor and regenerates the dummy hash.
+// Test-only: do not call from production code paths.
+func UseTestCost() {
+	bcryptCost = bcrypt.MinCost
+	dummyHash = mustHash([]byte("dummy-password-not-used"))
 }
 
 // HashPassword returns a bcrypt hash. Rejects short passwords.
@@ -79,20 +91,22 @@ func HashSecret(s string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// EqualHash is constant-time compare for equal-length hex hashes.
-func EqualHash(a, b string) bool {
-	x, y := []byte(a), []byte(b)
-	if len(x) != len(y) {
-		return false
-	}
-	return subtle.ConstantTimeCompare(x, y) == 1
-}
-
 // NewSessionToken returns a raw cookie value and its SHA-256 hex.
 func NewSessionToken() (raw, hash string, err error) {
 	var b [sessionBytes]byte
 	if _, err = rand.Read(b[:]); err != nil {
 		return "", "", fmt.Errorf("rand session: %w", err)
+	}
+	raw = hex.EncodeToString(b[:])
+	return raw, HashSecret(raw), nil
+}
+
+// NewShareToken returns a raw external-share token (shown once, URL-safe hex)
+// and its SHA-256 hex for storage. Never log or persist the raw value.
+func NewShareToken() (raw, hash string, err error) {
+	var b [sessionBytes]byte
+	if _, err = rand.Read(b[:]); err != nil {
+		return "", "", fmt.Errorf("rand share token: %w", err)
 	}
 	raw = hex.EncodeToString(b[:])
 	return raw, HashSecret(raw), nil

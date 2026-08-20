@@ -97,7 +97,7 @@ func (s *Store) Ingest(ctx context.Context, r io.Reader, key string, uploadedBy 
 		_ = os.Remove(st.Path)
 		return Archive{}, err
 	}
-	return s.CommitLocal(ctx, st)
+	return s.CommitLocal(ctx, st, "http")
 }
 
 // Stage writes r to staging/{id}.partial. Caller must CommitLocal or SaveTransit.
@@ -147,7 +147,8 @@ func (s *Store) StageWithID(_ context.Context, id string, r io.Reader, key strin
 }
 
 // CommitLocal promotes staging into home and inserts an archives row.
-func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
+func (s *Store) CommitLocal(ctx context.Context, st Staged, source string) (Archive, error) {
+	source = localSource(source)
 	home, err := s.BlobPath(st.ID)
 	if err != nil {
 		_ = os.Remove(st.Path)
@@ -159,8 +160,8 @@ func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
 	}
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO archives (id, key, size, sha256, source, uploaded_by, created_at)
-		VALUES (?, ?, ?, ?, 'http', ?, ?)`,
-		st.ID, st.Key, st.Size, st.SHA256, optionalUserID(st.UploadedBy), st.CreatedAt.Format(time.RFC3339),
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		st.ID, st.Key, st.Size, st.SHA256, source, optionalUserID(st.UploadedBy), st.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		_ = os.Remove(home)
@@ -171,11 +172,18 @@ func (s *Store) CommitLocal(ctx context.Context, st Staged) (Archive, error) {
 		Key:        st.Key,
 		Size:       st.Size,
 		SHA256:     st.SHA256,
-		Source:     "http",
+		Source:     source,
 		Storage:    "local",
 		UploadedBy: st.UploadedBy,
 		CreatedAt:  st.CreatedAt,
 	}, nil
+}
+
+func localSource(source string) string {
+	if source == "sftp" {
+		return "sftp"
+	}
+	return "http"
 }
 
 // InsertArchiveMeta records metadata for objects stored outside VPS home (e.g. S3).
@@ -333,7 +341,12 @@ func (s *Store) ArchiveByID(ctx context.Context, id string) (Archive, error) {
 	return a, nil
 }
 
-// DeleteArchive removes the sqlite row and the VPS home file.
+// DeleteArchive removes the VPS home file then the sqlite row.
+//
+// The file is removed first so a partial failure cannot leave an orphan blob
+// with no DB row to find it. If the blob is already gone we still drop the
+// row (treat as already-deleted); a real remove error aborts before the row
+// is touched so the archive stays listable and retryable.
 func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if !validArchiveID(id) {
 		return ErrNotFound
@@ -342,6 +355,9 @@ func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove blob: %w", err)
+	}
 	res, err := s.db.ExecContext(ctx, `DELETE FROM archives WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete archive: %w", err)
@@ -349,9 +365,6 @@ func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		return ErrNotFound
-	}
-	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove blob: %w", err)
 	}
 	return nil
 }

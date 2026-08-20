@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -128,7 +129,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Error("ingest failed", "error", err)
-		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
 	s.recordAudit(r, "upload", a)
@@ -203,6 +204,10 @@ func (r readCloser) Close() error {
 	return nil
 }
 
+// errNotGzip is returned when a raw (non-multipart) upload body does not
+// start with the gzip magic bytes. Callers map it to HTTP 400.
+var errNotGzip = errors.New("body is not gzip")
+
 func uploadReader(r *http.Request) (io.ReadCloser, string, error) {
 	ct := r.Header.Get("Content-Type")
 	media, _, _ := mime.ParseMediaType(ct)
@@ -217,7 +222,16 @@ func uploadReader(r *http.Request) (io.ReadCloser, string, error) {
 	if key == "" {
 		key = "archive.tar.gz"
 	}
-	return readCloser{Reader: r.Body, c: r.Body}, key, nil
+	br := bufio.NewReader(r.Body)
+	magic, err := br.Peek(2)
+	if err != nil {
+		// Empty/short body: still not a valid gzip archive.
+		return nil, "", errNotGzip
+	}
+	if magic[0] != 0x1f || magic[1] != 0x8b {
+		return nil, "", errNotGzip
+	}
+	return readCloser{Reader: br, c: r.Body}, key, nil
 }
 
 func firstFilePart(mr *multipart.Reader) (io.ReadCloser, string, error) {

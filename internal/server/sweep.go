@@ -20,7 +20,7 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	id := downloadID(r)
+	id := deleteID(r)
 	a, err := s.removeArchive(r.Context(), id)
 	if err != nil {
 		if r.Method == http.MethodDelete || wantsJSON(r) {
@@ -64,6 +64,7 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 		if err := s.Blobs.Delete(ctx, id); err != nil {
 			return store.Archive{}, err
 		}
+		s.listCache.invalidate()
 		return objectArchive(obj), nil
 	}
 	if !errors.Is(err, blob.ErrNotFound) {
@@ -76,7 +77,7 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 	if err := s.Store.DeleteTransit(ctx, tr.ID); err != nil {
 		return store.Archive{}, err
 	}
-	return store.Archive{ID: tr.S3Key, Key: tr.Key, Size: tr.Size, Source: "http", Storage: "transit"}, nil
+	return store.Archive{ID: tr.S3Key, Key: tr.Key, Size: tr.Size, Source: blob.SourceForKey(tr.S3Key), Storage: "transit"}, nil
 }
 
 // SweepOnce deletes home objects that fail keep_last or max_age, then staging leftovers.

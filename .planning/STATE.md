@@ -4,16 +4,16 @@ milestone: v1.2
 milestone_name: SFTP watcher
 current_phase: 8
 current_phase_name: SFTP inbox watcher
-status: planned
-stopped_at: Phase 7 shipped in v0.2.0; product at v0.2.4 — next is Phase 8
-last_updated: "2026-08-19T05:00:00.000Z"
+status: complete
+stopped_at: Phase 8 SFTP watcher complete 2026-08-19 (code + docs green); Phase 10 UX locked; next up Phase 9 or 10
+last_updated: "2026-08-19T23:40:00.000Z"
 last_activity: 2026-08-19
-last_activity_desc: Release v0.2.4 (audit hardening #16–#21)
+last_activity_desc: Phase 8 SFTP inbox watcher complete (ingest + source=sftp + pill); Phase 10 UX locked
 progress:
-  total_phases: 9
-  completed_phases: 7
-  total_plans: 14
-  completed_plans: 12
+  total_phases: 10
+  completed_phases: 8
+  total_plans: 22
+  completed_plans: 14
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 8 — SFTP inbox watcher
+**Current focus:** Phase 8 SFTP watcher **complete** (2026-08-19). **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 9 share links or Phase 10 (10-01/10-02).
 
 ## Current Position
 
-Phase: 8 of 9 (SFTP inbox watcher)
-Plan: 08-01 not started
-Status: Planned — ready for `/gsd-execute-phase` or manual execution
-Last activity: 2026-08-19 — gfs **v0.2.4** (Head fail-closed, SQLite pragmas, session purge, PR CI cover/govulncheck/grype). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
+Phase: 8 of 10 (SFTP inbox watcher) — **complete**
+Plan: 08-01, 08-02 complete (SUMMARY files written)
+Status: Complete. Next: Phase 9 (share links) or Phase 10 (10-01 dashboard). Phase 10 on ROADMAP (no UI code yet).
+Last activity: 2026-08-19 — Phase 8 complete + Phase 10 UX **locked**. Product still **v0.2.4** (Phase 8 targets v0.3.0, not yet tagged). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
 
-Progress: [███████░░░] 78% (7/9 phases; 12/14 plans)
+Progress: [████████░░] 80% (8/10 phases; 14/22 plans)
 
 ## Performance Metrics
 
@@ -54,7 +54,8 @@ Progress: [███████░░░] 78% (7/9 phases; 12/14 plans)
 | 6 Housekeeping | 1 | 1 | — |
 | 7 RBAC | 3 | 3 | — |
 | 8 SFTP watcher | 0 | 2 | — |
-| 9 Share links | 0 | — | — |
+| 9 Share links | 0 | 2 | — |
+| 10 Catalog UX | 0 | 6 | — |
 
 ## Accumulated Context
 
@@ -65,13 +66,17 @@ Progress: [███████░░░] 78% (7/9 phases; 12/14 plans)
 - Migration: admin flag → role; non-admins become uploader
 - Phase 8 SFTP watcher: poll `GFS_SFTP_INBOX` (groot `remote_dir/inbox`); no SFTP server in gfs; target v0.3.0
 - Phase 9 external share links: admin-only time-limited `/s/{token}` for third parties + audit; target v0.4.0
+- Phase 10 **locked 2026-08-19**: evidence locker. Steal Captures layout (stats, pin, cluster chips, time window, table/cards). Vanilla HTML, no SPA. Filename parse yes. Manifest peek only 10-06 cheap gzip member. Origin Trigger/Cron/Manual **out** until producer field. Redacted lock **out**. Download always primary. Analyze stays in groot (Q8). Does not replace Phase 8.
+- **Analyze stays in groot.** gfs does not import `internal/analyze` and does not `exec` groot (GFS-CONSENSUS Q8 locked 2026-08-19). LLM Markdown is producer-side; gfs only stores/serves bytes.
 - Operator deploy lives in **groot-share-selfhosted** (Compose / systemd / Helm; topologies `vps` / `vps-s3`)
 - GitHub issues: public wording + finding IDs only; no local scratch-folder paths
 
 ### Pending Todos
 
-- Execute `.planning/phases/08-sftp-watcher/08-01-PLAN.md`
+- Phase 8 **complete** — next: Phase 9 share links (09-01) or Phase 10 (10-01 dashboard)
 - Backlog 999.1 remaining: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3, I-5
+- After Phase 10: UX-3 role walkthrough (viewer / uploader / admin)
+- Phase 8 targets release **v0.3.0** (CHANGELOG currently `[Unreleased]`; tag pending)
 
 ### Blockers/Concerns
 
@@ -80,5 +85,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-08-19
-Stopped at: v0.2.4 release (PR develop→main + tag)
-Resume file: `.planning/phases/08-sftp-watcher/08-01-PLAN.md`
+Stopped at: Phase 8 SFTP watcher complete; Phase 10 UX locked (no UI implementation yet)
+Resume file: `.planning/ROADMAP.md` (Phase 9/10) or `.planning/phases/09-external-share-links/09-CONTEXT.md`

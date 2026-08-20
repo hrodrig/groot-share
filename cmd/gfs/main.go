@@ -74,17 +74,23 @@ func run(args []string) int {
 		Handler:           app.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	if blobs != nil {
-		go app.RetryLoop(context.Background(), 30*time.Second)
+		go app.RetryLoop(ctx, 30*time.Second)
 	}
-	go app.SweepLoop(context.Background(), cfg.RetentionEvery)
+	go app.SweepLoop(ctx, cfg.RetentionEvery)
+	if cfg.SFTPInbox != "" {
+		go app.WatchLoop(ctx, cfg.SFTPPoll)
+		slog.Info("sftp inbox watcher", "path", cfg.SFTPInbox, "poll", cfg.SFTPPoll.String())
+	}
 	slog.Info("starting",
 		"version", version,
 		"listen", cfg.ListenAddr,
 		"topology", string(cfg.Topology),
 		"data_dir", cfg.DataDir,
 	)
-	return listenAndServe(httpSrv)
+	return listenAndServe(ctx, httpSrv)
 }
 
 func openBlobs(cfg config.Config) (blob.Store, error) {
@@ -132,15 +138,12 @@ func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
 	}
 }
 
-func listenAndServe(httpSrv *http.Server) int {
+func listenAndServe(ctx context.Context, httpSrv *http.Server) int {
 	errCh := make(chan error, 1)
 	go func() {
 		slog.Info("listen", "addr", httpSrv.Addr)
 		errCh <- httpSrv.ListenAndServe()
 	}()
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	select {
 	case <-ctx.Done():

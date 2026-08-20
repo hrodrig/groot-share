@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -55,6 +56,11 @@ type Config struct {
 
 	// LoginRateLimit caps POST /login per client IP and per username (0 = disabled).
 	LoginRateLimit LimitSpec
+
+	// SFTPInbox is an absolute drop directory for groot upload.sftp. Empty = watcher off.
+	SFTPInbox string
+	// SFTPPoll is the inbox poll interval (default 30s).
+	SFTPPoll time.Duration
 }
 
 // LimitSpec is requests per window (0 = disabled).
@@ -90,7 +96,7 @@ func LoadFromEnv() (Config, error) {
 		BootstrapAdmin:     strings.TrimSpace(os.Getenv("GFS_BOOTSTRAP_ADMIN")),
 		BootstrapPassword:  os.Getenv("GFS_BOOTSTRAP_PASSWORD"),
 		BootstrapAdminName: ClipPlain(envOr("GFS_BOOTSTRAP_ADMIN_NAME", DefaultBootstrapName), maxNameRunes),
-		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), false),
+		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), true),
 		MaxUploadBytes:     parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
 		KeepLast:           parseInt(os.Getenv("GFS_KEEP_LAST"), 20),
 		MaxAgeDays:         parseInt(os.Getenv("GFS_MAX_AGE_DAYS"), 90),
@@ -104,6 +110,11 @@ func LoadFromEnv() (Config, error) {
 	cfg.LoginRateLimit, err = ParseLimitSpec(envOr("GFS_LOGIN_RATE_LIMIT", "20/1m"))
 	if err != nil {
 		return Config{}, fmt.Errorf("GFS_LOGIN_RATE_LIMIT: %w", err)
+	}
+	cfg.SFTPInbox = strings.TrimSpace(os.Getenv("GFS_SFTP_INBOX"))
+	cfg.SFTPPoll = parseDuration(os.Getenv("GFS_SFTP_POLL"), 30*time.Second)
+	if cfg.SFTPInbox != "" && !filepath.IsAbs(cfg.SFTPInbox) {
+		return Config{}, fmt.Errorf("GFS_SFTP_INBOX must be an absolute path (fail closed)")
 	}
 	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
 		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)

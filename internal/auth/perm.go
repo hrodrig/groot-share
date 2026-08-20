@@ -19,6 +19,7 @@ const (
 	PermAuditRead      Permission = "audit:read"
 	PermUsersManage    Permission = "users:manage"
 	PermAPIKeysManage  Permission = "apikeys:manage"
+	PermSharesManage   Permission = "shares:manage"
 )
 
 // AuthMethod is how the request authenticated.
@@ -78,6 +79,8 @@ func canSession(role Role, perm Permission) bool {
 	case PermArchivesWrite:
 		return role == RoleUploader || role == RoleAdmin
 	case PermArchivesDelete, PermUsersManage:
+		return role == RoleAdmin
+	case PermSharesManage:
 		return role == RoleAdmin
 	case PermAPIKeysManage:
 		return role == RoleUploader || role == RoleAdmin

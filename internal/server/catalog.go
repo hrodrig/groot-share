@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hrodrig/groot-share/internal/blob"
@@ -19,18 +20,40 @@ import (
 )
 
 func (s *Server) ingestBody(ctx context.Context, r io.Reader, key string, uploadedBy int64) (store.Archive, error) {
+	return s.ingestWithSource(ctx, r, key, "http", uploadedBy)
+}
+
+func (s *Server) ingestWithSource(ctx context.Context, r io.Reader, key, source string, uploadedBy int64) (store.Archive, error) {
 	if s.useBucket() {
-		return s.ingestTransit(ctx, r, key, uploadedBy)
+		return s.ingestTransit(ctx, r, key, source, uploadedBy)
 	}
-	return s.Store.Ingest(ctx, r, key, uploadedBy)
+	st, err := s.Store.Stage(ctx, r, key, uploadedBy)
+	if err != nil {
+		return store.Archive{}, err
+	}
+	if existing, err := s.Store.FindExistingSHA256(ctx, st.SHA256); err == nil {
+		_ = os.Remove(st.Path)
+		return store.Archive{}, &store.DuplicateError{Existing: existing}
+	} else if !errors.Is(err, store.ErrNotFound) {
+		_ = os.Remove(st.Path)
+		return store.Archive{}, err
+	}
+	return s.Store.CommitLocal(ctx, st, source)
 }
 
 func (s *Server) useBucket() bool {
 	return s.Blobs != nil && s.Cfg.Topology == config.TopologyVPSS3
 }
 
-func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key string, uploadedBy int64) (store.Archive, error) {
-	id, s3key, err := s.uniqueHTTPKey(ctx, time.Now().UTC())
+func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key, source string, uploadedBy int64) (store.Archive, error) {
+	now := time.Now().UTC()
+	var id, s3key string
+	var err error
+	if source == "sftp" {
+		id, s3key, err = s.uniqueSFTPKey(ctx, now)
+	} else {
+		id, s3key, err = s.uniqueHTTPKey(ctx, now)
+	}
 	if err != nil {
 		return store.Archive{}, err
 	}
@@ -45,16 +68,28 @@ func (s *Server) ingestTransit(ctx context.Context, r io.Reader, key string, upl
 		_ = os.Remove(st.Path)
 		return store.Archive{}, err
 	}
-	return s.copyOrTransit(ctx, st, s3key)
+	return s.copyOrTransit(ctx, st, s3key, source)
 }
 
 func (s *Server) uniqueHTTPKey(ctx context.Context, now time.Time) (id, key string, err error) {
+	return s.uniqueObjectKey(ctx, now, func(id string, t time.Time) string {
+		return blob.HTTPKey(s.Cfg.S3Prefix, id, t)
+	})
+}
+
+func (s *Server) uniqueSFTPKey(ctx context.Context, now time.Time) (id, key string, err error) {
+	return s.uniqueObjectKey(ctx, now, func(id string, t time.Time) string {
+		return blob.SFTPKey(s.Cfg.S3Prefix, id, t)
+	})
+}
+
+func (s *Server) uniqueObjectKey(ctx context.Context, now time.Time, makeKey func(id string, t time.Time) string) (id, key string, err error) {
 	for range 8 {
 		id, err = store.NewArchiveID()
 		if err != nil {
 			return "", "", fmt.Errorf("id: %w", err)
 		}
-		key = blob.HTTPKey(s.Cfg.S3Prefix, id, now)
+		key = makeKey(id, now)
 		_, err = s.Blobs.Head(ctx, key)
 		if errors.Is(err, blob.ErrNotFound) {
 			return id, key, nil
@@ -66,13 +101,16 @@ func (s *Server) uniqueHTTPKey(ctx context.Context, now time.Time) (id, key stri
 	return "", "", fmt.Errorf("could not allocate object key")
 }
 
-func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key string) (store.Archive, error) {
+func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key, source string) (store.Archive, error) {
+	if source == "" {
+		source = "http"
+	}
 	a := store.Archive{
 		ID:         s3key,
 		Key:        st.Key,
 		Size:       st.Size,
 		SHA256:     st.SHA256,
-		Source:     "http",
+		Source:     source,
 		Storage:    "s3",
 		UploadedBy: st.UploadedBy,
 		CreatedAt:  st.CreatedAt,
@@ -88,6 +126,7 @@ func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key strin
 	if err := s.Store.InsertArchiveMeta(ctx, a); err != nil {
 		slog.Warn("archive meta index", "error", err, "id", a.ID)
 	}
+	s.listCache.invalidate()
 	return a, nil
 }
 
@@ -118,6 +157,7 @@ func (s *Server) RetryOnce(ctx context.Context) error {
 		if err := s.Store.DeleteTransit(ctx, tr.ID); err != nil {
 			slog.Error("transit cleanup", "error", err)
 		}
+		s.listCache.invalidate()
 	}
 	return nil
 }
@@ -141,9 +181,52 @@ func (s *Server) RetryLoop(ctx context.Context, every time.Duration) {
 	}
 }
 
+// listCache caches the vps-s3 object listing to avoid a full ListObjects on
+// every Captures page / GET /v1/archives. Zero-value is a cold, thread-safe
+// cache; it is only consulted when useBucket() is true.
+type listCache struct {
+	mu     sync.Mutex
+	items  []store.Archive
+	filled time.Time
+}
+
+// listCacheTTL bounds staleness of the cached listing.
+const listCacheTTL = 5 * time.Second
+
+func (c *listCache) get(now time.Time) ([]store.Archive, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.filled.IsZero() || now.Sub(c.filled) >= listCacheTTL {
+		return nil, false
+	}
+	return c.items, true
+}
+
+func (c *listCache) set(items []store.Archive, now time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items = items
+	c.filled = now
+}
+
+func (c *listCache) invalidate() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items = nil
+	c.filled = time.Time{}
+}
+
 func (s *Server) listItems(ctx context.Context) ([]store.Archive, error) {
 	if !s.useBucket() {
 		return s.Store.ListArchives(ctx)
+	}
+	return s.listItemsBucket(ctx)
+}
+
+func (s *Server) listItemsBucket(ctx context.Context) ([]store.Archive, error) {
+	now := time.Now()
+	if items, ok := s.listCache.get(now); ok {
+		return items, nil
 	}
 	prefix := blob.NormalizePrefix(s.Cfg.S3Prefix)
 	objs, err := s.Blobs.List(ctx, prefix)
@@ -157,6 +240,7 @@ func (s *Server) listItems(ctx context.Context) ([]store.Archive, error) {
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].CreatedAt.After(out[j].CreatedAt)
 	})
+	s.listCache.set(out, now)
 	return out, nil
 }
 
@@ -221,7 +305,7 @@ func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store
 		Key:       tr.Key,
 		Size:      tr.Size,
 		SHA256:    tr.SHA256,
-		Source:    "http",
+		Source:    blob.SourceForKey(tr.S3Key),
 		Storage:   "transit",
 		CreatedAt: tr.CreatedAt,
 	}, nil
@@ -230,6 +314,14 @@ func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store
 func downloadID(r *http.Request) string {
 	id := strings.Trim(r.PathValue("id"), "/")
 	id = strings.TrimSuffix(id, "/file")
+	return strings.TrimSuffix(id, "/")
+}
+
+// deleteID parses the archive id for the delete handlers, tolerating the
+// trailing "/delete" used by the HTML form POST. It never strips "/file",
+// so a GET to ".../delete" cannot resolve into a download.
+func deleteID(r *http.Request) string {
+	id := strings.Trim(r.PathValue("id"), "/")
 	id = strings.TrimSuffix(id, "/delete")
 	return strings.TrimSuffix(id, "/")
 }

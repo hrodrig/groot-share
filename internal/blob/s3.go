@@ -93,7 +93,12 @@ func (c *S3) Put(ctx context.Context, key string, r io.Reader) error {
 		Body:        r,
 		ContentType: aws.String("application/gzip"),
 	}
-	//nolint:staticcheck // SA1019: manager.Uploader still the supported path (groot dialect).
+	// manager.Uploader is deprecated in the AWS SDK v2 but is the only
+	// high-level helper that auto-multiparts a seekable *os.File up to the
+	// 32 GiB GFS_MAX_UPLOAD_BYTES cap. Direct s3.Client.PutObject caps at
+	// 5 GB single-part. Callers always pass a seekable *os.File (staging),
+	// so Upload streams in parts from disk and never buffers the body in RAM.
+	//nolint:staticcheck // SA1019: deliberate — multi-GB multipart upload (I-3 reviewed, kept).
 	up := manager.NewUploader(c.api)
 	//nolint:staticcheck // SA1019: see NewUploader note above.
 	if _, err := up.Upload(ctx, input); err != nil {

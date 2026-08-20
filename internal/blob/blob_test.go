@@ -23,6 +23,13 @@ func TestHTTPKeyAndSource(t *testing.T) {
 	if SourceForKey("captures/cluster-run.tar.gz") != "s3" {
 		t.Fatal("foreign key should be s3")
 	}
+	sftp := SFTPKey("captures", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", time.Date(2026, 8, 19, 0, 0, 0, 0, time.UTC))
+	if sftp != "captures/sftp/2026/08/19/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.tar.gz" {
+		t.Fatal(sftp)
+	}
+	if SourceForKey(sftp) != "sftp" {
+		t.Fatal(SourceForKey(sftp))
+	}
 	if NormalizePrefix("") != "captures/" || NormalizePrefix("captures") != "captures/" {
 		t.Fatal(NormalizePrefix("captures"))
 	}

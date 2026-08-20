@@ -373,7 +373,7 @@ func TestCapturesPageHasCopyLink(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
 	payload := []byte("copy-link-test")
-	post := httptest.NewRequest(http.MethodPost, "/v1/archives", bytes.NewReader(payload))
+	post := httptest.NewRequest(http.MethodPost, "/v1/archives", gzipPayload(t, payload))
 	post.Header.Set("Content-Type", "application/gzip")
 	post.Header.Set("X-Gfs-Filename", "run.tar.gz")
 	post.AddCookie(admin)

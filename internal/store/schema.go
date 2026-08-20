@@ -61,8 +61,21 @@ CREATE TABLE IF NOT EXISTS audit (
   remote_ip TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS share_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  archive_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  label TEXT NOT NULL DEFAULT '',
+  max_uses INTEGER NOT NULL DEFAULT 0,
+  use_count INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL DEFAULT '',
+  revoked_at TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS archives_sha256_idx ON archives(sha256);
 CREATE INDEX IF NOT EXISTS transit_sha256_idx ON transit(sha256);
+CREATE INDEX IF NOT EXISTS share_links_archive_idx ON share_links(archive_id);
 `
 
 func (s *Store) migrate() error {

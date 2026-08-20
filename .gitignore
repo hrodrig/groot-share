@@ -40,3 +40,5 @@
 !contrib/**
 !.planning/
 !.planning/**
+.planning/notes/
+.planning/notes/**

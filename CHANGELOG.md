@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Lower bcrypt work factor to `MinCost` in tests via `auth.UseTestCost()`; production stays `DefaultCost` ([#13](https://github.com/hrodrig/groot-share/issues/13))
+- Cache vps-s3 object listings (5s TTL, invalidated on upload/delete/retry) to avoid a full `ListObjects` per page ([#12](https://github.com/hrodrig/groot-share/issues/12))
+- PR/push CI runs govulncheck and directory Grype in the `security` job ([#20](https://github.com/hrodrig/groot-share/issues/20))
+
+## [0.3.0] — 2026-08-19
+
+### Added
+
+- SFTP inbox watcher: `GFS_SFTP_INBOX` + `GFS_SFTP_POLL` (default 30s) ingest stable `*.tar.gz` with `source=sftp` (Phase 8 / ING-04)
+- Captures Source pill **SFTP**; **vps-s3** object keys `{prefix}sftp/{yyyy}/{mm}/{dd}/{id}.tar.gz`
+
 ## [0.2.4] — 2026-08-19
 
 ### Security
