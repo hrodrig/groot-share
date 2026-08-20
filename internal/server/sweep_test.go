@@ -117,3 +117,26 @@ func TestStagingGraceSweep(t *testing.T) {
 	}
 	assertStagingEmpty(t, s)
 }
+
+func TestGetDeletePathNotFound(t *testing.T) {
+	// B-14c: a GET to ".../delete" must not serve archive bytes.
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	created := postArchive(t, s, ck, "secret.tar.gz", "secret-bytes")
+
+	for _, path := range []string{
+		"/v1/archives/" + created.ID + "/delete",
+		"/v1/archives/" + created.ID + "/file/delete",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.AddCookie(ck)
+		rr := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusNotFound {
+			t.Fatalf("GET %s: want 404, got %d (body %q)", path, rr.Code, rr.Body.String())
+		}
+		if strings.Contains(rr.Body.String(), "secret-bytes") {
+			t.Fatalf("GET %s leaked archive bytes", path)
+		}
+	}
+}

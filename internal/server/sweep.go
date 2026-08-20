@@ -20,7 +20,7 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	id := downloadID(r)
+	id := deleteID(r)
 	a, err := s.removeArchive(r.Context(), id)
 	if err != nil {
 		if r.Method == http.MethodDelete || wantsJSON(r) {

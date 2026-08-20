@@ -341,7 +341,12 @@ func (s *Store) ArchiveByID(ctx context.Context, id string) (Archive, error) {
 	return a, nil
 }
 
-// DeleteArchive removes the sqlite row and the VPS home file.
+// DeleteArchive removes the VPS home file then the sqlite row.
+//
+// The file is removed first so a partial failure cannot leave an orphan blob
+// with no DB row to find it. If the blob is already gone we still drop the
+// row (treat as already-deleted); a real remove error aborts before the row
+// is touched so the archive stays listable and retryable.
 func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if !validArchiveID(id) {
 		return ErrNotFound
@@ -350,6 +355,9 @@ func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove blob: %w", err)
+	}
 	res, err := s.db.ExecContext(ctx, `DELETE FROM archives WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete archive: %w", err)
@@ -357,9 +365,6 @@ func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		return ErrNotFound
-	}
-	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove blob: %w", err)
 	}
 	return nil
 }

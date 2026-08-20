@@ -314,6 +314,14 @@ func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store
 func downloadID(r *http.Request) string {
 	id := strings.Trim(r.PathValue("id"), "/")
 	id = strings.TrimSuffix(id, "/file")
+	return strings.TrimSuffix(id, "/")
+}
+
+// deleteID parses the archive id for the delete handlers, tolerating the
+// trailing "/delete" used by the HTML form POST. It never strips "/file",
+// so a GET to ".../delete" cannot resolve into a download.
+func deleteID(r *http.Request) string {
+	id := strings.Trim(r.PathValue("id"), "/")
 	id = strings.TrimSuffix(id, "/delete")
 	return strings.TrimSuffix(id, "/")
 }
