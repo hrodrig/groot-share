@@ -211,7 +211,7 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 - Presigned GET vs proxy download — MVP: gfs streams (local or GetObject)
 - Manifest peek (`extras/manifest.json`)
 
-## 12. External share links (planned Phase 9 — not implemented)
+## 12. External share links (implemented — v0.4.0)
 
 **Problem:** Hand one archive to a third party (vendor, external auditor) without a gfs account; know if they downloaded it; link must expire.
 
@@ -224,9 +224,11 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 | DELETE | `/v1/archives/{id}/shares/{share_id}` | admin session | Revoke (`share_revoke` audit) |
 | GET | `/s/{token}` | none | Stream archive until expired, revoked, or uses exhausted; `share_download` audit |
 
-- Token: high entropy; store hash only (same spirit as api_key).
+- Token: high entropy (32 random bytes, hex); store SHA-256 hash only (same spirit as api_key). Raw token shown once in the create response.
+- `expires_at` / `expires_in` are mutually exclusive; exactly one is required. `max_uses` defaults to `0` (unlimited); `1` is one-shot.
 - Download path **proxies through gfs** (local or GetObject) — do not hand third parties a presigned S3 URL (audit + revocation).
 - Team “copy download link” (`/v1/archives/{id}/file`, session required) stays separate from external share URLs.
+- `share_download` audit actor is the literal `share` (public); the raw token is never logged or stored.
 
 Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`.
 

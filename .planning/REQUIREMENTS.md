@@ -144,9 +144,9 @@ Filled by roadmap.
 | RET-01 | Phase 6 | Complete |
 | AUTH-05 | Phase 7 | Complete |
 | ING-04 | Phase 8 | Complete |
-| SHARE-01 | Phase 9 | Planned |
-| SHARE-02 | Phase 9 | Planned |
-| SHARE-03 | Phase 9 | Planned |
+| SHARE-01 | Phase 9 | Complete |
+| SHARE-02 | Phase 9 | Complete |
+| SHARE-03 | Phase 9 | Complete |
 | UX-01 | Phase 10 | Planned |
 | UX-02 | Phase 10 | Planned |
 | UX-03 | Phase 10 | Planned |

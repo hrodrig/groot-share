@@ -101,6 +101,17 @@ func NewSessionToken() (raw, hash string, err error) {
 	return raw, HashSecret(raw), nil
 }
 
+// NewShareToken returns a raw external-share token (shown once, URL-safe hex)
+// and its SHA-256 hex for storage. Never log or persist the raw value.
+func NewShareToken() (raw, hash string, err error) {
+	var b [sessionBytes]byte
+	if _, err = rand.Read(b[:]); err != nil {
+		return "", "", fmt.Errorf("rand share token: %w", err)
+	}
+	raw = hex.EncodeToString(b[:])
+	return raw, HashSecret(raw), nil
+}
+
 // ExtractKey returns the presented API key from X-API-Key or Bearer only.
 func ExtractKey(r *http.Request) string {
 	if h := strings.TrimSpace(r.Header.Get("X-API-Key")); h != "" {
