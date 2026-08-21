@@ -71,6 +71,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleListShares))
 	mux.HandleFunc("DELETE /v1/archives/{id}/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.handleRevokeShare))
 	mux.HandleFunc("GET /s/{token}", s.handleShareDownload)
+	s.pinRoutes(mux)
 	mountFaviconRoutes(mux)
 	return s.accessLog(mux)
 }
