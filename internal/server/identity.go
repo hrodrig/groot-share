@@ -295,8 +295,8 @@ var pageFuncs = template.FuncMap{
 	"humansize": humanSize,
 	"pagerurl":  pagerURL,
 	"sortlink":  sortURL,
-	"qswith":    func(b FilterURLBuilder, k, v string) string { return b.With(k, v) },
-	"qswithout": func(b FilterURLBuilder, k string) string { return b.Without(k) },
+	"qswith":    func(b FilterURLBuilder, k, v string) template.URL { return b.With(k, v) },
+	"qswithout": func(b FilterURLBuilder, k string) template.URL { return b.Without(k) },
 }
 
 var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
@@ -477,8 +477,13 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   {{end}}
   {{else}}
   <div class="empty">
+    {{if .Filter.IsZero}}
     <p class="empty-title">No captures yet</p>
     <p class="empty-sub">Browse will stay empty until the first archive lands. <a href="/upload">Upload a capture</a> or use the HTTP API.</p>
+    {{else}}
+    <p class="empty-title">No matches</p>
+    <p class="empty-sub">No captures match the current filters. <a href="/" class="empty-clear">Clear filters</a> to see all captures.</p>
+    {{end}}
   </div>
   {{end}}
 </section>

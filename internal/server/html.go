@@ -620,6 +620,7 @@ table.grid {
 .empty { padding: 36px 20px; text-align: center; }
 .empty-title { margin: 0 0 4px; font-weight: 600; }
 .empty-sub { margin: 0; color: var(--muted); font-size: 14px; }
+.empty-clear { font-weight: 600; }
 
 /* ---- login gate ---- */
 html:has(body.gate) { background: #07090c; }

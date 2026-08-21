@@ -87,9 +87,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 			data["Pins"] = pins
 		}
 	}
-	if err := homeTmpl.Execute(w, data); err != nil {
-		slog.Error("render home", "error", err)
-	}
+	_ = homeTmpl.Execute(w, data)
 }
 
 func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {

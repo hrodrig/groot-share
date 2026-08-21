@@ -284,3 +284,171 @@ func pinFromResp(t *testing.T, s *Server, ck *http.Cookie, id string) {
 func jsonDecode(b []byte, v any) error {
 	return json.Unmarshal(b, v)
 }
+
+func TestHomeEmptyStateNoArchives(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, "No captures yet") {
+		t.Fatalf("missing 'No captures yet' empty state: %s", body)
+	}
+	if strings.Contains(body, "No matches") {
+		t.Fatalf("'No matches' must not show when no archives exist: %s", body)
+	}
+	if strings.Contains(body, "Clear filters") {
+		t.Fatalf("'Clear filters' must not show when no archives exist: %s", body)
+	}
+}
+
+func TestHomeEmptyStateNoMatchWithFilters(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/?cluster=does-not-exist", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, "No matches") {
+		t.Fatalf("missing 'No matches' empty state with filters: %s", body)
+	}
+	if !strings.Contains(body, "Clear filters") {
+		t.Fatalf("missing 'Clear filters' link with filters: %s", body)
+	}
+	if strings.Contains(body, "No captures yet") {
+		t.Fatalf("'No captures yet' must not show when archives exist: %s", body)
+	}
+}
+
+func TestHomeClearFiltersLinkGoesToRoot(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/?cluster=foo", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	// The "Clear filters" link is a plain <a href="/">; the link text is
+	// "Clear filters" inside the .empty-sub paragraph.
+	if !strings.Contains(body, "Clear filters") {
+		t.Fatalf("Clear filters text missing: %s", body)
+	}
+	if !strings.Contains(body, `<a href="/">Clear filters</a>`) &&
+		!strings.Contains(body, `<a href="/"`+` class="empty-clear">Clear filters</a>`) {
+		t.Fatalf("Clear filters link does not point to /: %s", body)
+	}
+}
+
+func TestHomeFilterBarHiddenWhenNoArchives(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if strings.Contains(body, `class="filter-bar"`) {
+		t.Fatalf("filter bar must be hidden when 0 archives: %s", body)
+	}
+}
+
+func TestHomeFilterBarVisibleWithArchives(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, `class="filter-bar"`) {
+		t.Fatalf("filter bar must be visible with archives: %s", body)
+	}
+	// All-cluster chip is active by default
+	if !strings.Contains(body, `chip is-active" href="/?">All `) {
+		t.Fatalf("All-cluster chip should be active by default: %s", body)
+	}
+	// Cluster chips for the two distinct clusters
+	if !strings.Contains(body, `>prod-eks-1 <span class="chip-count">2</span>`) {
+		t.Fatalf("prod-eks-1 chip with count 2 missing: %s", body)
+	}
+	if !strings.Contains(body, `>stage <span class="chip-count">1</span>`) {
+		t.Fatalf("stage chip with count 1 missing: %s", body)
+	}
+}
+
+func TestHomeClusterFilterAppliesToList(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/?cluster=prod-eks-1", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+		t.Fatalf("prod 0821 missing: %s", body)
+	}
+	if !strings.Contains(body, "groot-prod-eks-1-20260822.tar.gz") {
+		t.Fatalf("prod 0822 missing: %s", body)
+	}
+	if strings.Contains(body, "groot-stage-20260823.tar.gz") {
+		t.Fatalf("stage must be filtered out: %s", body)
+	}
+}
+
+func TestHomeQueryFilterAppliesToList(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/?q=20260822", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, "groot-prod-eks-1-20260822.tar.gz") {
+		t.Fatalf("q=20260822 should match 0822: %s", body)
+	}
+	if strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+		t.Fatalf("q=20260822 must not match 0821: %s", body)
+	}
+}
+
+func TestHomeWindowFilterAppliesToList(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	// Two archives, but the test only cares that the filter does not
+	// blank the page when both are within 24h.
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/?window=24h", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	// Both archives have CreatedAt=now, so both should appear under 24h.
+	if !strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+		t.Fatalf("window=24h should include now's archive: %s", body)
+	}
+	// Window chip should be marked active.
+	if !strings.Contains(body, `class="chip chip-sm is-active" href="/?window=24h"`) {
+		t.Fatalf("24h window chip should be active: %s", body)
+	}
+}

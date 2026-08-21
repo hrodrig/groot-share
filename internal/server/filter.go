@@ -1,6 +1,7 @@
 package server
 
 import (
+	"html/template"
 	"net/http"
 	"net/url"
 	"strings"
@@ -106,8 +107,9 @@ type FilterURLBuilder struct {
 	Base string // encoded base query string
 }
 
-// With returns the base with key=value.
-func (b FilterURLBuilder) With(key, value string) string {
+// With returns the base with key=value, marked as template.URL so the
+// html/template package does not escape `=` to `%3d` inside href attrs.
+func (b FilterURLBuilder) With(key, value string) template.URL {
 	q, err := url.ParseQuery(b.Base)
 	if err != nil {
 		q = url.Values{}
@@ -117,11 +119,11 @@ func (b FilterURLBuilder) With(key, value string) string {
 	} else {
 		q.Set(key, value)
 	}
-	return q.Encode()
+	return template.URL(q.Encode())
 }
 
 // Without returns the base with key removed.
-func (b FilterURLBuilder) Without(key string) string {
+func (b FilterURLBuilder) Without(key string) template.URL {
 	return b.With(key, "")
 }
 
