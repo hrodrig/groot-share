@@ -368,11 +368,23 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
 </section>
 {{if .CanUpload}}
 <section class="card upload-cta" aria-labelledby="up-cta-h">
-  <div>
+  <div class="upload-cta-head">
     <h2 id="up-cta-h">Upload archive</h2>
-    <p class="hint">Drop a groot <code>.tar.gz</code> here. Up to {{humansize .MaxUpload}} per file.</p>
+    <p class="hint">Drop or pick a groot <code>.tar.gz</code>. Up to <span class="mono">{{humansize .MaxUpload}}</span> per file.</p>
   </div>
-  <a class="btn" href="/upload">Open upload form</a>
+  <form class="upload-inline" id="upload-inline" method="post" action="/v1/archives" enctype="multipart/form-data" novalidate data-max-upload="{{.MaxUpload}}">
+    <label class="dropzone" id="inline-dropzone">
+      <input type="file" name="file" id="inline-file" accept=".tar.gz,.tgz,application/gzip" required>
+      <span class="dz-text" id="inline-dz-text">Choose a file or drop it here</span>
+    </label>
+    <div class="upload-meta" id="inline-meta" hidden></div>
+    <progress class="upload-progress" id="inline-progress" max="1" value="0" aria-hidden="true" hidden></progress>
+    <div class="upload-status" id="inline-status" role="status" hidden></div>
+    <div class="upload-actions" id="inline-actions">
+      <button class="btn" type="submit" id="inline-send" disabled>Upload capture</button>
+      <button class="btn btn-quiet" type="button" id="inline-cancel" hidden>Cancel</button>
+    </div>
+  </form>
 </section>
 {{end}}
 {{if .Pins}}
