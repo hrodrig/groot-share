@@ -364,6 +364,15 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     <span class="summary-lbl">topology</span>
   </div>
 </section>
+{{if .CanUpload}}
+<section class="card upload-cta" aria-labelledby="up-cta-h">
+  <div>
+    <h2 id="up-cta-h">Upload archive</h2>
+    <p class="hint">Drop a groot <code>.tar.gz</code> here. Up to {{humansize .MaxUpload}} per file.</p>
+  </div>
+  <a class="btn" href="/upload">Open upload form</a>
+</section>
+{{end}}
 <div class="page-head">
   <div>
     <h1>Captures</h1>

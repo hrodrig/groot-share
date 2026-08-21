@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/blob"
 )
 
@@ -138,3 +139,37 @@ func TestHomeSummaryStripUnparsedKeysCountZero(t *testing.T) {
 // keep the linter happy about unused imports if a future refactor removes
 // the helper above; context and compress/gzip are used by dashboardArchive.
 var _ = context.Background
+
+func TestHomeUploadCTAVisibleToUploader(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, `class="card upload-cta"`) {
+		t.Fatalf("upload CTA card missing for uploader: %s", body)
+	}
+	if !strings.Contains(body, `href="/upload">Open upload form</a>`) {
+		t.Fatalf("upload CTA link missing: %s", body)
+	}
+	// Size limit should be visible too.
+	if !strings.Contains(body, "Up to") || !strings.Contains(body, "32.0 GiB") {
+		t.Fatalf("upload size limit not visible: %s", body)
+	}
+}
+
+func TestHomeUploadCTAHiddenFromViewer(t *testing.T) {
+	s, st := identServer(t)
+	createUserWithRole(t, st, "view", "view-secret-1", auth.RoleViewer)
+	ck := loginAs(t, s, "view", "view-secret-1")
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if strings.Contains(body, `class="card upload-cta"`) {
+		t.Fatalf("upload CTA must be hidden from viewer: %s", body)
+	}
+}

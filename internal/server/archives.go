@@ -69,6 +69,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		"IncompleteCount": incomplete,
 		"StorageTopology": topo,
 	}
+	data["MaxUpload"] = s.maxUpload()
 	data["Pager"] = pager
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText

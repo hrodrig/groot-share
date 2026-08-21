@@ -279,6 +279,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   .summary-cell:nth-child(2n) { border-right: 0; }
   .summary-cell:nth-last-child(-n+2) { border-bottom: 0; }
 }
+.upload-cta { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.upload-cta h2 { margin: 0; font: 600 16px/1.3 var(--sans); }
+.upload-cta .hint { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.upload-cta code { font-family: var(--mono); background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
+@media (max-width: 720px) {
+  .upload-cta { flex-direction: column; align-items: stretch; }
+  .upload-cta .btn { width: 100%; }
+}
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 18px 24px 14px;
