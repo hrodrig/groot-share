@@ -540,6 +540,122 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       });
     });
   });
+  // Inline dropzone upload (XHR — fetch has no upload progress).
+  var form = document.getElementById('upload-inline');
+  var dz = document.getElementById('inline-dropzone');
+  var fileInput = document.getElementById('inline-file');
+  var dzText = document.getElementById('inline-dz-text');
+  var meta = document.getElementById('inline-meta');
+  var bar = document.getElementById('inline-progress');
+  var status = document.getElementById('inline-status');
+  var sendBtn = document.getElementById('inline-send');
+  var cancelBtn = document.getElementById('inline-cancel');
+  var xhr = null;
+  if (form && dz && fileInput && dzText) {
+    var maxUpload = parseInt(form.getAttribute('data-max-upload'), 10) || 0;
+    function humanSize(n) {
+      if (!n) return '0 B';
+      var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      var i = 0; while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      return (i === 0 ? n : n.toFixed(1)) + ' ' + units[i];
+    }
+    function setStatus(kind, html) {
+      status.className = 'upload-status' + (kind ? ' ' + kind : '');
+      status.innerHTML = html;
+      status.hidden = !html;
+    }
+    function resetUI() {
+      bar.hidden = true; bar.value = 0;
+      cancelBtn.hidden = true;
+    }
+    function refresh(selected) {
+      // name + size before send
+      var f = selected[0];
+      if (!f) { dzText.textContent = 'Choose a file or drop it here'; dzText.classList.remove('has-file'); meta.hidden = true; sendBtn.disabled = true; return; }
+      dzText.textContent = f.name;
+      dzText.classList.add('has-file');
+      meta.textContent = f.name + ' · ' + humanSize(f.size);
+      meta.hidden = false;
+      if (maxUpload > 0 && f.size > maxUpload) {
+        meta.textContent += ' — exceeds the ' + humanSize(maxUpload) + ' limit';
+        sendBtn.disabled = true;
+        setStatus('err', 'File exceeds the ' + humanSize(maxUpload) + ' size limit.');
+        return;
+      }
+      setStatus('', '');
+      sendBtn.disabled = false;
+    }
+    fileInput.addEventListener('change', function () { if (fileInput.files) refresh(fileInput.files); });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('drag'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('drag'); });
+    });
+    dz.addEventListener('drop', function (e) {
+      if (e.dataTransfer && e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        refresh(e.dataTransfer.files);
+      }
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = fileInput.files && fileInput.files.length ? fileInput.files[0] : null;
+      if (!f) return;
+      var fd = new FormData();
+      fd.append('file', f);
+      xhr = new XMLHttpRequest();
+      xhr.open('POST', '/v1/archives');
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.upload.onprogress = function (ev) {
+        if (ev.lengthComputable) {
+          bar.hidden = false;
+          bar.value = ev.loaded / ev.total;
+        }
+      };
+      xhr.onload = function () {
+        var body = {};
+        try { body = JSON.parse(xhr.responseText || '{}'); } catch (err) { body = {}; }
+        resetUI();
+        if (xhr.status === 201) {
+          if (body.storage === 'transit') {
+            setStatus('transit', 'Uploaded — in transit, will appear in Captures once the bucket copy completes.');
+          } else {
+            setStatus('ok', 'Capture uploaded.');
+          }
+          setTimeout(function () { window.location.assign(window.location.pathname + window.location.search); }, 800);
+        } else if (xhr.status === 409) {
+          var existing = body.existing && body.existing.key ? body.existing.key : f.name;
+          setStatus('err', 'Already uploaded (same content): <span class="mono">' + existing + '</span>. <a href="/">View in Captures</a>.');
+        } else if (xhr.status === 413) {
+          setStatus('err', 'File exceeds the size limit.');
+        } else {
+          setStatus('err', 'Upload failed. Check the file and try again.');
+        }
+        sendBtn.disabled = false;
+      };
+      xhr.onerror = function () {
+        resetUI();
+        setStatus('err', 'Upload failed (network). Check the file and try again.');
+        sendBtn.disabled = false;
+      };
+      xhr.onabort = function () {
+        resetUI();
+        setStatus('err', 'Upload cancelled.');
+        sendBtn.disabled = false;
+        dzText.textContent = 'Choose a file or drop it here';
+        dzText.classList.remove('has-file');
+        meta.hidden = true;
+      };
+      setStatus('', '');
+      sendBtn.disabled = true;
+      cancelBtn.hidden = false;
+      xhr.send(fd);
+    });
+    cancelBtn.addEventListener('click', function () {
+      if (xhr) { xhr.abort(); xhr = null; }
+    });
+  }
 })();
 </script>
 {{.ThemeToggleScript}}
