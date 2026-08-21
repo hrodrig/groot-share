@@ -133,8 +133,31 @@ func TestPinsArePerUser(t *testing.T) {
 	if pins, _ := st.ListPins(ctx, bob.ID, 0); len(pins) != 1 {
 		t.Fatalf("bob must have 1 pin, got %d", len(pins))
 	}
-	// Removing alice's pin must not touch bob's
-	if _, err := st.RemovePin(ctx, alice.ID, "shared"); err != nil {
+}
+
+func TestRemovePinIsolatedPerUser(t *testing.T) {
+	st := archiveStore(t)
+	ctx := context.Background()
+	hash, err := auth.HashPassword("correct-horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CreateUser(ctx, "alice2", "alice2", hash, auth.RoleUploader); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CreateUser(ctx, "bob2", "bob2", hash, auth.RoleUploader); err != nil {
+		t.Fatal(err)
+	}
+	alice, _ := st.UserByUsername(ctx, "alice2")
+	bob, _ := st.UserByUsername(ctx, "bob2")
+	a := Archive{ID: "shared2", Key: "shared.tar.gz", Size: 42}
+	if err := st.AddPin(ctx, alice.ID, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddPin(ctx, bob.ID, a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.RemovePin(ctx, alice.ID, "shared2"); err != nil {
 		t.Fatal(err)
 	}
 	if pins, _ := st.ListPins(ctx, alice.ID, 0); len(pins) != 0 {

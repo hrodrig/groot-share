@@ -16,7 +16,7 @@ var clusterTSRegex = regexp.MustCompile(`-(\d{8})(?:[-]?(\d{4,14}))?$`)
 
 // ParseClusterSlug returns the cluster slug from a groot archive filename,
 // or "" when the name does not look like a timestamped capture. The parser
-// is deliberately conservative: anything it does not recognise returns ""
+// is deliberately conservative: anything it does not recognize returns ""
 // rather than a guessed slug, so the dashboard count never inflates with
 // junk values.
 //
