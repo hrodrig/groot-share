@@ -32,11 +32,23 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var total int64
+	clusters := make(map[string]struct{})
+	var incomplete int
 	for i := range items {
 		if items[i].Storage == "" {
 			items[i].Storage = "local"
 		}
 		total += items[i].Size
+		if items[i].Storage == "transit" {
+			incomplete++
+		}
+		if c, ok := store.ParseClusterSlug(items[i].Key); ok {
+			clusters[c] = struct{}{}
+		}
+	}
+	topo := "vps"
+	if s.useBucket() {
+		topo = "vps-s3"
 	}
 	pageSize := parsePageSize(r)
 	sortField, sortAsc := parseSort(r)
@@ -50,6 +62,13 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	mergeActorData(data, ac)
 	data["Items"] = pageItems
 	data["StatsLine"] = statsLine(len(items), total)
+	data["Summary"] = map[string]any{
+		"Count":           len(items),
+		"Bytes":           total,
+		"ClusterCount":    len(clusters),
+		"IncompleteCount": incomplete,
+		"StorageTopology": topo,
+	}
 	data["Pager"] = pager
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText

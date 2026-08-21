@@ -342,6 +342,28 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
 </header>
 <main id="main" class="wrap">
 {{if .NoticeText}}<div class="notice notice-{{.NoticeKind}}" role="status">{{.NoticeText}}</div>{{end}}
+<section class="card summary" aria-label="Inventory summary">
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{.Summary.Count}}</span>
+    <span class="summary-lbl">captures</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{humansize .Summary.Bytes}}</span>
+    <span class="summary-lbl">on disk</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{.Summary.ClusterCount}}</span>
+    <span class="summary-lbl">clusters</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{.Summary.IncompleteCount}}</span>
+    <span class="summary-lbl">in transit</span>
+  </div>
+  <div class="summary-cell summary-topo">
+    <span class="pill{{if eq .Summary.StorageTopology "vps"}} pill-local{{else if eq .Summary.StorageTopology "vps-s3"}} pill-s3{{end}}">{{.Summary.StorageTopology}}</span>
+    <span class="summary-lbl">topology</span>
+  </div>
+</section>
 <div class="page-head">
   <div>
     <h1>Captures</h1>

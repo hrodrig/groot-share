@@ -235,6 +235,50 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   box-shadow: var(--shadow);
   margin-bottom: 20px;
 }
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+.summary-cell {
+  flex: 1 1 8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 20px;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+.summary-cell:last-child { border-right: 0; }
+.summary-num {
+  display: block;
+  font: 650 22px/1.2 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary-lbl {
+  display: block;
+  font: 600 11px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.summary-topo {
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+}
+.summary-topo .pill { margin: 0; }
+@media (max-width: 720px) {
+  .summary-cell { flex-basis: 50%; border-bottom: 1px solid var(--line); }
+  .summary-cell:nth-child(2n) { border-right: 0; }
+  .summary-cell:nth-last-child(-n+2) { border-bottom: 0; }
+}
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 18px 24px 14px;
