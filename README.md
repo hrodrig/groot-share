@@ -102,6 +102,8 @@ Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **Wh
 - Cluster archives via shared S3 prefix (`source=s3`) on **vps-s3**
 - SFTP inbox watcher (`GFS_SFTP_INBOX`) for groot `upload.sftp` — Captures pill **SFTP** (`source=sftp`)
 - Audit log (upload / download / delete / user actions; no secrets in rows)
+- Per-user pin strip on Captures (quick access; `archive_pins` cascades on user delete)
+- Captures inventory summary: count, bytes on disk, distinct cluster slugs, in-transit count, storage topology
 - Retention: `keep_last` **or** `max_age_days` (defaults 20 / 90)
 - Fail-closed config (`GFS_TOPOLOGY`, bootstrap admin, bucket creds)
 - Supply chain aligned with **groot-trigger** (GNU Make, GoReleaser, distroless, CI)

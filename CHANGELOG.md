@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Captures dashboard polish (Phase 10 / UX-01): inventory summary strip (count,
+  bytes, distinct cluster slugs from the filename, in-transit count, storage
+  topology) and a primary "Upload archive" CTA card above the table
+- Per-user pin strip (Phase 10 / UX-01): `archive_pins` schema with cascading
+  delete; `POST /v1/pin/archives/{id...}` and `DELETE /v1/pin/archives/{id...}`
+  endpoints (also reachable via the unpin form-alias); the strip renders on
+  Captures only when the user has at least one pin
+- Filename cluster parser (`store.ParseClusterSlug`): best-effort extract of
+  the cluster slug from a groot basename (`<prefix>-<cluster>-<YYYYMMDD>...tar.gz`,
+  with optional `-since-` marker stripped). Conservative: returns `""` rather
+  than guessing when the name does not look like a timestamped capture
+
 ## [0.4.0] — 2026-08-19
 
 ### Added

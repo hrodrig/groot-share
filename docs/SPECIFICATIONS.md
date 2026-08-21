@@ -81,6 +81,9 @@ Authenticated (session cookie **or** api_key for upload API):
 | POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata |
 | GET | `/v1/archives/{id}` | Download (session); `404` if unknown |
 | GET | `/v1/archives/{id}/file` | Same bytes (HTML “download” link may use this) |
+| POST | `/v1/pin/archives/{id...}` | Pin an archive for the calling user (idempotent) |
+| DELETE | `/v1/pin/archives/{id...}` | Unpin (idempotent) |
+| POST | `/v1/pin/archives/{id...}/delete` | Unpin form alias (redirects to `/` on success) |
 
 On **vps-s3**, `{id}` is the object key. Download and delete accept only keys under `GFS_S3_PREFIX` (after normalize); keys outside the prefix → `404` (no raw bucket Get/Delete).
 
@@ -97,6 +100,15 @@ Upload auth: `Authorization: Bearer <api_key>` or `X-API-Key` (trigger-style). D
 
 List JSON (shape): `{ "items": [ { "id", "key", "size", "etag_or_sha256", "created_at", "source": "http"|"s3"|"sftp" } ] }`  
 In VPS + S3, `source=s3` includes objects groot wrote that gfs never saw over HTTP. `source=sftp` is a gfs inbox ingest (object key `{prefix}sftp/{yyyy}/{mm}/{dd}/{id}.tar.gz`).
+
+Captures page (`GET /`, session required) renders, in order: inventory summary
+strip (count, bytes on disk, distinct cluster slugs from the filename,
+in-transit count, storage topology); "Upload archive" CTA card (uploader and
+admin only); per-user pin strip (only when the user has at least one pin);
+table of archives. Cluster slugs come from `store.ParseClusterSlug` which is
+deliberately conservative: anything that does not match the
+`<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape
+returns `""` and is excluded from the cluster count rather than guessed.
 
 ## 5. Config (operator)
 

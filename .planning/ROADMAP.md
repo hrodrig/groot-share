@@ -232,11 +232,11 @@ Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
   8. Completeness badge only when manifest peek exists (`Complete` / `N of M jobs failed` / all-failed `Failed`); filename-only rows stay unmarked
   9. **Share-link admin UI (UX-09):** on a Captures row, admin can create a time-limited share link (preset TTLs `24h`/`7d` + custom until-date, optional label, optional `max_uses`), copy the URL once, and list/revoke active links per archive. Backs onto the Phase 9 API (`POST/GET/DELETE /v1/archives/{id}/shares`); no raw token shown again after create.
 
-**Plans:** 0/7 plans complete
+**Plans:** 1/7 plans complete
 
 Plans:
 
-- [ ] 10-01: Captures dashboard (summary strip, CTA, newest-first, pin, copy-link + Download prominence)
+- [x] 10-01: Captures dashboard (summary strip, CTA, newest-first, pin, copy-link + Download prominence)
 - [ ] 10-02: Cluster chips + search + time-window query params; source/storage secondary; distinct empty states
 - [ ] 10-03: Upload dropzone, progress, transit messaging, cancel, duplicate hint
 - [ ] 10-04: Responsive table → card layout (Download primary on cards)

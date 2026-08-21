@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: External share links
-current_phase: 9
-current_phase_name: External share links
-status: complete
-stopped_at: Phase 9 share links complete 2026-08-19 (API + store + audit + tests green); next up Phase 10 catalog UX
-last_updated: "2026-08-19T23:59:00.000Z"
-last_activity: 2026-08-19
-last_activity_desc: Phase 9 external share links complete (SHARE-01..03); v0.4.0 release prepared
+milestone: v1.4
+milestone_name: Operational catalog UX
+current_phase: 10
+current_phase_name: Operational catalog UX
+status: in_progress
+stopped_at: Phase 10 10-01 Captures dashboard complete 2026-08-21 (summary strip + upload CTA + pin strip + filename cluster parser; tests green; make ci green)
+last_updated: "2026-08-21T19:25:00.000Z"
+last_activity: 2026-08-21
+last_activity_desc: Phase 10 plan 10-01 complete (Captures dashboard, inventory summary, pin strip, upload CTA, cluster parser); 6 functional commits on develop
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 22
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-08-12)
 
 ## Current Position
 
-Phase: 9 of 10 (external share links) — **complete**
-Plan: 09-01 complete (SUMMARY written); 09-CONTEXT only (no separate 09-02)
-Status: Complete. Next: Phase 10 (10-01 dashboard). Phase 10 on ROADMAP (no UI code yet).
-Last activity: 2026-08-19 — Phase 9 complete. Product **v0.4.0** (share links; tag pending this release). Operator repo [groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted).
+Phase: 10 of 10 (operational catalog UX) — **in progress** (1/7 plans)
+Plan: 10-01 complete (Captures dashboard: summary strip + upload CTA + pin strip + cluster parser)
+Status: 10-01 landed; next: 10-02 (cluster chips + search + time window) or pause.
+Last activity: 2026-08-21 — Phase 10 plan 10-01 complete; 6 short functional commits on develop; `make ci` green.
 
-Progress: [█████████░] 90% (9/10 phases; 15/22 plans)
+Progress: [█████████░] 90% (9/10 phases; 16/22 plans)
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [█████████░] 90% (9/10 phases; 15/22 plans)
 - Phase 8 SFTP watcher: poll `GFS_SFTP_INBOX` (groot `remote_dir/inbox`); no SFTP server in gfs; target v0.3.0
 - Phase 9 external share links: admin-only time-limited `/s/{token}` for third parties + audit; target v0.4.0
 - Phase 10 **locked 2026-08-19**: evidence locker. Steal Captures layout (stats, pin, cluster chips, time window, table/cards). Vanilla HTML, no SPA. Filename parse yes. Manifest peek only 10-06 cheap gzip member. Origin Trigger/Cron/Manual **out** until producer field. Redacted lock **out**. Download always primary. Analyze stays in groot (Q8). Does not replace Phase 8.
+- Phase 10 **10-01 complete 2026-08-21**: Captures dashboard — inventory summary strip (count, bytes, cluster count from filename parse, in-transit count, storage topology pill), Upload archive primary CTA card (uploader+ only), per-user pin strip (DB-backed `archive_pins` with FK CASCADE; new `POST/DELETE /v1/pin/archives/{id...}` endpoints with form alias). Path is `/v1/pin/archives/{id...}` (verb-then-id) because Go 1.22 mux requires the wildcard terminal. Filename cluster parser: `store.ParseClusterSlug` is conservative — returns `""` for anything that does not match the `<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape.
 - **Analyze stays in groot.** gfs does not import `internal/analyze` and does not `exec` groot (GFS-CONSENSUS Q8 locked 2026-08-19). LLM Markdown is producer-side; gfs only stores/serves bytes.
 - Operator deploy lives in **groot-share-selfhosted** (Compose / systemd / Helm; topologies `vps` / `vps-s3`)
 - GitHub issues: public wording + finding IDs only; no local scratch-folder paths
@@ -74,6 +75,7 @@ Progress: [█████████░] 90% (9/10 phases; 15/22 plans)
 ### Pending Todos
 
 - Phase 9 **complete** — next: Phase 10 (10-01 dashboard / evidence locker Captures)
+- Phase 10 10-01 **complete** — next: 10-02 cluster chips + search + time window
 - Backlog 999.1: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3 **done** (shipped v0.4.0); **I-5** (openpgp unreachable false positive) remains — documented, no fix
 - After Phase 10: UX-3 role walkthrough (viewer / uploader / admin)
 - Phase 9 shipped in **v0.4.0** (CHANGELOG tagged; see release commit)
