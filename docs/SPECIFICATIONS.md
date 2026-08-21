@@ -79,7 +79,7 @@ Authenticated (session cookie **or** api_key for upload API):
 | GET | `/` | Vanilla HTML list (session) |
 | GET | `/?cluster=&q=&window=&source=&storage=` | Same as `/` with facet filters applied (session) |
 | GET | `/v1/archives` | JSON list (session) |
-| POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata |
+| POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata. With `Accept: application/json` (and no browser form), errors are JSON (`409`/`413`) for inline clients |
 | GET | `/v1/archives/{id}` | Download (session); `404` if unknown |
 | GET | `/v1/archives/{id}/file` | Same bytes (HTML “download” link may use this) |
 | POST | `/v1/pin/archives/{id...}` | Pin an archive for the calling user (idempotent) |
@@ -124,6 +124,14 @@ archives, no extra SQL round-trips). Filter state is encoded in the URL
 so it is shareable. The "no matches" empty state shows when the inventory
 is non-empty but every row is filtered out; a "Clear filters" link goes
 to `/`.
+
+The "Upload archive" CTA card (uploader and admin) hosts an inline dropzone:
+pick or drag-and-drop a `.tar.gz`, see the file name + size before sending,
+and upload via `XMLHttpRequest` with a live progress bar and a cancel button.
+The XHR sets `Accept: application/json` so `POST /v1/archives` answers `201`
+with `{storage}`, `409` duplicate, or `413` too-large as JSON rendered inline
+(no page navigation); `409` shows the existing key so the operator can find
+the earlier capture.
 
 ## 5. Config (operator)
 

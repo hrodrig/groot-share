@@ -105,6 +105,7 @@ Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **Wh
 - Per-user pin strip on Captures (quick access; `archive_pins` cascades on user delete)
 - Captures inventory summary: count, bytes on disk, distinct cluster slugs, in-transit count, storage topology
 - Captures facet bar: cluster chips with counts, search (filename substring), time-window chips (`24h` / `7d` / `30d` / all); state in URL query params
+- Inline dropzone upload on Captures: drag-and-drop a `.tar.gz`, file name + size before send, live progress + cancel, inline duplicate/too-large notices (no page navigation)
 - Retention: `keep_last` **or** `max_age_days` (defaults 20 / 90)
 - Fail-closed config (`GFS_TOPOLOGY`, bootstrap admin, bucket creds)
 - Supply chain aligned with **groot-trigger** (GNU Make, GoReleaser, distroless, CI)

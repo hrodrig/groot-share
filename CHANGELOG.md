@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silently dropped. Empty state distinguishes "no captures yet" from
   "no matches" with a clear-filters link to `/`. Bar is hidden when the
   inventory is empty
+- Inline dropzone upload (Phase 10 / UX-03): the "Upload archive" CTA card
+  now embeds a dropzone with drag-and-drop, file name + size preview before
+  send, `XMLHttpRequest` upload with a live progress bar and cancel button,
+  and inline notices for success (`storage: transit` vs `local`), duplicate
+  (`409`, showing the existing key), and too-large (`413`) — no page
+  navigation. The XHR sends `Accept: application/json` to hit the JSON
+  response branch instead of the browser-form redirect
 
 ## [0.4.0] — 2026-08-19
 
