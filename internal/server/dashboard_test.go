@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -172,4 +173,114 @@ func TestHomeUploadCTAHiddenFromViewer(t *testing.T) {
 	if strings.Contains(body, `class="card upload-cta"`) {
 		t.Fatalf("upload CTA must be hidden from viewer: %s", body)
 	}
+}
+
+func TestHomePinStripHiddenWhenEmpty(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if strings.Contains(body, `class="card pin-strip"`) {
+		t.Fatalf("pin strip must be hidden when user has no pins: %s", body)
+	}
+}
+
+func TestHomePinStripVisibleWhenPinned(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	// Upload two archives, pin both.
+	rr1 := dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	rr2 := dashboardArchive(t, s, admin, "groot-stage-20260822.tar.gz")
+	pinFromResp(t, s, admin, decodeArchiveID(t, rr1))
+	pinFromResp(t, s, admin, decodeArchiveID(t, rr2))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, `class="card pin-strip"`) {
+		t.Fatalf("pin strip missing: %s", body)
+	}
+	if !strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+		t.Fatalf("first pinned key missing: %s", body)
+	}
+	if !strings.Contains(body, "groot-stage-20260822.tar.gz") {
+		t.Fatalf("second pinned key missing: %s", body)
+	}
+	// Unpin form posts to the right path.
+	if !strings.Contains(body, `action="/v1/pin/archives/`) {
+		t.Fatalf("unpin form action wrong: %s", body)
+	}
+}
+
+func TestHomePinStripUnpinFormRedirects(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	rr1 := dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	id := decodeArchiveID(t, rr1)
+	pinFromResp(t, s, admin, id)
+
+	// Confirm pin strip is present on Captures
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if !strings.Contains(rr.Body.String(), `class="card pin-strip"`) {
+		t.Fatalf("pin strip should be on the page after pinning")
+	}
+
+	// Unpin via the form-alias route
+	del := httptest.NewRequest(http.MethodPost, "/v1/pin/archives/"+id+"/delete", nil)
+	del.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, del)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("unpin form: %d", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/" {
+		t.Fatalf("unpin form redirect: %q", loc)
+	}
+
+	// Confirm pin strip is gone from Captures
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if strings.Contains(rr.Body.String(), `class="card pin-strip"`) {
+		t.Fatalf("pin strip should not be on the page after unpin")
+	}
+}
+
+func decodeArchiveID(t *testing.T, rr *httptest.ResponseRecorder) string {
+	t.Helper()
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := jsonDecode(rr.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.ID == "" {
+		t.Fatalf("no id in upload response: %s", rr.Body.String())
+	}
+	return created.ID
+}
+
+func pinFromResp(t *testing.T, s *Server, ck *http.Cookie, id string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/v1/pin/archives/"+id, nil)
+	req.AddCookie(ck)
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("pin: %d %s", rr.Code, rr.Body.String())
+	}
+}
+
+func jsonDecode(b []byte, v any) error {
+	return json.Unmarshal(b, v)
 }

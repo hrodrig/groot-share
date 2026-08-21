@@ -287,6 +287,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   .upload-cta { flex-direction: column; align-items: stretch; }
   .upload-cta .btn { width: 100%; }
 }
+.pin-list { list-style: none; margin: 0; padding: 0; }
+.pin { display: flex; align-items: center; gap: 12px; padding: 10px 24px; border-top: 1px solid var(--line); }
+.pin:first-child { border-top: 0; }
+.pin-key { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); }
+.pin-size { font-size: 12px; white-space: nowrap; }
+.pin form { margin: 0; }
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 18px 24px 14px;

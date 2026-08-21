@@ -75,6 +75,14 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	data["NoticeText"] = noticeText
 	data["Nav"] = "captures"
 	data["BaseURL"] = requestBaseURL(r)
+	if ac != nil && ac.User.ID != 0 {
+		pins, perr := s.Store.ListPins(r.Context(), ac.User.ID, 16)
+		if perr != nil {
+			slog.Warn("list pins", "user", ac.User.ID, "error", perr)
+		} else {
+			data["Pins"] = pins
+		}
+	}
 	_ = homeTmpl.Execute(w, data)
 }
 

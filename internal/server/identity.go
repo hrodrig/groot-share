@@ -373,6 +373,25 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   <a class="btn" href="/upload">Open upload form</a>
 </section>
 {{end}}
+{{if .Pins}}
+<section class="card pin-strip" aria-label="Pinned captures">
+  <div class="card-head">
+    <h2>Pinned</h2>
+    <span class="hint">Your quick-access captures</span>
+  </div>
+  <ul class="pin-list">
+    {{range .Pins}}
+    <li class="pin">
+      <a class="pin-key mono" href="/v1/archives/{{.ArchiveID}}/file" title="Download {{.ArchiveKey}}">{{.ArchiveKey}}</a>
+      <span class="pin-size muted tabular">{{humansize .Size}}</span>
+      <form method="post" action="/v1/pin/archives/{{.ArchiveID}}/delete" data-confirm="Unpin {{.ArchiveKey}}?">
+        <button class="btn btn-quiet btn-sm" type="submit" title="Unpin" aria-label="Unpin {{.ArchiveKey}}">Unpin</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
 <div class="page-head">
   <div>
     <h1>Captures</h1>
