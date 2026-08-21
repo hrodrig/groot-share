@@ -5,15 +5,15 @@ milestone_name: Operational catalog UX
 current_phase: 10
 current_phase_name: Operational catalog UX
 status: in_progress
-stopped_at: Phase 10 10-01 Captures dashboard complete 2026-08-21 (summary strip + upload CTA + pin strip + filename cluster parser; tests green; make ci green)
-last_updated: "2026-08-21T19:25:00.000Z"
+stopped_at: Phase 10 10-02 Captures facets complete 2026-08-21 (filter bar — cluster chips + search + time window + distinct empty states; tests green; make ci green)
+last_updated: "2026-08-21T19:45:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 10 plan 10-01 complete (Captures dashboard, inventory summary, pin strip, upload CTA, cluster parser); 6 functional commits on develop
+last_activity_desc: Phase 10 plan 10-02 complete (Captures facets: cluster chips with counts from full list, search, time window, distinct empty states, query param wiring); ~7 functional commits on develop
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 22
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-08-12)
 
 ## Current Position
 
-Phase: 10 of 10 (operational catalog UX) — **in progress** (1/7 plans)
-Plan: 10-01 complete (Captures dashboard: summary strip + upload CTA + pin strip + cluster parser)
-Status: 10-01 landed; next: 10-02 (cluster chips + search + time window) or pause.
-Last activity: 2026-08-21 — Phase 10 plan 10-01 complete; 6 short functional commits on develop; `make ci` green.
+Phase: 10 of 10 (operational catalog UX) — **in progress** (2/7 plans)
+Plan: 10-02 complete (Captures facets: filter bar with cluster chips + search + time window + distinct empty states)
+Status: 10-02 landed; next: 10-03 (inline dropzone + XHR upload progress) or pause.
+Last activity: 2026-08-21 — Phase 10 plans 10-01 + 10-02 complete; ~15 short functional commits on develop; `make ci` green.
 
-Progress: [█████████░] 90% (9/10 phases; 16/22 plans)
+Progress: [█████████░] 90% (9/10 phases; 17/22 plans)
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [█████████░] 90% (9/10 phases; 16/22 plans)
 
 - Phase 9 **complete** — next: Phase 10 (10-01 dashboard / evidence locker Captures)
 - Phase 10 10-01 **complete** — next: 10-02 cluster chips + search + time window
+- Phase 10 10-02 **complete** — Captures facet bar (cluster chips with counts, search, time window 24h/7d/30d/all) with URL-persisted state, distinct empty states ("no captures yet" vs "no matches" with clear-filters link), filter bar hidden when inventory is empty. `store.Filter` and `server.ParseFilter` parse the URL; `applyFilter` is the in-memory filter (cluster via `ParseClusterSlug`; source/storage/since/q as straight comparisons). `FilterURLBuilder` returns `template.URL` so html/template does not escape `=` in hrefs
 - Backlog 999.1: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3 **done** (shipped v0.4.0); **I-5** (openpgp unreachable false positive) remains — documented, no fix
 - After Phase 10: UX-3 role walkthrough (viewer / uploader / admin)
 - Phase 9 shipped in **v0.4.0** (CHANGELOG tagged; see release commit)

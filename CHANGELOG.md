@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the cluster slug from a groot basename (`<prefix>-<cluster>-<YYYYMMDD>...tar.gz`,
   with optional `-since-` marker stripped). Conservative: returns `""` rather
   than guessing when the name does not look like a timestamped capture
+- Captures facet bar (Phase 10 / UX-02): cluster chips with counts (always
+  reflect the full inventory, not the post-filter one), search box
+  (case-insensitive substring of the archive key), time-window chips
+  (`24h` / `7d` / `30d` / all). Filter state lives in the URL as query
+  params (`cluster`, `q`, `window`, `source`, `storage`); unknown values
+  silently dropped. Empty state distinguishes "no captures yet" from
+  "no matches" with a clear-filters link to `/`. Bar is hidden when the
+  inventory is empty
 
 ## [0.4.0] — 2026-08-19
 

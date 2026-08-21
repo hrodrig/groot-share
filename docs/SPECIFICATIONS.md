@@ -77,6 +77,7 @@ Authenticated (session cookie **or** api_key for upload API):
 |--------|------|----------|
 | POST | `/logout` | Clear session |
 | GET | `/` | Vanilla HTML list (session) |
+| GET | `/?cluster=&q=&window=&source=&storage=` | Same as `/` with facet filters applied (session) |
 | GET | `/v1/archives` | JSON list (session) |
 | POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata |
 | GET | `/v1/archives/{id}` | Download (session); `404` if unknown |
@@ -105,10 +106,24 @@ Captures page (`GET /`, session required) renders, in order: inventory summary
 strip (count, bytes on disk, distinct cluster slugs from the filename,
 in-transit count, storage topology); "Upload archive" CTA card (uploader and
 admin only); per-user pin strip (only when the user has at least one pin);
-table of archives. Cluster slugs come from `store.ParseClusterSlug` which is
-deliberately conservative: anything that does not match the
+facet bar (cluster chips with counts, search box, time-window chips, hidden
+when the inventory is empty); table of archives. Cluster slugs come from
+`store.ParseClusterSlug` which is deliberately conservative: anything that
+does not match the
 `<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape
 returns `""` and is excluded from the cluster count rather than guessed.
+
+Facet query params: `cluster` (exact slug, empty = no filter), `q`
+(case-insensitive substring of the archive key, empty = no filter), `window`
+(`24h` | `7d` | `30d` | empty = all), `source` (`http` | `s3` | `sftp` |
+empty = no filter), `storage` (`local` | `s3` | `transit` | empty = no
+filter). Unknown values are silently dropped, never 400. Cluster filter
+applies in Go via `ParseClusterSlug`; the other four apply in Go against
+the same in-memory list (cheap for an evidence locker of hundreds of
+archives, no extra SQL round-trips). Filter state is encoded in the URL
+so it is shareable. The "no matches" empty state shows when the inventory
+is non-empty but every row is filtered out; a "Clear filters" link goes
+to `/`.
 
 ## 5. Config (operator)
 
