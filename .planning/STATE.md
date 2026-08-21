@@ -5,15 +5,15 @@ milestone_name: Operational catalog UX
 current_phase: 10
 current_phase_name: Operational catalog UX
 status: in_progress
-stopped_at: Phase 10 10-02 Captures facets complete 2026-08-21 (filter bar — cluster chips + search + time window + distinct empty states; tests green; make ci green)
-last_updated: "2026-08-21T19:45:00.000Z"
+stopped_at: Phase 10 10-03 inline dropzone complete 2026-08-21 (XHR upload with progress + cancel + inline duplicate/too-large; tests green; make ci green)
+last_updated: "2026-08-21T20:05:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 10 plan 10-02 complete (Captures facets: cluster chips with counts from full list, search, time window, distinct empty states, query param wiring); ~7 functional commits on develop
+last_activity_desc: Phase 10 plan 10-03 complete (inline dropzone + XHR upload: drag-and-drop, name/size preview, progress bar, cancel, inline 201/409/413 notices via Accept: application/json); ~6 functional commits on develop
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 22
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 9 share links **complete**. **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 10 (10-01/10-02).
+**Current focus:** Phase 9 share links **complete**. **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 10 (10-01/10-02/10-03 done; 10-04..10-07 remain).
 
 ## Current Position
 
-Phase: 10 of 10 (operational catalog UX) — **in progress** (2/7 plans)
-Plan: 10-02 complete (Captures facets: filter bar with cluster chips + search + time window + distinct empty states)
-Status: 10-02 landed; next: 10-03 (inline dropzone + XHR upload progress) or pause.
-Last activity: 2026-08-21 — Phase 10 plans 10-01 + 10-02 complete; ~15 short functional commits on develop; `make ci` green.
+Phase: 10 of 10 (operational catalog UX) — **in progress** (3/7 plans)
+Plan: 10-03 complete (inline dropzone + XHR upload with progress + cancel + inline notices)
+Status: 10-03 landed; next: 10-04 (responsive table → card layout, Download primary on cards) or pause.
+Last activity: 2026-08-21 — Phase 10 plans 10-01 + 10-02 + 10-03 complete; ~21 short functional commits on develop; `make ci` green.
 
-Progress: [█████████░] 90% (9/10 phases; 17/22 plans)
+Progress: [█████████░] 90% (9/10 phases; 18/22 plans)
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 90% (9/10 phases; 17/22 plans)
 - Phase 10 **locked 2026-08-19**: evidence locker. Steal Captures layout (stats, pin, cluster chips, time window, table/cards). Vanilla HTML, no SPA. Filename parse yes. Manifest peek only 10-06 cheap gzip member. Origin Trigger/Cron/Manual **out** until producer field. Redacted lock **out**. Download always primary. Analyze stays in groot (Q8). Does not replace Phase 8.
 - Phase 10 **10-01 complete 2026-08-21**: Captures dashboard — inventory summary strip (count, bytes, cluster count from filename parse, in-transit count, storage topology pill), Upload archive primary CTA card (uploader+ only), per-user pin strip (DB-backed `archive_pins` with FK CASCADE; new `POST/DELETE /v1/pin/archives/{id...}` endpoints with form alias). Path is `/v1/pin/archives/{id...}` (verb-then-id) because Go 1.22 mux requires the wildcard terminal. Filename cluster parser: `store.ParseClusterSlug` is conservative — returns `""` for anything that does not match the `<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape.
 - **Analyze stays in groot.** gfs does not import `internal/analyze` and does not `exec` groot (GFS-CONSENSUS Q8 locked 2026-08-19). LLM Markdown is producer-side; gfs only stores/serves bytes.
+- Phase 10 **10-03 complete 2026-08-21**: inline dropzone on the Captures Upload CTA card. Drag-and-drop + file picker, name/size preview before send, `XMLHttpRequest` upload (fetch has no upload progress), live progress bar, cancel via `xhr.abort()`. XHR sets `Accept: application/json` so `handleUpload` hits the JSON branch (`201` + `{storage}`, `409` + `{existing}`, `413`) instead of the browser-form redirect — confirmed by `isBrowserForm(r) = !wantsJSON(r) && multipart`. No backend change; transit copy (`storage: transit`) shows an inline notice and auto-reloads the page.
 - Operator deploy lives in **groot-share-selfhosted** (Compose / systemd / Helm; topologies `vps` / `vps-s3`)
 - GitHub issues: public wording + finding IDs only; no local scratch-folder paths
 
@@ -77,6 +78,7 @@ Progress: [█████████░] 90% (9/10 phases; 17/22 plans)
 - Phase 9 **complete** — next: Phase 10 (10-01 dashboard / evidence locker Captures)
 - Phase 10 10-01 **complete** — next: 10-02 cluster chips + search + time window
 - Phase 10 10-02 **complete** — Captures facet bar (cluster chips with counts, search, time window 24h/7d/30d/all) with URL-persisted state, distinct empty states ("no captures yet" vs "no matches" with clear-filters link), filter bar hidden when inventory is empty. `store.Filter` and `server.ParseFilter` parse the URL; `applyFilter` is the in-memory filter (cluster via `ParseClusterSlug`; source/storage/since/q as straight comparisons). `FilterURLBuilder` returns `template.URL` so html/template does not escape `=` in hrefs
+- Phase 10 10-03 **complete** — inline dropzone + XHR upload on the Captures Upload CTA card (progress, cancel, inline duplicate/too-large notices). Next: 10-04 responsive table → card layout (Download primary on cards)
 - Backlog 999.1: B-5, B-6, B-9, B-10, B-13, B-14, I-2, I-3 **done** (shipped v0.4.0); **I-5** (openpgp unreachable false positive) remains — documented, no fix
 - After Phase 10: UX-3 role walkthrough (viewer / uploader / admin)
 - Phase 9 shipped in **v0.4.0** (CHANGELOG tagged; see release commit)
