@@ -489,6 +489,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 
 /* ---- upload ---- */
 .upload { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; padding: 16px 20px 20px; }
+.upload-inline { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; }
+.upload-cta-head { display: flex; flex-direction: column; gap: 4px; }
+.upload-meta { font: 500 12.5px/1.3 var(--mono); color: var(--muted); }
+.upload-progress { width: 100%; height: 8px; appearance: none; border: none; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.upload-progress::-webkit-progress-bar { background: var(--surface-2); border-radius: 999px; }
+.upload-progress::-webkit-progress-value { background: var(--accent); transition: width 120ms linear; }
+.upload-progress::-moz-progress-bar { background: var(--accent); }
+.upload-status { font-size: 13.5px; padding: 8px 12px; border-radius: var(--radius-sm); }
+.upload-status.ok { color: var(--ok); background: var(--ok-soft); }
+.upload-status.transit { color: var(--warn); background: var(--warn-soft); }
+.upload-status.err { color: var(--err); background: var(--err-soft); }
+.upload-actions { display: flex; gap: 10px; }
 .dropzone {
   flex: 1 1 320px;
   display: flex; align-items: center; justify-content: center;
