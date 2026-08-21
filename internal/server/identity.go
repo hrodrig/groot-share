@@ -295,6 +295,8 @@ var pageFuncs = template.FuncMap{
 	"humansize": humanSize,
 	"pagerurl":  pagerURL,
 	"sortlink":  sortURL,
+	"qswith":    func(b FilterURLBuilder, k, v string) string { return b.With(k, v) },
+	"qswithout": func(b FilterURLBuilder, k string) string { return b.Without(k) },
 }
 
 var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
@@ -391,6 +393,29 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     {{end}}
   </ul>
 </section>
+{{end}}
+{{if gt .Summary.Count 0}}
+<form class="filter-bar" method="get" action="/" id="captures-filter">
+  <div class="filter-row">
+    <div class="filter-chips" role="group" aria-label="Clusters">
+      <a class="chip{{if not .Filter.Cluster}} is-active{{end}}" href="/?{{qswithout .FilterURL "cluster"}}">All <span class="chip-count">{{.Summary.Count}}</span></a>
+      {{range .ClusterChips}}
+      <a class="chip{{if eq .Slug $.Filter.Cluster}} is-active{{end}}" href="/?{{qswith $.FilterURL "cluster" .Slug}}">{{.Slug}} <span class="chip-count">{{.Count}}</span></a>
+      {{end}}
+    </div>
+    <label class="filter-search">
+      <span class="visually-hidden">Search</span>
+      <input type="search" name="q" value="{{.Filter.Query}}" placeholder="filename, since, message" maxlength="80">
+    </label>
+    <div class="filter-window" role="group" aria-label="Time window">
+      <a class="chip chip-sm{{if eq .Filter.Window ""}} is-active{{end}}" href="/?{{qswithout .FilterURL "window"}}">All time</a>
+      <a class="chip chip-sm{{if eq .Filter.Window "24h"}} is-active{{end}}" href="/?{{qswith .FilterURL "window" "24h"}}">24h</a>
+      <a class="chip chip-sm{{if eq .Filter.Window "7d"}} is-active{{end}}" href="/?{{qswith .FilterURL "window" "7d"}}">7d</a>
+      <a class="chip chip-sm{{if eq .Filter.Window "30d"}} is-active{{end}}" href="/?{{qswith .FilterURL "window" "30d"}}">30d</a>
+    </div>
+    <button class="btn btn-quiet btn-sm filter-apply" type="submit">Apply</button>
+  </div>
+</form>
 {{end}}
 <div class="page-head">
   <div>

@@ -16,6 +16,7 @@ import (
 type Filter struct {
 	Cluster string    // exact cluster slug (post-filtered in Go, not SQL)
 	Query   string    // case-insensitive substring match on key
+	Window  string    // raw "24h"|"7d"|"30d"|"" — also derived into Since
 	Since   time.Time // zero = no window; non-zero = created_at >= Since
 	Source  string    // exact: "http" | "s3" | "sftp" | "" (no filter)
 	Storage string    // exact: "local" | "s3" | "transit" | "" (no filter)
@@ -23,7 +24,7 @@ type Filter struct {
 
 // IsZero reports whether no filter fields are set.
 func (f Filter) IsZero() bool {
-	return f.Cluster == "" && f.Query == "" && f.Since.IsZero() &&
+	return f.Cluster == "" && f.Query == "" && f.Window == "" && f.Since.IsZero() &&
 		f.Source == "" && f.Storage == ""
 }
 

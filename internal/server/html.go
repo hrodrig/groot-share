@@ -293,6 +293,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .pin-key { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); }
 .pin-size { font-size: 12px; white-space: nowrap; }
 .pin form { margin: 0; }
+.filter-bar { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; }
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 999px; font: 500 13px/1 var(--sans); color: var(--ink); text-decoration: none; background: var(--surface); }
+.chip:hover { background: var(--surface-2); text-decoration: none; }
+.chip.is-active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip-count { font: 600 11px/1 var(--mono); color: var(--muted); }
+.chip.is-active .chip-count { color: var(--accent-ink); opacity: 0.85; }
+.chip-sm { padding: 3px 9px; font-size: 12px; }
+.filter-search { flex: 0 1 240px; min-width: 0; }
+.filter-search input { width: 100%; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: inherit; }
+.filter-window { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.filter-apply { margin-left: auto; }
+@media (max-width: 720px) {
+  .filter-row { flex-direction: column; align-items: stretch; }
+  .filter-search, .filter-apply { width: 100%; margin-left: 0; }
+}
 .card-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 18px 24px 14px;

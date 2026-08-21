@@ -55,6 +55,7 @@ func ParseFilter(r *http.Request) store.Filter {
 	return store.Filter{
 		Cluster: strings.TrimSpace(q.Get("cluster")),
 		Query:   strings.TrimSpace(q.Get("q")),
+		Window:  window,
 		Since:   windowSince(window, time.Now().UTC()),
 		Source:  source,
 		Storage: storage,
