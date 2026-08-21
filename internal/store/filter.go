@@ -47,33 +47,43 @@ func applyFilter(items []Archive, f Filter) []Archive {
 	out := make([]Archive, 0, len(items))
 	q := strings.ToLower(strings.TrimSpace(f.Query))
 	for _, a := range items {
-		if f.Source != "" && a.Source != f.Source {
+		if !archivePasses(a, f, q) {
 			continue
-		}
-		if f.Storage != "" {
-			storage := a.Storage
-			if storage == "" {
-				storage = "local"
-			}
-			if storage != f.Storage {
-				continue
-			}
-		}
-		if !f.Since.IsZero() && a.CreatedAt.Before(f.Since) {
-			continue
-		}
-		if q != "" && !strings.Contains(strings.ToLower(a.Key), q) {
-			continue
-		}
-		if f.Cluster != "" {
-			slug, ok := ParseClusterSlug(a.Key)
-			if !ok || slug != f.Cluster {
-				continue
-			}
 		}
 		out = append(out, a)
 	}
 	return out
+}
+
+// archivePasses reports whether `a` matches every non-empty field of `f`.
+// Pulled out of applyFilter to keep its cyclomatic complexity under the
+// project's gocyclo gate.
+func archivePasses(a Archive, f Filter, q string) bool {
+	if f.Source != "" && a.Source != f.Source {
+		return false
+	}
+	if f.Storage != "" {
+		storage := a.Storage
+		if storage == "" {
+			storage = "local"
+		}
+		if storage != f.Storage {
+			return false
+		}
+	}
+	if !f.Since.IsZero() && a.CreatedAt.Before(f.Since) {
+		return false
+	}
+	if q != "" && !strings.Contains(strings.ToLower(a.Key), q) {
+		return false
+	}
+	if f.Cluster != "" {
+		slug, ok := ParseClusterSlug(a.Key)
+		if !ok || slug != f.Cluster {
+			return false
+		}
+	}
+	return true
 }
 
 // ClusterCounts groups archives by cluster slug (from ParseClusterSlug)

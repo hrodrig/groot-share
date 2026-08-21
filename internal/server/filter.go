@@ -138,31 +138,38 @@ func applyFilterInMemory(items []store.Archive, f store.Filter) []store.Archive 
 	out := make([]store.Archive, 0, len(items))
 	q := strings.ToLower(strings.TrimSpace(f.Query))
 	for _, a := range items {
-		if f.Source != "" && a.Source != f.Source {
+		if !serverArchivePasses(a, f, q) {
 			continue
-		}
-		if f.Storage != "" {
-			storage := a.Storage
-			if storage == "" {
-				storage = "local"
-			}
-			if storage != f.Storage {
-				continue
-			}
-		}
-		if !f.Since.IsZero() && a.CreatedAt.Before(f.Since) {
-			continue
-		}
-		if q != "" && !strings.Contains(strings.ToLower(a.Key), q) {
-			continue
-		}
-		if f.Cluster != "" {
-			slug, ok := store.ParseClusterSlug(a.Key)
-			if !ok || slug != f.Cluster {
-				continue
-			}
 		}
 		out = append(out, a)
 	}
 	return out
+}
+
+func serverArchivePasses(a store.Archive, f store.Filter, q string) bool {
+	if f.Source != "" && a.Source != f.Source {
+		return false
+	}
+	if f.Storage != "" {
+		storage := a.Storage
+		if storage == "" {
+			storage = "local"
+		}
+		if storage != f.Storage {
+			return false
+		}
+	}
+	if !f.Since.IsZero() && a.CreatedAt.Before(f.Since) {
+		return false
+	}
+	if q != "" && !strings.Contains(strings.ToLower(a.Key), q) {
+		return false
+	}
+	if f.Cluster != "" {
+		slug, ok := store.ParseClusterSlug(a.Key)
+		if !ok || slug != f.Cluster {
+			return false
+		}
+	}
+	return true
 }
