@@ -25,27 +25,28 @@ func (s *Server) maxUpload() int64 {
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	ac := actorFrom(r.Context())
-	items, err := s.listItems(r.Context())
+	// Full inventory: cluster chip counts come from this. (D-06: chips
+	// reflect the unfiltered list, not the post-filter one.)
+	allItems, err := s.listItems(r.Context())
 	if err != nil {
 		slog.Error("list archives", "error", err)
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
 	var total int64
-	clusters := make(map[string]struct{})
 	var incomplete int
-	for i := range items {
-		if items[i].Storage == "" {
-			items[i].Storage = "local"
+	for i := range allItems {
+		if allItems[i].Storage == "" {
+			allItems[i].Storage = "local"
 		}
-		total += items[i].Size
-		if items[i].Storage == "transit" {
+		total += allItems[i].Size
+		if allItems[i].Storage == "transit" {
 			incomplete++
 		}
-		if c, ok := store.ParseClusterSlug(items[i].Key); ok {
-			clusters[c] = struct{}{}
-		}
 	}
+	// Apply the request's filter on top of the full list.
+	filter := ParseFilter(r)
+	items := applyFilterInMemory(allItems, filter)
 	topo := "vps"
 	if s.useBucket() {
 		topo = "vps-s3"
@@ -63,12 +64,15 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	data["Items"] = pageItems
 	data["StatsLine"] = statsLine(len(items), total)
 	data["Summary"] = map[string]any{
-		"Count":           len(items),
+		"Count":           len(allItems),
 		"Bytes":           total,
-		"ClusterCount":    len(clusters),
+		"ClusterCount":    len(store.ClusterCounts(allItems)),
 		"IncompleteCount": incomplete,
 		"StorageTopology": topo,
 	}
+	data["Filter"] = filter
+	data["ClusterChips"] = store.ClusterCounts(allItems)
+	data["FilterURL"] = FilterURLBuilder{Base: r.URL.RawQuery}
 	data["MaxUpload"] = s.maxUpload()
 	data["Pager"] = pager
 	data["NoticeKind"] = noticeKind

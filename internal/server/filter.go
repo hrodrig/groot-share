@@ -123,3 +123,43 @@ func (b FilterURLBuilder) With(key, value string) string {
 func (b FilterURLBuilder) Without(key string) string {
 	return b.With(key, "")
 }
+
+// applyFilterInMemory runs the filter on an in-memory list, treating
+// empty Storage as "local" (so the filter "storage=local" matches both
+// the literal "local" rows and the historical "" rows). This mirrors
+// the storage normalization handleHome does before counting.
+func applyFilterInMemory(items []store.Archive, f store.Filter) []store.Archive {
+	if f.IsZero() {
+		return items
+	}
+	out := make([]store.Archive, 0, len(items))
+	q := strings.ToLower(strings.TrimSpace(f.Query))
+	for _, a := range items {
+		if f.Source != "" && a.Source != f.Source {
+			continue
+		}
+		if f.Storage != "" {
+			storage := a.Storage
+			if storage == "" {
+				storage = "local"
+			}
+			if storage != f.Storage {
+				continue
+			}
+		}
+		if !f.Since.IsZero() && a.CreatedAt.Before(f.Since) {
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(a.Key), q) {
+			continue
+		}
+		if f.Cluster != "" {
+			slug, ok := store.ParseClusterSlug(a.Key)
+			if !ok || slug != f.Cluster {
+				continue
+			}
+		}
+		out = append(out, a)
+	}
+	return out
+}
