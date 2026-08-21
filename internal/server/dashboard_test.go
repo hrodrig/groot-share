@@ -152,8 +152,11 @@ func TestHomeUploadCTAVisibleToUploader(t *testing.T) {
 	if !strings.Contains(body, `class="card upload-cta"`) {
 		t.Fatalf("upload CTA card missing for uploader: %s", body)
 	}
-	if !strings.Contains(body, `href="/upload">Open upload form</a>`) {
-		t.Fatalf("upload CTA link missing: %s", body)
+	if !strings.Contains(body, `id="upload-inline"`) {
+		t.Fatalf("inline upload form missing: %s", body)
+	}
+	if !strings.Contains(body, `id="inline-file"`) {
+		t.Fatalf("inline upload file input missing: %s", body)
 	}
 	// Size limit should be visible too.
 	if !strings.Contains(body, "Up to") || !strings.Contains(body, "32.0 GiB") {

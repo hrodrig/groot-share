@@ -641,7 +641,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       };
       xhr.onabort = function () {
         resetUI();
-        setStatus('err', 'Upload cancelled.');
+        setStatus('err', 'Upload canceled.');
         sendBtn.disabled = false;
         dzText.textContent = 'Choose a file or drop it here';
         dzText.classList.remove('has-file');
