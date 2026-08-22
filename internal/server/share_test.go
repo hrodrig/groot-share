@@ -13,7 +13,7 @@ import (
 
 func createShare(t *testing.T, s *Server, ck *http.Cookie, archiveID, body string) map[string]any {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives/"+archiveID+"/shares", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/shares/"+archiveID, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.AddCookie(ck)
@@ -66,7 +66,7 @@ func TestShareListNeverLeaksToken(t *testing.T) {
 	created := postArchive(t, s, ck, "vendor.tar.gz", "vendor-bytes")
 	createShare(t, s, ck, created.ID, `{"expires_in":"24h","label":"acme"}`)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/archives/"+created.ID+"/shares", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/shares/"+created.ID, nil)
 	req.Header.Set("Accept", "application/json")
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestSharePastExpiryRejected(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)
 	created := postArchive(t, s, ck, "vendor.tar.gz", "vendor-bytes")
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives/"+created.ID+"/shares",
+	req := httptest.NewRequest(http.MethodPost, "/v1/shares/"+created.ID,
 		strings.NewReader(`{"expires_at":"2020-01-01T00:00:00Z"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -113,7 +113,7 @@ func TestShareRevokeThen404(t *testing.T) {
 	shareID := out["id"].(float64)
 	token := tokenFromURL(out["url"].(string))
 
-	req := httptest.NewRequest(http.MethodDelete, "/v1/archives/"+created.ID+"/shares/"+formatID(shareID), nil)
+	req := httptest.NewRequest(http.MethodDelete, "/v1/shares/"+formatID(shareID), nil)
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
@@ -159,7 +159,7 @@ func TestShareNonAdminForbidden(t *testing.T) {
 	upler := loginAs(t, s, "up", "up-secret-12")
 
 	// Uploader cannot create.
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives/"+created.ID+"/shares",
+	req := httptest.NewRequest(http.MethodPost, "/v1/shares/"+created.ID,
 		strings.NewReader(`{"expires_in":"24h"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -171,7 +171,7 @@ func TestShareNonAdminForbidden(t *testing.T) {
 	}
 
 	// Uploader cannot list.
-	req = httptest.NewRequest(http.MethodGet, "/v1/archives/"+created.ID+"/shares", nil)
+	req = httptest.NewRequest(http.MethodGet, "/v1/shares/"+created.ID, nil)
 	req.Header.Set("Accept", "application/json")
 	req.AddCookie(upler)
 	rr = httptest.NewRecorder()

@@ -68,13 +68,18 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
 	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.handleListAudit))
 	mux.HandleFunc("GET /v1/activity/export", s.requireAuth(s.handleActivityExport))
-	mux.HandleFunc("POST /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleCreateShare))
-	mux.HandleFunc("GET /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleListShares))
-	mux.HandleFunc("DELETE /v1/archives/{id}/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.handleRevokeShare))
+	// Share routes: the archive id may contain '/' in vps-s3 (it's the
+	// S3 object key), so the wildcard {id...} is placed at the end of
+	// the path. Go 1.22+ ServeMux requires this. Revoke is keyed by
+	// the share row id alone (a numeric primary key), so the path does
+	// not need the archive id — the audit log records share_id.
+	mux.HandleFunc("GET /v1/shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleListShares))
+	mux.HandleFunc("POST /v1/shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleCreateShare))
+	mux.HandleFunc("DELETE /v1/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.handleRevokeShare))
 	mux.HandleFunc("GET /s/{token}", s.handleShareDownload)
-	mux.HandleFunc("GET /archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleSharesPage))
-	mux.HandleFunc("POST /archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleSharesCreate))
-	mux.HandleFunc("POST /archives/{id}/shares/{share_id}/revoke", s.requirePermission(auth.PermSharesManage, s.handleSharesRevoke))
+	mux.HandleFunc("GET /shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleSharesPage))
+	mux.HandleFunc("POST /shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleSharesCreate))
+	mux.HandleFunc("POST /shares/{share_id}/revoke", s.requirePermission(auth.PermSharesManage, s.handleSharesRevoke))
 	s.pinRoutes(mux)
 	mountFaviconRoutes(mux)
 	// Catch-all for unmatched routes: render the friendly 404 page

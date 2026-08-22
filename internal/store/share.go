@@ -111,6 +111,29 @@ func (s *Store) ShareByTokenHash(ctx context.Context, tokenHash string) (ShareLi
 	return l, nil
 }
 
+// ShareByID loads a share link by its numeric primary key. Returns
+// errShareNotFound when no row matches (handlers map to 404).
+func (s *Store) ShareByID(ctx context.Context, shareID int64) (ShareLink, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, archive_id, token_hash, created_by, label, max_uses, use_count, expires_at, revoked_at, created_at
+		FROM share_links WHERE id = ?`, shareID)
+	var l ShareLink
+	var expires, revoked, created string
+	if err := row.Scan(
+		&l.ID, &l.ArchiveID, &l.TokenHash, &l.CreatedBy, &l.Label,
+		&l.MaxUses, &l.UseCount, &expires, &revoked, &created,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ShareLink{}, errShareNotFound
+		}
+		return ShareLink{}, fmt.Errorf("share by id: %w", err)
+	}
+	l.ExpiresAt = shareTime(expires)
+	l.RevokedAt = shareTime(revoked)
+	l.CreatedAt = shareTime(created)
+	return l, nil
+}
+
 // ListShareLinks returns links for an archive, newest first.
 func (s *Store) ListShareLinks(ctx context.Context, archiveID string) ([]ShareLink, error) {
 	rows, err := s.db.QueryContext(ctx, `

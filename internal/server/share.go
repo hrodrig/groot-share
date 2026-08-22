@@ -12,7 +12,7 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-// shareCreateRequest is the JSON body for POST /v1/archives/{id}/shares.
+// shareCreateRequest is the JSON body for POST /v1/shares/{id...}.
 // Exactly one of ExpiresAt (RFC3339) or ExpiresIn (Go duration) is allowed.
 type shareCreateRequest struct {
 	ExpiresAt string `json:"expires_at"`
@@ -130,8 +130,7 @@ func (s *Server) handleRevokeShare(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	id := strings.Trim(r.PathValue("id"), "/")
-	s.recordUserAudit(r, "share_revoke", raw, id)
+	s.recordUserAudit(r, "share_revoke", raw, "")
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"revoked": true})
 }

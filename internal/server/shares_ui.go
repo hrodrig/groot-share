@@ -114,7 +114,7 @@ func renderSharesPage(w http.ResponseWriter, s *Server, ac *Actor, d sharesData)
 	_ = sharesTmpl.Execute(w, data)
 }
 
-// handleSharesCreate handles POST /archives/{id}/shares (form-encoded).
+// handleSharesCreate handles POST /shares/{id...} (form-encoded).
 func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 	ac := actorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermSharesManage) {
@@ -257,19 +257,24 @@ func (s *Server) handleSharesRevoke(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id := strings.Trim(r.PathValue("id"), "/")
 	raw := strings.Trim(r.PathValue("share_id"), "/")
 	shareID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || shareID <= 0 {
 		s.handleNotFound(w, r)
 		return
 	}
-	if err := s.Store.RevokeShareLink(r.Context(), shareID, time.Now().UTC()); err != nil {
-		http.Redirect(w, r, "/archives/"+url.PathEscape(id)+"/shares?notice=missing", http.StatusSeeOther)
+	// Look up the archive id so we can redirect to its shares page.
+	link, err := s.Store.ShareByID(r.Context(), shareID)
+	if err != nil {
+		s.handleNotFound(w, r)
 		return
 	}
-	s.recordUserAudit(r, "share_revoke", raw, id)
-	http.Redirect(w, r, "/archives/"+url.PathEscape(id)+"/shares?notice=revoked", http.StatusSeeOther)
+	if err := s.Store.RevokeShareLink(r.Context(), shareID, time.Now().UTC()); err != nil {
+		http.Redirect(w, r, "/shares/"+url.PathEscape(link.ArchiveID)+"?notice=missing", http.StatusSeeOther)
+		return
+	}
+	s.recordUserAudit(r, "share_revoke", raw, link.ArchiveID)
+	http.Redirect(w, r, "/shares/"+url.PathEscape(link.ArchiveID)+"?notice=revoked", http.StatusSeeOther)
 }
 
 func shareNotice(token string) (kind, text string) {
@@ -360,7 +365,7 @@ var sharesTmpl = template.Must(template.New("shares").Funcs(pageFuncs).Parse(`<!
 <section class="card" aria-labelledby="create-h">
   <div class="card-head"><h2 id="create-h">Create share link</h2></div>
   <div class="card-body">
-  <form method="post" action="/archives/{{.Shares.ArchiveID}}/shares" class="stack-form">
+  <form method="post" action="/shares/{{.Shares.ArchiveID}}" class="stack-form">
     <fieldset class="ttl-fieldset">
       <legend>Expiry</legend>
       <div class="ttl-presets" role="group" aria-label="Preset TTL">
@@ -400,7 +405,7 @@ var sharesTmpl = template.Must(template.New("shares").Funcs(pageFuncs).Parse(`<!
       <td><span class="pill pill-{{.Status}}">{{.Status}}</span></td>
       <td class="actions">
         {{if .Active}}
-        <form method="post" action="/archives/{{$.Shares.ArchiveID}}/shares/{{.ID}}/revoke" data-confirm="Revoke this share link? It will stop working immediately.">
+        <form method="post" action="/shares/{{.ID}}/revoke" data-confirm="Revoke this share link? It will stop working immediately.">
           <button class="btn btn-danger-quiet btn-sm" type="submit">Revoke</button>
         </form>
         {{end}}
