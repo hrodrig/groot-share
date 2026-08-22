@@ -77,10 +77,14 @@ Authenticated (session cookie **or** api_key for upload API):
 |--------|------|----------|
 | POST | `/logout` | Clear session |
 | GET | `/` | Vanilla HTML list (session) |
+| GET | `/?cluster=&q=&window=&source=&storage=` | Same as `/` with facet filters applied (session) |
 | GET | `/v1/archives` | JSON list (session) |
-| POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata |
+| POST | `/v1/archives` | Upload body `.tar.gz` (api_key **or** session); `201` + metadata. With `Accept: application/json` (and no browser form), errors are JSON (`409`/`413`) for inline clients |
 | GET | `/v1/archives/{id}` | Download (session); `404` if unknown |
 | GET | `/v1/archives/{id}/file` | Same bytes (HTML “download” link may use this) |
+| POST | `/v1/pin/archives/{id...}` | Pin an archive for the calling user (idempotent) |
+| DELETE | `/v1/pin/archives/{id...}` | Unpin (idempotent) |
+| POST | `/v1/pin/archives/{id...}/delete` | Unpin form alias (redirects to `/` on success) |
 
 On **vps-s3**, `{id}` is the object key. Download and delete accept only keys under `GFS_S3_PREFIX` (after normalize); keys outside the prefix → `404` (no raw bucket Get/Delete).
 
@@ -97,6 +101,43 @@ Upload auth: `Authorization: Bearer <api_key>` or `X-API-Key` (trigger-style). D
 
 List JSON (shape): `{ "items": [ { "id", "key", "size", "etag_or_sha256", "created_at", "source": "http"|"s3"|"sftp" } ] }`  
 In VPS + S3, `source=s3` includes objects groot wrote that gfs never saw over HTTP. `source=sftp` is a gfs inbox ingest (object key `{prefix}sftp/{yyyy}/{mm}/{dd}/{id}.tar.gz`).
+
+Captures page (`GET /`, session required) renders, in order: inventory summary
+strip (count, bytes on disk, distinct cluster slugs from the filename,
+in-transit count, storage topology); "Upload archive" CTA card (uploader and
+admin only); per-user pin strip (only when the user has at least one pin);
+facet bar (cluster chips with counts, search box, time-window chips, hidden
+when the inventory is empty); table of archives. Cluster slugs come from
+`store.ParseClusterSlug` which is deliberately conservative: anything that
+does not match the
+`<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape
+returns `""` and is excluded from the cluster count rather than guessed.
+
+Facet query params: `cluster` (exact slug, empty = no filter), `q`
+(case-insensitive substring of the archive key, empty = no filter), `window`
+(`24h` | `7d` | `30d` | empty = all), `source` (`http` | `s3` | `sftp` |
+empty = no filter), `storage` (`local` | `s3` | `transit` | empty = no
+filter). Unknown values are silently dropped, never 400. Cluster filter
+applies in Go via `ParseClusterSlug`; the other four apply in Go against
+the same in-memory list (cheap for an evidence locker of hundreds of
+archives, no extra SQL round-trips). Filter state is encoded in the URL
+so it is shareable. The "no matches" empty state shows when the inventory
+is non-empty but every row is filtered out; a "Clear filters" link goes
+to `/`.
+
+The "Upload archive" CTA card (uploader and admin) hosts an inline dropzone:
+pick or drag-and-drop a `.tar.gz`, see the file name + size before sending,
+and upload via `XMLHttpRequest` with a live progress bar and a cancel button.
+The XHR sets `Accept: application/json` so `POST /v1/archives` answers `201`
+with `{storage}`, `409` duplicate, or `413` too-large as JSON rendered inline
+(no page navigation); `409` shows the existing key so the operator can find
+the earlier capture.
+
+The archive list is responsive: a sortable table on desktop, replaced by a
+card layout at ≤ 719px (each card: key, source/storage pills, size,
+timestamp, and **Download** as a primary button plus copy-link and, when
+authorized, delete). Card and row actions are identical; the breakpoint only
+restructures the layout — no mobile-only data loss and no horizontal scroll.
 
 ## 5. Config (operator)
 
@@ -183,10 +224,23 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
 - slog JSON (or text) lines to stdout — one JSON object per line when `GFS_LOG_FORMAT=json` (no process-name prefix; parseable by jq / Vector / Fluent Bit)
 - HTTP access line with status; never api_key/password
 - Audit table: actor, action, object key/id, ts, remote IP (respect trusted proxies later; v0.1 may use RemoteAddr only)
+- Activity page filter bar: actor (case-insensitive substring), action
+  (exact), time window (`24h`/`7d`/`30d`/all) via `actor`/`action`/`window`
+  query params. Admin CSV/JSON export at
+  `GET /v1/activity/export?format=csv|json` (admin-only, honors the same
+  filters, streams the full unpaginated log). Downloads are audited as
+  `action=download` alongside uploads and deletes.
+- Completeness badge (Captures list): each **local (vps)** row reads the
+  groot `extras/manifest.json` via a bounding gzip→tar member peek and shows
+  the job outcome — `Complete` (`failed == 0`), `N of M jobs failed`
+  (`0 < failed < total`), or `Failed` (`failed == total`). The peek is
+  fail-closed (bad gzip, malformed JSON, missing member, or no job counts
+  render no badge) and capped at 64 KiB — never a full decompress. `s3` and
+  `transit` rows are unmarked (ranged bucket reads are out of scope).
 
 ## 9. Supply chain (must match groot-trigger)
 
-Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot-trigger` → `gfs` / module `github.com/hrodrig/groot-share`:
+Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), renaming `groot-trigger` → `gfs` / module `github.com/hrodrig/groot-share`:
 
 - `Makefile` BSD stub + `GNUmakefile`
 - `Dockerfile` + `Dockerfile.release` (distroless, UID 65532)
@@ -209,9 +263,9 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 
 - Visibility enum (private / team / hybrid) — MVP: all authenticated users see all; admin flag reserved
 - Presigned GET vs proxy download — MVP: gfs streams (local or GetObject)
-- Manifest peek (`extras/manifest.json`)
+- Manifest peek (`extras/manifest.json`) — **implemented** in Phase 10 (10-06/UX-08): completeness badge via capped 64 KiB gzip→tar member peek (see §4)
 
-## 12. External share links (implemented — v0.4.0)
+## 12. External share links (implemented — v0.5.0)
 
 **Problem:** Hand one archive to a third party (vendor, external auditor) without a gfs account; know if they downloaded it; link must expire.
 
@@ -230,9 +284,22 @@ Copy patterns from `/Volumes/Data/addlink/github/groot-trigger`, renaming `groot
 - Team “copy download link” (`/v1/archives/{id}/file`, session required) stays separate from external share URLs.
 - `share_download` audit actor is the literal `share` (public); the raw token is never logged or stored.
 
+**Share-link admin UI (Phase 10 / UX-09):** a server-rendered admin page at
+`GET /archives/{id}/shares` (admin session) lists active/expired/revoked links,
+and offers a create form — preset TTLs `24h`/`7d` plus a custom absolute
+`datetime-local`, optional label, optional `max_uses` — and per-link Revoke.
+`POST /archives/{id}/shares` (form-encoded) renders the created URL **once** in
+the response body (the raw token is shown only in that one render; it never
+appears in a `Location` header, a URL, or an access-log path, and `GET` of the
+page never re-emits it). Revoke is an HTML alias `POST
+/archives/{id}/shares/{share_id}/revoke` that redirects with `notice=revoked`
+(no token in the redirect). Non-admins receive `403` on all three routes. The
+Phase 9 JSON API (`POST/GET/DELETE /v1/archives/{id}/shares`) is unchanged.
+
 Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`.
 
 ---
 
 *SPEC approved 2026-08-12 from GFS-CONSENSUS.md + groot-trigger supply-chain reference.*  
-*§12 added 2026-08-13 — external share links (Phase 9, admin-only).*
+*§12 added 2026-08-13 — external share links (Phase 9, admin-only).*  
+*§12 UI note added 2026-08-21 — share-link admin UI (Phase 10, UX-09).*

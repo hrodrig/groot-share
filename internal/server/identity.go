@@ -295,6 +295,8 @@ var pageFuncs = template.FuncMap{
 	"humansize": humanSize,
 	"pagerurl":  pagerURL,
 	"sortlink":  sortURL,
+	"qswith":    func(b FilterURLBuilder, k, v string) template.URL { return b.With(k, v) },
+	"qswithout": func(b FilterURLBuilder, k string) template.URL { return b.Without(k) },
 }
 
 var loginTmpl = template.Must(template.New("login").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
@@ -342,6 +344,91 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
 </header>
 <main id="main" class="wrap">
 {{if .NoticeText}}<div class="notice notice-{{.NoticeKind}}" role="status">{{.NoticeText}}</div>{{end}}
+<section class="card summary" aria-label="Inventory summary">
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{.Summary.Count}}</span>
+    <span class="summary-lbl">captures</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{humansize .Summary.Bytes}}</span>
+    <span class="summary-lbl">on disk</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{.Summary.ClusterCount}}</span>
+    <span class="summary-lbl">clusters</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-num tabular">{{.Summary.IncompleteCount}}</span>
+    <span class="summary-lbl">in transit</span>
+  </div>
+  <div class="summary-cell summary-topo">
+    <span class="pill{{if eq .Summary.StorageTopology "vps"}} pill-local{{else if eq .Summary.StorageTopology "vps-s3"}} pill-s3{{end}}">{{.Summary.StorageTopology}}</span>
+    <span class="summary-lbl">topology</span>
+  </div>
+</section>
+{{if .CanUpload}}
+<section class="card upload-cta" aria-labelledby="up-cta-h">
+  <div class="upload-cta-head">
+    <h2 id="up-cta-h">Upload archive</h2>
+    <p class="hint">Drop or pick a groot <code>.tar.gz</code>. Up to <span class="mono">{{humansize .MaxUpload}}</span> per file.</p>
+  </div>
+  <form class="upload-inline" id="upload-inline" method="post" action="/v1/archives" enctype="multipart/form-data" novalidate data-max-upload="{{.MaxUpload}}">
+    <label class="dropzone" id="inline-dropzone">
+      <input type="file" name="file" id="inline-file" accept=".tar.gz,.tgz,application/gzip" required>
+      <span class="dz-text" id="inline-dz-text">Choose a file or drop it here</span>
+    </label>
+    <div class="upload-meta" id="inline-meta" hidden></div>
+    <progress class="upload-progress" id="inline-progress" max="1" value="0" aria-hidden="true" hidden></progress>
+    <div class="upload-status" id="inline-status" role="status" hidden></div>
+    <div class="upload-actions" id="inline-actions">
+      <button class="btn" type="submit" id="inline-send" disabled>Upload capture</button>
+      <button class="btn btn-quiet" type="button" id="inline-cancel" hidden>Cancel</button>
+    </div>
+  </form>
+</section>
+{{end}}
+{{if .Pins}}
+<section class="card pin-strip" aria-label="Pinned captures">
+  <div class="card-head">
+    <h2>Pinned</h2>
+    <span class="hint">Your quick-access captures</span>
+  </div>
+  <ul class="pin-list">
+    {{range .Pins}}
+    <li class="pin">
+      <a class="pin-key mono" href="/v1/archives/{{.ArchiveID}}/file" title="Download {{.ArchiveKey}}">{{.ArchiveKey}}</a>
+      <span class="pin-size muted tabular">{{humansize .Size}}</span>
+      <form method="post" action="/v1/pin/archives/{{.ArchiveID}}/delete" data-confirm="Unpin {{.ArchiveKey}}?">
+        <button class="btn btn-quiet btn-sm" type="submit" title="Unpin" aria-label="Unpin {{.ArchiveKey}}">Unpin</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
+{{if gt .Summary.Count 0}}
+<form class="filter-bar" method="get" action="/" id="captures-filter">
+  <div class="filter-row">
+    <div class="filter-chips" role="group" aria-label="Clusters">
+      <a class="chip{{if not .Filter.Cluster}} is-active{{end}}" href="/?{{qswithout .FilterURL "cluster"}}">All <span class="chip-count">{{.Summary.Count}}</span></a>
+      {{range .ClusterChips}}
+      <a class="chip{{if eq .Slug $.Filter.Cluster}} is-active{{end}}" href="/?{{qswith $.FilterURL "cluster" .Slug}}">{{.Slug}} <span class="chip-count">{{.Count}}</span></a>
+      {{end}}
+    </div>
+    <label class="filter-search">
+      <span class="visually-hidden">Search</span>
+      <input type="search" name="q" value="{{.Filter.Query}}" placeholder="filename, since, message" maxlength="80">
+    </label>
+    <div class="filter-window" role="group" aria-label="Time window">
+      <a class="chip chip-sm{{if eq .Filter.Window ""}} is-active{{end}}" href="/?{{qswithout .FilterURL "window"}}">All time</a>
+      <a class="chip chip-sm{{if eq .Filter.Window "24h"}} is-active{{end}}" href="/?{{qswith .FilterURL "window" "24h"}}">24h</a>
+      <a class="chip chip-sm{{if eq .Filter.Window "7d"}} is-active{{end}}" href="/?{{qswith .FilterURL "window" "7d"}}">7d</a>
+      <a class="chip chip-sm{{if eq .Filter.Window "30d"}} is-active{{end}}" href="/?{{qswith .FilterURL "window" "30d"}}">30d</a>
+    </div>
+    <button class="btn btn-quiet btn-sm filter-apply" type="submit">Apply</button>
+  </div>
+</form>
+{{end}}
 <div class="page-head">
   <div>
     <h1>Captures</h1>
@@ -364,7 +451,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     <tbody>
     {{range .Items}}
     <tr>
-      <td class="key">{{.Key}}</td>
+      <td class="key">{{.Key}}{{with index $.Completeness .ID}} <span class="completeness-badge tone-{{.Tone}}">{{.Label}}</span>{{end}}</td>
       <td><span class="pill pill-{{.Source}}">{{.Source}}</span></td>
       <td>{{if .Storage}}<span class="pill pill-{{.Storage}}">{{.Storage}}</span>{{end}}</td>
       <td class="num tabular">{{humansize .Size}}</td>
@@ -372,8 +459,11 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       <td class="actions">
         <a class="btn btn-quiet btn-sm btn-icon" href="/v1/archives/{{.ID}}/file" title="Download" aria-label="Download {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v10"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg></a>
         <button class="btn btn-quiet btn-sm btn-icon copy-link" type="button" data-copy-url="{{$.BaseURL}}/v1/archives/{{.ID}}/file" title="Copy download link" aria-label="Copy download link for {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
+        {{if $.CanShares}}
+        <a class="btn btn-quiet btn-sm btn-icon" href="/archives/{{.ID}}/shares" title="Share" aria-label="Share {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/><path d="M12 22v-7"/></svg></a>
+        {{end}}
         {{if $.CanDelete}}
-        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
+        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone." data-confirm-require="{{.Key}}">
           <button class="btn btn-danger-quiet btn-sm btn-icon" type="submit" title="Delete" aria-label="Delete {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
         </form>
         {{end}}
@@ -383,6 +473,31 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     </tbody>
   </table>
   </div>
+  <ul class="archive-cards">
+    {{range .Items}}
+    <li class="archive-card">
+      <div class="card-title mono" title="{{.Key}}">{{.Key}}{{with index $.Completeness .ID}} <span class="completeness-badge tone-{{.Tone}}">{{.Label}}</span>{{end}}</div>
+      <div class="card-meta">
+        <span class="pill pill-{{.Source}}">{{.Source}}</span>
+        {{if .Storage}}<span class="pill pill-{{.Storage}}">{{.Storage}}</span>{{end}}
+        <span class="muted tabular">{{humansize .Size}}</span>
+        <span class="muted tabular">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</span>
+      </div>
+      <div class="card-actions">
+        <a class="btn" href="/v1/archives/{{.ID}}/file" title="Download {{.Key}}">Download</a>
+        <button class="btn btn-quiet copy-link" type="button" data-copy-url="{{$.BaseURL}}/v1/archives/{{.ID}}/file" title="Copy download link" aria-label="Copy download link for {{.Key}}">Copy link</button>
+        {{if $.CanShares}}
+        <a class="btn btn-quiet" href="/archives/{{.ID}}/shares" title="Share {{.Key}}">Share</a>
+        {{end}}
+        {{if $.CanDelete}}
+        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone." data-confirm-require="{{.Key}}">
+          <button class="btn btn-danger-quiet" type="submit" title="Delete" aria-label="Delete {{.Key}}">Delete</button>
+        </form>
+        {{end}}
+      </div>
+    </li>
+    {{end}}
+  </ul>
   {{if gt .Pager.Total 0}}
   <nav class="pager" aria-label="Archives pagination">
     {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
@@ -402,8 +517,13 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   {{end}}
   {{else}}
   <div class="empty">
+    {{if .Filter.IsZero}}
     <p class="empty-title">No captures yet</p>
     <p class="empty-sub">Browse will stay empty until the first archive lands. <a href="/upload">Upload a capture</a> or use the HTTP API.</p>
+    {{else}}
+    <p class="empty-title">No matches</p>
+    <p class="empty-sub">No captures match the current filters. <a href="/" class="empty-clear">Clear filters</a> to see all captures.</p>
+    {{end}}
   </div>
   {{end}}
 </section>
@@ -413,9 +533,12 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   <form method="dialog" class="dialog-card">
     <p class="dialog-title" id="confirm-title">Delete capture</p>
     <p class="dialog-text" id="confirm-text"></p>
+    <div class="dialog-typed is-hidden" id="confirm-typed">
+      <label class="field"><span id="confirm-typed-hint">Type the name to confirm</span><input id="confirm-input" autocomplete="off" spellcheck="false"></label>
+    </div>
     <div class="dialog-actions">
       <button class="btn btn-quiet" value="cancel">Cancel</button>
-      <button class="btn btn-danger" value="ok">Delete</button>
+      <button class="btn btn-danger" value="ok" id="confirm-ok">Delete</button>
     </div>
   </form>
 </dialog>
@@ -423,15 +546,34 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
 (function () {
   var dlg = document.getElementById('confirm-dialog');
   var txt = document.getElementById('confirm-text');
+  var typed = document.getElementById('confirm-typed');
+  var input = document.getElementById('confirm-input');
+  var hint = document.getElementById('confirm-typed-hint');
+  var ok = document.getElementById('confirm-ok');
   var pending = null;
   if (dlg && dlg.showModal) {
     document.querySelectorAll('form[data-confirm]').forEach(function (f) {
       f.addEventListener('submit', function (e) {
         e.preventDefault();
+        var requireVal = f.getAttribute('data-confirm-require');
         pending = f;
         txt.textContent = f.getAttribute('data-confirm');
+        if (requireVal !== null && requireVal !== undefined) {
+          typed.classList.remove('is-hidden');
+          hint.textContent = 'Type ' + requireVal + ' to confirm';
+          input.value = '';
+          input.dataset.require = requireVal;
+          ok.disabled = true;
+        } else {
+          typed.classList.add('is-hidden');
+          input.dataset.require = '';
+          ok.disabled = false;
+        }
         dlg.showModal();
       });
+    });
+    input.addEventListener('input', function () {
+      ok.disabled = input.value !== (input.dataset.require || '');
     });
     dlg.addEventListener('close', function () {
       if (dlg.returnValue === 'ok' && pending) { pending.submit(); }
@@ -448,6 +590,122 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
       });
     });
   });
+  // Inline dropzone upload (XHR — fetch has no upload progress).
+  var form = document.getElementById('upload-inline');
+  var dz = document.getElementById('inline-dropzone');
+  var fileInput = document.getElementById('inline-file');
+  var dzText = document.getElementById('inline-dz-text');
+  var meta = document.getElementById('inline-meta');
+  var bar = document.getElementById('inline-progress');
+  var status = document.getElementById('inline-status');
+  var sendBtn = document.getElementById('inline-send');
+  var cancelBtn = document.getElementById('inline-cancel');
+  var xhr = null;
+  if (form && dz && fileInput && dzText) {
+    var maxUpload = parseInt(form.getAttribute('data-max-upload'), 10) || 0;
+    function humanSize(n) {
+      if (!n) return '0 B';
+      var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      var i = 0; while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      return (i === 0 ? n : n.toFixed(1)) + ' ' + units[i];
+    }
+    function setStatus(kind, html) {
+      status.className = 'upload-status' + (kind ? ' ' + kind : '');
+      status.innerHTML = html;
+      status.hidden = !html;
+    }
+    function resetUI() {
+      bar.hidden = true; bar.value = 0;
+      cancelBtn.hidden = true;
+    }
+    function refresh(selected) {
+      // name + size before send
+      var f = selected[0];
+      if (!f) { dzText.textContent = 'Choose a file or drop it here'; dzText.classList.remove('has-file'); meta.hidden = true; sendBtn.disabled = true; return; }
+      dzText.textContent = f.name;
+      dzText.classList.add('has-file');
+      meta.textContent = f.name + ' · ' + humanSize(f.size);
+      meta.hidden = false;
+      if (maxUpload > 0 && f.size > maxUpload) {
+        meta.textContent += ' — exceeds the ' + humanSize(maxUpload) + ' limit';
+        sendBtn.disabled = true;
+        setStatus('err', 'File exceeds the ' + humanSize(maxUpload) + ' size limit.');
+        return;
+      }
+      setStatus('', '');
+      sendBtn.disabled = false;
+    }
+    fileInput.addEventListener('change', function () { if (fileInput.files) refresh(fileInput.files); });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('drag'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('drag'); });
+    });
+    dz.addEventListener('drop', function (e) {
+      if (e.dataTransfer && e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        refresh(e.dataTransfer.files);
+      }
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = fileInput.files && fileInput.files.length ? fileInput.files[0] : null;
+      if (!f) return;
+      var fd = new FormData();
+      fd.append('file', f);
+      xhr = new XMLHttpRequest();
+      xhr.open('POST', '/v1/archives');
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.upload.onprogress = function (ev) {
+        if (ev.lengthComputable) {
+          bar.hidden = false;
+          bar.value = ev.loaded / ev.total;
+        }
+      };
+      xhr.onload = function () {
+        var body = {};
+        try { body = JSON.parse(xhr.responseText || '{}'); } catch (err) { body = {}; }
+        resetUI();
+        if (xhr.status === 201) {
+          if (body.storage === 'transit') {
+            setStatus('transit', 'Uploaded — in transit, will appear in Captures once the bucket copy completes.');
+          } else {
+            setStatus('ok', 'Capture uploaded.');
+          }
+          setTimeout(function () { window.location.assign(window.location.pathname + window.location.search); }, 800);
+        } else if (xhr.status === 409) {
+          var existing = body.existing && body.existing.key ? body.existing.key : f.name;
+          setStatus('err', 'Already uploaded (same content): <span class="mono">' + existing + '</span>. <a href="/">View in Captures</a>.');
+        } else if (xhr.status === 413) {
+          setStatus('err', 'File exceeds the size limit.');
+        } else {
+          setStatus('err', 'Upload failed. Check the file and try again.');
+        }
+        sendBtn.disabled = false;
+      };
+      xhr.onerror = function () {
+        resetUI();
+        setStatus('err', 'Upload failed (network). Check the file and try again.');
+        sendBtn.disabled = false;
+      };
+      xhr.onabort = function () {
+        resetUI();
+        setStatus('err', 'Upload canceled.');
+        sendBtn.disabled = false;
+        dzText.textContent = 'Choose a file or drop it here';
+        dzText.classList.remove('has-file');
+        meta.hidden = true;
+      };
+      setStatus('', '');
+      sendBtn.disabled = true;
+      cancelBtn.hidden = false;
+      xhr.send(fd);
+    });
+    cancelBtn.addEventListener('click', function () {
+      if (xhr) { xhr.abort(); xhr = null; }
+    });
+  }
 })();
 </script>
 {{.ThemeToggleScript}}
@@ -558,13 +816,44 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
     <h1>Activity</h1>
     <p class="sub">Audit log for uploads, downloads, and deletions. JSON at <span class="mono">GET /v1/audit</span>.</p>
   </div>
-  <a class="btn btn-quiet" href="/">Back to captures</a>
+  <div class="page-actions">
+    <a class="btn btn-quiet" href="/">Back to captures</a>
+    {{if .CanExport}}
+    <span class="export-group">
+      <a class="btn btn-sm" href="/v1/activity/export?format=csv{{if .FilterActor}}&amp;actor={{.FilterActor}}{{end}}{{if .FilterAction}}&amp;action={{.FilterAction}}{{end}}{{if .FilterWindow}}&amp;window={{.FilterWindow}}{{end}}">Export CSV</a>
+      <a class="btn btn-quiet btn-sm" href="/v1/activity/export?format=json{{if .FilterActor}}&amp;actor={{.FilterActor}}{{end}}{{if .FilterAction}}&amp;action={{.FilterAction}}{{end}}{{if .FilterWindow}}&amp;window={{.FilterWindow}}{{end}}">Export JSON</a>
+    </span>
+    {{end}}
+  </div>
 </div>
 <section class="card" aria-labelledby="ac-h">
   <div class="card-head">
     <h2 id="ac-h">Recent events</h2>
     <p class="hint">{{.Pager.Total}} total</p>
   </div>
+  <form class="filter-row" method="get" action="/activity">
+    <label class="field-inline">
+      <span class="visually-hidden">Action</span>
+      <select name="action">
+        <option value="">All actions</option>
+        {{range .AuditActions}}<option value="{{.}}"{{if eq $.FilterAction .}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+    <label class="field-inline">
+      <span class="visually-hidden">Actor</span>
+      <input type="search" name="actor" value="{{.FilterActor}}" placeholder="Actor" maxlength="80">
+    </label>
+    <label class="field-inline">
+      <span class="visually-hidden">Window</span>
+      <select name="window">
+        <option value="">All time</option>
+        <option value="24h"{{if eq .FilterWindow "24h"}} selected{{end}}>24h</option>
+        <option value="7d"{{if eq .FilterWindow "7d"}} selected{{end}}>7d</option>
+        <option value="30d"{{if eq .FilterWindow "30d"}} selected{{end}}>30d</option>
+      </select>
+    </label>
+    <button class="btn btn-quiet btn-sm filter-apply" type="submit">Filter</button>
+  </form>
   {{if .Audit}}
   <div class="table-wrap">
   <table class="grid">

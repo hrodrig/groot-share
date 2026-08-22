@@ -6,8 +6,8 @@
 
 | Track | Status |
 |-------|--------|
-| Product | **v0.2.4**. Phase 8 SFTP watcher planned (GSD current). Phase 9 share links after that. |
-| Operator UX | **Phase 10 locked** (2026-08-19). Evidence locker. Steal Captures layout from the v0 mock; implement in vanilla HTML. May interleave: **10-01 → 10-02** before 08-01. |
+| Product | **v0.4.0**. Phase 9 share links shipped (API). Phase 10 catalog UX next. |
+| Operator UX | **Phase 10 locked** (2026-08-19). Evidence locker. Steal Captures layout from the v0 mock; implement in vanilla HTML. Includes **UX-09 share-link admin UI** (plan 10-07) backing Phase 9's API. |
 
 ## Overview
 
@@ -23,7 +23,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 6: Housekeeping** — Audit log + retention job (completed 2026-08-12)
 - [x] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (completed 2026-08-13, shipped in v0.2.0)
 - [x] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (completed 2026-08-19)
-- [ ] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (planned 2026-08-13)
+- [x] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (completed 2026-08-19, shipped v0.4.0 — API only; admin UI deferred to Phase 10)
 - [ ] **Phase 10: Operational catalog UX** — Incident evidence locker: cluster-first catalog, upload progress, mobile cards, compliance Activity (planned 2026-08-19; vanilla HTML, no SPA)
 
 ## Phase Details
@@ -194,14 +194,13 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
   1. Only **admin** session can create, list, or revoke share links; uploader/viewer get `403`
   2. `GET /s/{token}` works without auth until `expires_at`, revocation, or `max_uses` — gfs proxies bytes on `vps` and `vps-s3`
   3. Audit rows: `share_create`, `share_download`, `share_revoke`; raw token never in logs or audit
-  4. Admin UI on Captures: create (TTL or until-date), copy URL once, list/revoke active links
 
-**Plans:** 0/2 plans complete
+**Plans:** 1/1 complete (API; admin UI moved to Phase 10 — see UX share-links below)
 
 Plans:
 
-- [ ] 09-01: `share_links` schema + admin API + public `/s/{token}` download + audit
-- [ ] 09-02: Captures admin UI + SPEC §12 + CHANGELOG
+- [x] 09-01: `share_links` schema + admin API + public `/s/{token}` download + audit
+- [ ] 09-02: Captures admin UI — **deferred to Phase 10** (share-link management UI lives with the rest of the Captures UX)
 
 Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
 
@@ -209,7 +208,7 @@ Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
 
 **Goal:** Captures is an **incident evidence locker** — find this `.tar.gz` under pressure, download it, paste the link into a ticket, know who fetched it. Not a generic file Dropbox. Server-rendered HTML stays; **no SPA**.
 **Depends on:** Phase 4–7 (list/upload/RBAC already shipped)
-**Requirements:** UX-01, UX-02, UX-03, UX-04, UX-05, UX-06, UX-07, UX-08
+**Requirements:** UX-01, UX-02, UX-03, UX-04, UX-05, UX-06, UX-07, UX-08, UX-09 (share-link admin UI)
 **May interleave** with Phases 8–9. If catalog pain beats SFTP, run **10-01 then 10-02** before 08-01.
 **UX lock (2026-08-19):** Captures layout from the reviewed mock: stats → pin strip → cluster chips with counts → search + time window → table (desktop) / cards (mobile). **Download** is always a primary action (not kebab-only). Copy download URL stays (UX-2). Empty: **no archives yet** vs **no matches**. Product chrome is **gfs** + `VERSION`, not a fictional mock version. Visual: blue=primary, green=ready, amber=transit/partial, red=error/failed; `mono` for IDs/hashes/filenames/cluster.
 
@@ -231,17 +230,19 @@ Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
   6. Activity is compliance-grade: filter user/action/date; **download** events first-class; admin **CSV/JSON export** (not optional)
   7. Destructive actions need typed-name confirm; API key shown once with copy feedback; four-color state tokens
   8. Completeness badge only when manifest peek exists (`Complete` / `N of M jobs failed` / all-failed `Failed`); filename-only rows stay unmarked
+  9. **Share-link admin UI (UX-09):** on a Captures row, admin can create a time-limited share link (preset TTLs `24h`/`7d` + custom until-date, optional label, optional `max_uses`), copy the URL once, and list/revoke active links per archive. Backs onto the Phase 9 API (`POST/GET/DELETE /v1/archives/{id}/shares`); no raw token shown again after create.
 
-**Plans:** 0/6 plans complete
+**Plans:** 2/7 plans complete
 
 Plans:
 
-- [ ] 10-01: Captures dashboard (summary strip, CTA, newest-first, pin, copy-link + Download prominence)
-- [ ] 10-02: Cluster chips + search + time-window query params; source/storage secondary; distinct empty states
-- [ ] 10-03: Upload dropzone, progress, transit messaging, cancel, duplicate hint
-- [ ] 10-04: Responsive table → card layout (Download primary on cards)
-- [ ] 10-05: Activity filters + required admin export + settings/API-key safety + destructive confirm + visual tokens (nav grouping optional)
-- [ ] 10-06: Optional cheap `extras/manifest.json` peek → partial-capture badge (fail closed if not a groot archive)
+- [x] 10-01: Captures dashboard (summary strip, CTA, newest-first, pin, copy-link + Download prominence)
+- [x] 10-02: Cluster chips + search + time-window query params; source/storage secondary; distinct empty states
+- [x] 10-03: Upload dropzone, progress, transit messaging, cancel, duplicate hint
+- [x] 10-04: Responsive table → card layout (Download primary on cards)
+- [x] 10-05: Activity filters + required admin export + settings/API-key safety + destructive confirm + visual tokens (nav grouping optional)
+- [x] 10-06: Optional cheap `extras/manifest.json` peek → partial-capture badge (fail closed if not a groot archive)
+- [x] 10-07: Share-link admin UI (UX-09): create TTL/until-date, copy URL once, list/revoke active links
 
 Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `admin.go`, `audit.go`. Filename parse from groot archive basename (SPEC groot §5). Update gfs SPEC when list HTML/JSON facets or manifest peek land. Do not vendor groot analyze.
 
@@ -250,7 +251,8 @@ Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `
 - [x] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc.
 - [ ] **UX-4: Producer origin** — Trigger / Scheduled / Manual only after groot (or sidecar) supplies it; never infer from `source` http/s3/sftp
 - [ ] **UX-3: Role walkthrough** — after Phase 10, test Captures/Upload/Activity as viewer, uploader, and admin (not a code plan)
-- [ ] **999.1: remaining audit fixes** — still open: ingest 400 vs 5xx (B-5), gzip magic (B-6), cookie Secure default (B-10), loop cancel (B-13), EqualHash (B-9), crash orphans (B-14), pin release images (I-2), Uploader API (I-3). Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
+- [ ] **UX-09: Share-link admin UI** — Captures row action to create/list/revoke share links (see Phase 10, plan 10-07); API already shipped in v0.4.0
+- [x] **999.1: audit fixes** — shipped v0.4.0: B-5 (ingest 500), B-6 (gzip magic), B-9 (EqualHash drop), B-10 (cookie Secure), B-13 (signal loops), B-14 (blob-first delete), I-2 (GoReleaser ~2.16), I-3 (manager.Uploader justification). Remaining: **I-5** openpgp false positive (documented, no fix). Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
 
 ## Progress
 
@@ -267,5 +269,5 @@ Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
 | 7. RBAC | 3/3 | Complete | 2026-08-13 |
 | 8. SFTP watcher | 2/2 | Complete | 2026-08-19 |
-| 9. External share links | 0/2 | Planned | — |
-| 10. Operational catalog UX | 0/6 | Planned | — |
+| 9. External share links | 1/1 | Complete | 2026-08-19 |
+| 10. Operational catalog UX | 0/7 | Planned | — |

@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-08-21
+
+### Added
+
+- Captures dashboard polish (Phase 10 / UX-01): inventory summary strip (count,
+  bytes, distinct cluster slugs from the filename, in-transit count, storage
+  topology) and a primary "Upload archive" CTA card above the table
+- Per-user pin strip (Phase 10 / UX-01): `archive_pins` schema with cascading
+  delete; `POST /v1/pin/archives/{id...}` and `DELETE /v1/pin/archives/{id...}`
+  endpoints (also reachable via the unpin form-alias); the strip renders on
+  Captures only when the user has at least one pin
+- Filename cluster parser (`store.ParseClusterSlug`): best-effort extract of
+  the cluster slug from a groot basename (`<prefix>-<cluster>-<YYYYMMDD>...tar.gz`,
+  with optional `-since-` marker stripped). Conservative: returns `""` rather
+  than guessing when the name does not look like a timestamped capture
+- Captures facet bar (Phase 10 / UX-02): cluster chips with counts (always
+  reflect the full inventory, not the post-filter one), search box
+  (case-insensitive substring of the archive key), time-window chips
+  (`24h` / `7d` / `30d` / all). Filter state lives in the URL as query
+  params (`cluster`, `q`, `window`, `source`, `storage`); unknown values
+  silently dropped. Empty state distinguishes "no captures yet" from
+  "no matches" with a clear-filters link to `/`. Bar is hidden when the
+  inventory is empty
+- Inline dropzone upload (Phase 10 / UX-03): the "Upload archive" CTA card
+  now embeds a dropzone with drag-and-drop, file name + size preview before
+  send, `XMLHttpRequest` upload with a live progress bar and cancel button,
+  and inline notices for success (`storage: transit` vs `local`), duplicate
+  (`409`, showing the existing key), and too-large (`413`) — no page
+  navigation. The XHR sends `Accept: application/json` to hit the JSON
+  response branch instead of the browser-form redirect
+- Responsive archive list (Phase 10 / UX-04): a card layout replaces the
+  sortable table at ≤ 719px (key, source/storage pills, size, timestamp)
+  with Download as a full-width primary button, copy-link preserved, and
+  delete gated by role — no horizontal scroll on narrow screens
+- Activity filters + admin export (Phase 10 / UX-05): the Activity page
+  gains an actor substring / action / time-window filter bar (state in the
+  URL as `actor`, `action`, `window`; unknown values dropped). Admins get
+  CSV and JSON export buttons (`GET /v1/activity/export?format=csv|json`,
+  admin-only, honors the same filters, streams the full log)
+- Typed-name confirm (Phase 10 / UX-06): destructive actions (delete
+  archive, remove user, revoke API key) now require typing the target
+  name/key into a modal before the confirm button enables, replacing the
+  plain browser `confirm()`. API keys remain shown once with a copy button
+- Completeness badge (Phase 10 / UX-08): local (vps) captures show a
+  `Complete` / `N of M jobs failed` / `Failed` badge read from the groot
+  `extras/manifest.json` job counters via a capped 64 KiB gzip→tar member
+  peek — fail-closed (non-groot or malformed archives are unmarked, never a
+  full decompress). `s3`/`transit` rows stay unmarked
+- Share-link admin UI (Phase 10 / UX-09): a server-rendered `GET
+  /archives/{id}/shares` page lists active/expired/revoked links and offers a
+  create form (preset `24h`/`7d` TTLs or custom `datetime-local`, optional
+  label, optional `max_uses`) and per-link Revoke. A `Share` row action on
+  Captures (admin-only) links to it. Created URLs are shown exactly once in
+  the response body — never in a `Location` header, URL, or access-log path,
+  and the page `GET` never re-emits the raw token. Revoke is a form alias
+  redirect (`notice=revoked`); the Phase 9 JSON API is unchanged
+
 ## [0.4.0] — 2026-08-19
 
 ### Added
@@ -134,3 +191,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Behavior contract: `docs/SPECIFICATIONS.md`
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
+
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/hrodrig/groot-share/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/hrodrig/groot-share/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/hrodrig/groot-share/compare/v0.2.4...v0.3.0
+[0.2.4]: https://github.com/hrodrig/groot-share/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/hrodrig/groot-share/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/hrodrig/groot-share/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/hrodrig/groot-share/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/hrodrig/groot-share/compare/194bd24...v0.2.0

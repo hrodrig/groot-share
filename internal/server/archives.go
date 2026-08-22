@@ -25,18 +25,31 @@ func (s *Server) maxUpload() int64 {
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	ac := actorFrom(r.Context())
-	items, err := s.listItems(r.Context())
+	// Full inventory: cluster chip counts come from this. (D-06: chips
+	// reflect the unfiltered list, not the post-filter one.)
+	allItems, err := s.listItems(r.Context())
 	if err != nil {
 		slog.Error("list archives", "error", err)
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
 	var total int64
-	for i := range items {
-		if items[i].Storage == "" {
-			items[i].Storage = "local"
+	var incomplete int
+	for i := range allItems {
+		if allItems[i].Storage == "" {
+			allItems[i].Storage = "local"
 		}
-		total += items[i].Size
+		total += allItems[i].Size
+		if allItems[i].Storage == "transit" {
+			incomplete++
+		}
+	}
+	// Apply the request's filter on top of the full list.
+	filter := ParseFilter(r)
+	items := applyFilterInMemory(allItems, filter)
+	topo := "vps"
+	if s.useBucket() {
+		topo = "vps-s3"
 	}
 	pageSize := parsePageSize(r)
 	sortField, sortAsc := parseSort(r)
@@ -49,12 +62,38 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	data := s.pageShell()
 	mergeActorData(data, ac)
 	data["Items"] = pageItems
+	completeness := make(map[string]*completenessBadge)
+	for i := range pageItems {
+		if b, ok := s.completenessBadgeOf(pageItems[i]); ok {
+			completeness[pageItems[i].ID] = &b
+		}
+	}
+	data["Completeness"] = completeness
 	data["StatsLine"] = statsLine(len(items), total)
+	data["Summary"] = map[string]any{
+		"Count":           len(allItems),
+		"Bytes":           total,
+		"ClusterCount":    len(store.ClusterCounts(allItems)),
+		"IncompleteCount": incomplete,
+		"StorageTopology": topo,
+	}
+	data["Filter"] = filter
+	data["ClusterChips"] = store.ClusterCounts(allItems)
+	data["FilterURL"] = FilterURLBuilder{Base: r.URL.RawQuery}
+	data["MaxUpload"] = s.maxUpload()
 	data["Pager"] = pager
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText
 	data["Nav"] = "captures"
 	data["BaseURL"] = requestBaseURL(r)
+	if ac != nil && ac.User.ID != 0 {
+		pins, perr := s.Store.ListPins(r.Context(), ac.User.ID, 16)
+		if perr != nil {
+			slog.Warn("list pins", "user", ac.User.ID, "error", perr)
+		} else {
+			data["Pins"] = pins
+		}
+	}
 	_ = homeTmpl.Execute(w, data)
 }
 

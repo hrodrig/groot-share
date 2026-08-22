@@ -5,7 +5,7 @@
 **📦** _Web and API door for groot `.tar.gz` archives when a VPS exists_
 
 [![Release](https://img.shields.io/github/v/release/hrodrig/groot-share?display_name=tag&label=release&logo=github)](https://github.com/hrodrig/groot-share/releases)
-[![Version](https://img.shields.io/badge/version-0.2.4-blue)](https://github.com/hrodrig/groot-share/releases)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue)](https://github.com/hrodrig/groot-share/releases)
 [![Go](https://img.shields.io/badge/Go-1.26.6-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![CI](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml)
@@ -102,6 +102,15 @@ Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **Wh
 - Cluster archives via shared S3 prefix (`source=s3`) on **vps-s3**
 - SFTP inbox watcher (`GFS_SFTP_INBOX`) for groot `upload.sftp` — Captures pill **SFTP** (`source=sftp`)
 - Audit log (upload / download / delete / user actions; no secrets in rows)
+- Per-user pin strip on Captures (quick access; `archive_pins` cascades on user delete)
+- Captures inventory summary: count, bytes on disk, distinct cluster slugs, in-transit count, storage topology
+- Captures facet bar: cluster chips with counts, search (filename substring), time-window chips (`24h` / `7d` / `30d` / all); state in URL query params
+- Responsive archive list: sortable table on desktop, card layout at ≤ 719px with Download as a primary button per card
+- Inline dropzone upload on Captures: drag-and-drop a `.tar.gz`, file name + size before send, live progress + cancel, inline duplicate/too-large notices (no page navigation)
+- Activity filters: actor / action / time-window bar on the Activity page; admin CSV + JSON export of the full audit log
+- Typed-name confirm on destructive actions (delete archive, remove user, revoke key) — type the name to enable the button
+- Completeness badge on local captures (`Complete` / `N of M jobs failed` / `Failed`) read from the groot manifest with a capped peek
+- Share-link admin UI — create time-limited external links (preset/custom TTL), copy-once, list and revoke per capture (admin-only)
 - Retention: `keep_last` **or** `max_age_days` (defaults 20 / 90)
 - Fail-closed config (`GFS_TOPOLOGY`, bootstrap admin, bucket creds)
 - Supply chain aligned with **groot-trigger** (GNU Make, GoReleaser, distroless, CI)

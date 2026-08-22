@@ -202,6 +202,73 @@ func TestUploadDuplicateBrowserForm(t *testing.T) {
 	}
 }
 
+func TestUploadDuplicateMultipartJSON(t *testing.T) {
+	// The inline dropzone sends multipart + Accept: application/json (XHR),
+	// which must hit the JSON branch (409 + {"error":"duplicate"}) — not the
+	// browser-form redirect — so the inline UI can render an inline notice.
+	s, _ := identServer(t)
+	ck := loginCookie(t, s)
+	post := func() *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		mw := multipart.NewWriter(&buf)
+		fw, err := mw.CreateFormFile("file", "inline.tar.gz")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(fw, "same-content"); err != nil {
+			t.Fatal(err)
+		}
+		_ = mw.Close()
+		req := httptest.NewRequest(http.MethodPost, "/v1/archives", &buf)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		req.Header.Set("Accept", "application/json")
+		req.AddCookie(ck)
+		rr := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rr, req)
+		return rr
+	}
+	if rr := post(); rr.Code != http.StatusCreated {
+		t.Fatalf("first upload %d %s", rr.Code, rr.Body.String())
+	}
+	rr := post()
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("duplicate code %d %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"error":"duplicate"`) || !strings.Contains(rr.Body.String(), `"existing"`) {
+		t.Fatalf("expected JSON duplicate body, got %s", rr.Body.String())
+	}
+}
+
+func TestIsBrowserForm(t *testing.T) {
+	cases := []struct {
+		name   string
+		accept string
+		ctype  string
+		isForm bool
+	}{
+		{"multipart no accept", "", "multipart/form-data; boundary=x", true},
+		{"multipart accept json", "application/json", "multipart/form-data; boundary=x", false},
+		{"multipart accept json with charset", "application/json; charset=utf-8", "multipart/form-data; boundary=x", false},
+		{"multipart accepts html text", "text/html", "multipart/form-data; boundary=x", true},
+		{"raw gzip accepts json", "application/json", "application/gzip", false},
+		{"raw gzip no accept", "", "application/gzip", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/v1/archives", nil)
+			if tc.accept != "" {
+				req.Header.Set("Accept", tc.accept)
+			}
+			if tc.ctype != "" {
+				req.Header.Set("Content-Type", tc.ctype)
+			}
+			if got := isBrowserForm(req); got != tc.isForm {
+				t.Fatalf("isBrowserForm() = %v, want %v", got, tc.isForm)
+			}
+		})
+	}
+}
+
 func TestDownloadNotFound(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)

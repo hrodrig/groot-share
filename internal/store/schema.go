@@ -73,9 +73,21 @@ CREATE TABLE IF NOT EXISTS share_links (
   revoked_at TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS archive_pins (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  archive_id TEXT NOT NULL,
+  archive_key TEXT NOT NULL DEFAULT '',
+  archive_size INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, archive_id)
+);
 CREATE INDEX IF NOT EXISTS archives_sha256_idx ON archives(sha256);
 CREATE INDEX IF NOT EXISTS transit_sha256_idx ON transit(sha256);
 CREATE INDEX IF NOT EXISTS share_links_archive_idx ON share_links(archive_id);
+CREATE INDEX IF NOT EXISTS archive_pins_user_idx ON archive_pins(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_actor_idx ON audit(actor);
+CREATE INDEX IF NOT EXISTS audit_action_idx ON audit(action);
+CREATE INDEX IF NOT EXISTS audit_created_at_idx ON audit(created_at);
 `
 
 func (s *Store) migrate() error {
