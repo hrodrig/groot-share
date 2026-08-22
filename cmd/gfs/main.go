@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -139,10 +140,18 @@ func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
 }
 
 func listenAndServe(ctx context.Context, httpSrv *http.Server) int {
+	// Pre-bind so the "listen" log only fires on a successful bind.
+	// A false success log on a bind failure was misleading operators.
+	ln, err := net.Listen("tcp", httpSrv.Addr)
+	if err != nil {
+		slog.Error("listen bind failed", "addr", httpSrv.Addr, "error", err)
+		return 1
+	}
+	slog.Info("listen", "addr", ln.Addr().String())
+
 	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("listen", "addr", httpSrv.Addr)
-		errCh <- httpSrv.ListenAndServe()
+		errCh <- httpSrv.Serve(ln)
 	}()
 
 	select {
