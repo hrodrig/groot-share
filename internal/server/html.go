@@ -606,6 +606,35 @@ table.grid {
 .pill-local { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
 .pill-transit { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
 
+/* ---- archive cards (narrow viewports) ---- */
+.archive-cards { display: none; }
+.archive-card .card-title { font: 13px/1.4 var(--mono); word-break: break-all; }
+.archive-card .card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.archive-card .card-actions { display: flex; gap: 8px; margin-top: 2px; }
+.archive-card .card-actions form { margin: 0; }
+.archive-card .card-actions .btn { flex: 0 0 auto; }
+.archive-card .card-actions a.btn { flex: 1 1 auto; text-align: center; }
+@media (max-width: 719px) {
+  .table-wrap { display: none; }
+  .archive-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    list-style: none;
+    margin: 0;
+    padding: 16px;
+  }
+  .archive-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+}
+
 /* ---- notices ---- */
 .notice {
   display: flex; align-items: center; gap: 10px;
