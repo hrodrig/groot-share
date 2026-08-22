@@ -294,7 +294,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   .summary-cell:nth-child(2n) { border-right: 0; }
   .summary-cell:nth-last-child(-n+2) { border-bottom: 0; }
 }
-.upload-cta { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.upload-cta { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; }
 .upload-cta h2 { margin: 0; font: 600 16px/1.3 var(--sans); }
 .upload-cta .hint { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
 .upload-cta code { font-family: var(--mono); background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
@@ -310,6 +310,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .pin form { margin: 0; }
 .filter-bar { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; }
 .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.card > form.filter-row { padding: 16px 24px 20px; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 999px; font: 500 13px/1 var(--sans); color: var(--ink); text-decoration: none; background: var(--surface); }
 .chip:hover { background: var(--surface-2); text-decoration: none; }
@@ -503,8 +504,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .app-foot a:hover { color: var(--accent); text-decoration: underline; }
 
 /* ---- upload ---- */
-.upload { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; padding: 16px 20px 20px; }
-.upload-inline { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; }
+.upload { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; padding: 16px 24px 20px; }
+.upload-inline { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px; padding: 0; }
+.upload-inline .dropzone { flex: 0 1 auto; width: 260px; max-width: 100%; }
+.upload-inline .dropzone .dz-text { min-width: 0; }
+.upload-inline .upload-meta,
+.upload-inline .upload-progress,
+.upload-inline .upload-status { flex-basis: 100%; }
 .upload-cta-head { display: flex; flex-direction: column; gap: 4px; }
 .upload-meta { font: 500 12.5px/1.3 var(--mono); color: var(--muted); }
 .upload-progress { width: 100%; height: 8px; appearance: none; border: none; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
