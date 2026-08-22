@@ -62,6 +62,13 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	data := s.pageShell()
 	mergeActorData(data, ac)
 	data["Items"] = pageItems
+	completeness := make(map[string]*completenessBadge)
+	for i := range pageItems {
+		if b, ok := s.completenessBadgeOf(pageItems[i]); ok {
+			completeness[pageItems[i].ID] = &b
+		}
+	}
+	data["Completeness"] = completeness
 	data["StatsLine"] = statsLine(len(items), total)
 	data["Summary"] = map[string]any{
 		"Count":           len(allItems),

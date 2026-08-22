@@ -621,6 +621,19 @@ table.grid {
 .pill-local { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
 .pill-transit { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
 
+.completeness-badge {
+  display: inline-block;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  vertical-align: 1px;
+}
+.completeness-badge.tone-ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.completeness-badge.tone-warn { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.completeness-badge.tone-err { color: var(--err); border-color: var(--err); background: var(--err-soft); }
+
 /* ---- archive cards (narrow viewports) ---- */
 .archive-cards { display: none; }
 .archive-card .card-title { font: 13px/1.4 var(--mono); word-break: break-all; }

@@ -451,7 +451,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     <tbody>
     {{range .Items}}
     <tr>
-      <td class="key">{{.Key}}</td>
+      <td class="key">{{.Key}}{{with index $.Completeness .ID}} <span class="completeness-badge tone-{{.Tone}}">{{.Label}}</span>{{end}}</td>
       <td><span class="pill pill-{{.Source}}">{{.Source}}</span></td>
       <td>{{if .Storage}}<span class="pill pill-{{.Storage}}">{{.Storage}}</span>{{end}}</td>
       <td class="num tabular">{{humansize .Size}}</td>
@@ -473,7 +473,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   <ul class="archive-cards">
     {{range .Items}}
     <li class="archive-card">
-      <div class="card-title mono" title="{{.Key}}">{{.Key}}</div>
+      <div class="card-title mono" title="{{.Key}}">{{.Key}}{{with index $.Completeness .ID}} <span class="completeness-badge tone-{{.Tone}}">{{.Label}}</span>{{end}}</div>
       <div class="card-meta">
         <span class="pill pill-{{.Source}}">{{.Source}}</span>
         {{if .Storage}}<span class="pill pill-{{.Storage}}">{{.Storage}}</span>{{end}}
