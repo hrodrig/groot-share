@@ -87,7 +87,6 @@ func run(args []string) int {
 	}
 	slog.Info("starting",
 		"version", version,
-		"listen", cfg.ListenAddr,
 		"topology", string(cfg.Topology),
 		"data_dir", cfg.DataDir,
 	)
