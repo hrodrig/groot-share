@@ -284,9 +284,22 @@ Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), 
 - Team “copy download link” (`/v1/archives/{id}/file`, session required) stays separate from external share URLs.
 - `share_download` audit actor is the literal `share` (public); the raw token is never logged or stored.
 
+**Share-link admin UI (Phase 10 / UX-09):** a server-rendered admin page at
+`GET /archives/{id}/shares` (admin session) lists active/expired/revoked links,
+and offers a create form — preset TTLs `24h`/`7d` plus a custom absolute
+`datetime-local`, optional label, optional `max_uses` — and per-link Revoke.
+`POST /archives/{id}/shares` (form-encoded) renders the created URL **once** in
+the response body (the raw token is shown only in that one render; it never
+appears in a `Location` header, a URL, or an access-log path, and `GET` of the
+page never re-emits it). Revoke is an HTML alias `POST
+/archives/{id}/shares/{share_id}/revoke` that redirects with `notice=revoked`
+(no token in the redirect). Non-admins receive `403` on all three routes. The
+Phase 9 JSON API (`POST/GET/DELETE /v1/archives/{id}/shares`) is unchanged.
+
 Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`.
 
 ---
 
 *SPEC approved 2026-08-12 from GFS-CONSENSUS.md + groot-trigger supply-chain reference.*  
-*§12 added 2026-08-13 — external share links (Phase 9, admin-only).*
+*§12 added 2026-08-13 — external share links (Phase 9, admin-only).*  
+*§12 UI note added 2026-08-21 — share-link admin UI (Phase 10, UX-09).*

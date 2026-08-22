@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `extras/manifest.json` job counters via a capped 64 KiB gzip→tar member
   peek — fail-closed (non-groot or malformed archives are unmarked, never a
   full decompress). `s3`/`transit` rows stay unmarked
+- Share-link admin UI (Phase 10 / UX-09): a server-rendered `GET
+  /archives/{id}/shares` page lists active/expired/revoked links and offers a
+  create form (preset `24h`/`7d` TTLs or custom `datetime-local`, optional
+  label, optional `max_uses`) and per-link Revoke. A `Share` row action on
+  Captures (admin-only) links to it. Created URLs are shown exactly once in
+  the response body — never in a `Location` header, URL, or access-log path,
+  and the page `GET` never re-emits the raw token. Revoke is a form alias
+  redirect (`notice=revoked`); the Phase 9 JSON API is unchanged
 
 ## [0.4.0] — 2026-08-19
 

@@ -110,6 +110,7 @@ Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **Wh
 - Activity filters: actor / action / time-window bar on the Activity page; admin CSV + JSON export of the full audit log
 - Typed-name confirm on destructive actions (delete archive, remove user, revoke key) — type the name to enable the button
 - Completeness badge on local captures (`Complete` / `N of M jobs failed` / `Failed`) read from the groot manifest with a capped peek
+- Share-link admin UI — create time-limited external links (preset/custom TTL), copy-once, list and revoke per capture (admin-only)
 - Retention: `keep_last` **or** `max_age_days` (defaults 20 / 90)
 - Fail-closed config (`GFS_TOPOLOGY`, bootstrap admin, bucket creds)
 - Supply chain aligned with **groot-trigger** (GNU Make, GoReleaser, distroless, CI)
