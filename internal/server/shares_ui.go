@@ -83,7 +83,7 @@ func (s *Server) handleSharesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := strings.Trim(r.PathValue("id"), "/")
-	a, err := s.Store.ArchiveByID(r.Context(), id)
+	a, err := s.resolveArchive(r.Context(), id)
 	if err != nil {
 		s.handleNotFound(w, r)
 		return
@@ -122,7 +122,7 @@ func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := strings.Trim(r.PathValue("id"), "/")
-	archive, err := s.Store.ArchiveByID(r.Context(), id)
+	archive, err := s.resolveArchive(r.Context(), id)
 	if err != nil {
 		s.handleNotFound(w, r)
 		return
@@ -235,7 +235,7 @@ func (s *Server) renderSharesField(w http.ResponseWriter, r *http.Request, ac *A
 }
 
 func archiveKeyOrID(s *Server, r *http.Request, id string) string {
-	if a, err := s.Store.ArchiveByID(r.Context(), id); err == nil {
+	if a, err := s.resolveArchive(r.Context(), id); err == nil {
 		return a.Key
 	}
 	return id

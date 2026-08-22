@@ -28,7 +28,7 @@ func (s *Server) handleCreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Resolve the archive first so a 404 is honest for unknown ids.
-	if _, err := s.Store.ArchiveByID(r.Context(), id); err != nil {
+	if _, err := s.resolveArchive(r.Context(), id); err != nil {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
@@ -100,7 +100,7 @@ func (s *Server) handleListShares(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	if _, err := s.Store.ArchiveByID(r.Context(), id); err != nil {
+	if _, err := s.resolveArchive(r.Context(), id); err != nil {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
