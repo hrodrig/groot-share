@@ -77,6 +77,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /archives/{id}/shares/{share_id}/revoke", s.requirePermission(auth.PermSharesManage, s.handleSharesRevoke))
 	s.pinRoutes(mux)
 	mountFaviconRoutes(mux)
+	// Catch-all for unmatched routes: render the friendly 404 page
+	// (browser) or return a structured JSON error (API). Specific
+	// patterns registered above always win on priority.
+	mux.HandleFunc("/", s.handleNotFound)
 	return s.accessLog(mux)
 }
 
