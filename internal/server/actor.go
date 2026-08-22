@@ -84,6 +84,7 @@ func shellUserData(ac *Actor) map[string]any {
 		"CanUpload":      ac.Can(auth.PermArchivesWrite),
 		"CanManageUsers": ac.Can(auth.PermUsersManage),
 		"CanManageKeys":  ac.Can(auth.PermAPIKeysManage) && ac.Method == auth.AuthSession,
+		"CanShares":      ac.Can(auth.PermSharesManage),
 	}
 }
 
