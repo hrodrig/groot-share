@@ -133,6 +133,12 @@ with `{storage}`, `409` duplicate, or `413` too-large as JSON rendered inline
 (no page navigation); `409` shows the existing key so the operator can find
 the earlier capture.
 
+The archive list is responsive: a sortable table on desktop, replaced by a
+card layout at ≤ 719px (each card: key, source/storage pills, size,
+timestamp, and **Download** as a primary button plus copy-link and, when
+authorized, delete). Card and row actions are identical; the breakpoint only
+restructures the layout — no mobile-only data loss and no horizontal scroll.
+
 ## 5. Config (operator)
 
 Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):

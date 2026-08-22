@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`409`, showing the existing key), and too-large (`413`) — no page
   navigation. The XHR sends `Accept: application/json` to hit the JSON
   response branch instead of the browser-form redirect
+- Responsive archive list (Phase 10 / UX-04): a card layout replaces the
+  sortable table at ≤ 719px (key, source/storage pills, size, timestamp)
+  with Download as a full-width primary button, copy-link preserved, and
+  delete gated by role — no horizontal scroll on narrow screens
 
 ## [0.4.0] — 2026-08-19
 
