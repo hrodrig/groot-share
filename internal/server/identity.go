@@ -470,6 +470,28 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
     </tbody>
   </table>
   </div>
+  <ul class="archive-cards">
+    {{range .Items}}
+    <li class="archive-card">
+      <div class="card-title mono" title="{{.Key}}">{{.Key}}</div>
+      <div class="card-meta">
+        <span class="pill pill-{{.Source}}">{{.Source}}</span>
+        {{if .Storage}}<span class="pill pill-{{.Storage}}">{{.Storage}}</span>{{end}}
+        <span class="muted tabular">{{humansize .Size}}</span>
+        <span class="muted tabular">{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}</span>
+      </div>
+      <div class="card-actions">
+        <a class="btn" href="/v1/archives/{{.ID}}/file" title="Download {{.Key}}">Download</a>
+        <button class="btn btn-quiet copy-link" type="button" data-copy-url="{{$.BaseURL}}/v1/archives/{{.ID}}/file" title="Copy download link" aria-label="Copy download link for {{.Key}}">Copy link</button>
+        {{if $.CanDelete}}
+        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
+          <button class="btn btn-danger-quiet" type="submit" title="Delete" aria-label="Delete {{.Key}}">Delete</button>
+        </form>
+        {{end}}
+      </div>
+    </li>
+    {{end}}
+  </ul>
   {{if gt .Pager.Total 0}}
   <nav class="pager" aria-label="Archives pagination">
     {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
