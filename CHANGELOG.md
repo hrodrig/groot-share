@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-08-22
+
+### Changed
+
+- Home "Upload archive" CTA compacted from a tall stacked block to a single
+  compact row (heading left, dropzone + action right), matching the height of
+  the inventory summary strip and freeing the Captures grid
+- Upload forms (dedicated `/upload` page and home inline) aligned to the
+  canonical 24px inline gutter (was 20px), consistent with the card shell
+- Activity filter row given the standard card gutter, aligning the
+  action/actor/window selects with the "Recent events" heading
+
+### Fixed
+
+- Share action icon no longer duplicates the copy-link chain glyph; it now
+  uses the Feather "share-2" (connected nodes) icon, visually distinct from
+  "Copy download link"
+
+### Docs
+
+- `make help` now surfaces the existing `docker-build-amd64` target and notes
+  it is the x86_64/VPS build path when running from Apple Silicon (where the
+  native `docker-build` otherwise produces an `arm64` image)
+
 ## [0.5.0] — 2026-08-21
 
 ### Added
