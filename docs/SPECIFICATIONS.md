@@ -263,9 +263,9 @@ Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), 
 
 - Visibility enum (private / team / hybrid) — MVP: all authenticated users see all; admin flag reserved
 - Presigned GET vs proxy download — MVP: gfs streams (local or GetObject)
-- Manifest peek (`extras/manifest.json`)
+- Manifest peek (`extras/manifest.json`) — **implemented** in Phase 10 (10-06/UX-08): completeness badge via capped 64 KiB gzip→tar member peek (see §4)
 
-## 12. External share links (implemented — v0.4.0)
+## 12. External share links (implemented — v0.5.0)
 
 **Problem:** Hand one archive to a third party (vendor, external auditor) without a gfs account; know if they downloaded it; link must expire.
 
