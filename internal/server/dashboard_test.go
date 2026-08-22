@@ -455,3 +455,55 @@ func TestHomeWindowFilterAppliesToList(t *testing.T) {
 		t.Fatalf("24h window chip should be active: %s", body)
 	}
 }
+
+func TestHomeArchiveCardsVisibleToUploader(t *testing.T) {
+	s, _ := identServer(t)
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, `class="archive-cards"`) {
+		t.Fatalf("archive cards list missing: %s", body)
+	}
+	if !strings.Contains(body, `class="archive-card"`) {
+		t.Fatalf("archive card missing: %s", body)
+	}
+	// Download is a primary button on the card.
+	if !strings.Contains(body, `class="btn" href="/v1/archives/`) ||
+		!strings.Contains(body, `>Download</a>`) {
+		t.Fatalf("card Download primary action missing: %s", body)
+	}
+	// Copy-link action is preserved on the card.
+	if !strings.Contains(body, `data-copy-url=`) {
+		t.Fatalf("card copy-link action missing: %s", body)
+	}
+	// Admin (CanDelete) gets a delete form on the card.
+	if !strings.Contains(body, `data-confirm="Delete groot-prod-eks-1-20260822.tar.gz? This cannot be undone."`) {
+		t.Fatalf("card delete action missing for admin: %s", body)
+	}
+}
+
+func TestHomeArchiveCardsNoDeleteForViewer(t *testing.T) {
+	s, st := identServer(t)
+	createUserWithRole(t, st, "view", "view-secret-1", auth.RoleViewer)
+	// A viewer cannot upload, so seed an archive as admin first.
+	admin := loginCookie(t, s)
+	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+
+	ck := loginAs(t, s, "view", "view-secret-1")
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body := rr.Body.String()
+	if !strings.Contains(body, `class="archive-cards"`) {
+		t.Fatalf("viewer should still see archive cards: %s", body)
+	}
+	if strings.Contains(body, `data-confirm="Delete groot-prod-eks-1-20260822.tar.gz? This cannot be undone."`) {
+		t.Fatalf("viewer must not see a card delete action: %s", body)
+	}
+}
