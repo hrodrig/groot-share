@@ -241,7 +241,7 @@ Plans:
 - [x] 10-03: Upload dropzone, progress, transit messaging, cancel, duplicate hint
 - [x] 10-04: Responsive table → card layout (Download primary on cards)
 - [x] 10-05: Activity filters + required admin export + settings/API-key safety + destructive confirm + visual tokens (nav grouping optional)
-- [ ] 10-06: Optional cheap `extras/manifest.json` peek → partial-capture badge (fail closed if not a groot archive)
+- [x] 10-06: Optional cheap `extras/manifest.json` peek → partial-capture badge (fail closed if not a groot archive)
 - [ ] 10-07: Share-link admin UI (UX-09): create TTL/until-date, copy URL once, list/revoke active links
 
 Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `admin.go`, `audit.go`. Filename parse from groot archive basename (SPEC groot §5). Update gfs SPEC when list HTML/JSON facets or manifest peek land. Do not vendor groot analyze.
