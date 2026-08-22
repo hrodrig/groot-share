@@ -5,15 +5,15 @@ milestone_name: Operational catalog UX
 current_phase: 10
 current_phase_name: Operational catalog UX
 status: in_progress
-stopped_at: Phase 10 10-03 inline dropzone complete 2026-08-21 (XHR upload with progress + cancel + inline duplicate/too-large; tests green; make ci green)
-last_updated: "2026-08-21T20:05:00.000Z"
+stopped_at: Phase 10 10-04 responsive cards complete 2026-08-21 (table→card layout ≤ 719px, Download primary per card, copy-link preserved, delete gated; tests green; make ci green)
+last_updated: "2026-08-21T20:30:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 10 plan 10-03 complete (inline dropzone + XHR upload: drag-and-drop, name/size preview, progress bar, cancel, inline 201/409/413 notices via Accept: application/json); ~6 functional commits on develop
+last_activity_desc: Phase 10 plan 10-04 complete (responsive archive list: sortable table on desktop → card layout at ≤ 719px with Download primary, copy-link, role-gated delete; no horizontal scroll)
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 22
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-12)
 
 **Core value:** Laptops never hold long-lived bucket credentials; cluster collect can still land multi-GB archives in object storage without hairpinning them through the VPS.
-**Current focus:** Phase 9 share links **complete**. **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 10 (10-01/10-02/10-03 done; 10-04..10-07 remain).
+**Current focus:** Phase 9 share links **complete**. **Phase 10 locked** — evidence locker Captures (vanilla HTML). Next ship: Phase 10 (10-01/10-02/10-03/10-04 done; 10-05..10-07 remain).
 
 ## Current Position
 
-Phase: 10 of 10 (operational catalog UX) — **in progress** (3/7 plans)
-Plan: 10-03 complete (inline dropzone + XHR upload with progress + cancel + inline notices)
-Status: 10-03 landed; next: 10-04 (responsive table → card layout, Download primary on cards) or pause.
-Last activity: 2026-08-21 — Phase 10 plans 10-01 + 10-02 + 10-03 complete; ~21 short functional commits on develop; `make ci` green.
+Phase: 10 of 10 (operational catalog UX) — **in progress** (4/7 plans)
+Plan: 10-04 complete (responsive table → card layout, Download primary per card)
+Status: 10-04 landed; next: 10-05 (activity filters + admin export + settings/API-key safety + destructive confirm + visual tokens) or pause.
+Last activity: 2026-08-21 — Phase 10 plans 10-01..10-04 complete; ~27 short functional commits on develop; `make ci` green.
 
-Progress: [█████████░] 90% (9/10 phases; 18/22 plans)
+Progress: [█████████░] 91% (9/10 phases; 19/22 plans)
 
 ## Performance Metrics
 
