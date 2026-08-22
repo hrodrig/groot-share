@@ -777,6 +777,10 @@ dialog#confirm-dialog::backdrop { background: rgb(16 24 40 / 0.45); }
 .dialog-card { padding: 20px; margin: 0; }
 .dialog-title { margin: 0 0 6px; font-size: 16px; font-weight: 650; }
 .dialog-text { margin: 0 0 18px; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.dialog-typed { margin: 0 0 14px; }
+.dialog-typed .field { margin: 0; }
+.is-hidden { display: none !important; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .dialog-actions .btn { margin: 0; }
 

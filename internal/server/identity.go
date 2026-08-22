@@ -460,7 +460,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
         <a class="btn btn-quiet btn-sm btn-icon" href="/v1/archives/{{.ID}}/file" title="Download" aria-label="Download {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v10"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg></a>
         <button class="btn btn-quiet btn-sm btn-icon copy-link" type="button" data-copy-url="{{$.BaseURL}}/v1/archives/{{.ID}}/file" title="Copy download link" aria-label="Copy download link for {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
         {{if $.CanDelete}}
-        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
+        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone." data-confirm-require="{{.Key}}">
           <button class="btn btn-danger-quiet btn-sm btn-icon" type="submit" title="Delete" aria-label="Delete {{.Key}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
         </form>
         {{end}}
@@ -484,7 +484,7 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
         <a class="btn" href="/v1/archives/{{.ID}}/file" title="Download {{.Key}}">Download</a>
         <button class="btn btn-quiet copy-link" type="button" data-copy-url="{{$.BaseURL}}/v1/archives/{{.ID}}/file" title="Copy download link" aria-label="Copy download link for {{.Key}}">Copy link</button>
         {{if $.CanDelete}}
-        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone.">
+        <form method="post" action="/v1/archives/{{.ID}}/delete" data-confirm="Delete {{.Key}}? This cannot be undone." data-confirm-require="{{.Key}}">
           <button class="btn btn-danger-quiet" type="submit" title="Delete" aria-label="Delete {{.Key}}">Delete</button>
         </form>
         {{end}}
@@ -527,9 +527,12 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   <form method="dialog" class="dialog-card">
     <p class="dialog-title" id="confirm-title">Delete capture</p>
     <p class="dialog-text" id="confirm-text"></p>
+    <div class="dialog-typed is-hidden" id="confirm-typed">
+      <label class="field"><span id="confirm-typed-hint">Type the name to confirm</span><input id="confirm-input" autocomplete="off" spellcheck="false"></label>
+    </div>
     <div class="dialog-actions">
       <button class="btn btn-quiet" value="cancel">Cancel</button>
-      <button class="btn btn-danger" value="ok">Delete</button>
+      <button class="btn btn-danger" value="ok" id="confirm-ok">Delete</button>
     </div>
   </form>
 </dialog>
@@ -537,15 +540,34 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
 (function () {
   var dlg = document.getElementById('confirm-dialog');
   var txt = document.getElementById('confirm-text');
+  var typed = document.getElementById('confirm-typed');
+  var input = document.getElementById('confirm-input');
+  var hint = document.getElementById('confirm-typed-hint');
+  var ok = document.getElementById('confirm-ok');
   var pending = null;
   if (dlg && dlg.showModal) {
     document.querySelectorAll('form[data-confirm]').forEach(function (f) {
       f.addEventListener('submit', function (e) {
         e.preventDefault();
+        var requireVal = f.getAttribute('data-confirm-require');
         pending = f;
         txt.textContent = f.getAttribute('data-confirm');
+        if (requireVal !== null && requireVal !== undefined) {
+          typed.classList.remove('is-hidden');
+          hint.textContent = 'Type ' + requireVal + ' to confirm';
+          input.value = '';
+          input.dataset.require = requireVal;
+          ok.disabled = true;
+        } else {
+          typed.classList.add('is-hidden');
+          input.dataset.require = '';
+          ok.disabled = false;
+        }
         dlg.showModal();
       });
+    });
+    input.addEventListener('input', function () {
+      ok.disabled = input.value !== (input.dataset.require || '');
     });
     dlg.addEventListener('close', function () {
       if (dlg.returnValue === 'ok' && pending) { pending.submit(); }

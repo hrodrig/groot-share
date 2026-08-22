@@ -230,7 +230,7 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
       <td class="muted tabular">{{if .CreatedAt.IsZero}}—{{else}}{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}{{end}}</td>
       <td class="muted tabular">{{if .LastUsedAt.IsZero}}never{{else}}{{.LastUsedAt.UTC.Format "2006-01-02 15:04"}}{{end}}</td>
       <td class="actions">
-        <form method="post" action="/settings/api-keys/{{.ID}}/revoke" data-confirm="Delete API key {{.Prefix}}? Anything using it will fail immediately.">
+        <form method="post" action="/settings/api-keys/{{.ID}}/revoke" data-confirm="Delete API key {{.Prefix}}? Anything using it will fail immediately." data-confirm-require="{{.Prefix}}">
           <button class="btn btn-danger btn-sm" type="submit">Delete</button>
         </form>
       </td>
@@ -260,9 +260,12 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
   <form method="dialog" class="dialog-card">
     <p class="dialog-title" id="confirm-title">Delete API key</p>
     <p class="dialog-text" id="confirm-text"></p>
+    <div class="dialog-typed is-hidden" id="confirm-typed">
+      <label class="field"><span id="confirm-typed-hint">Type the name to confirm</span><input id="confirm-input" autocomplete="off" spellcheck="false"></label>
+    </div>
     <div class="dialog-actions">
       <button class="btn btn-quiet" value="cancel">Cancel</button>
-      <button class="btn btn-danger" value="ok">Delete</button>
+      <button class="btn btn-danger" value="ok" id="confirm-ok">Delete</button>
     </div>
   </form>
 </dialog>
@@ -280,15 +283,34 @@ var settingsTmpl = template.Must(template.New("settings").Funcs(pageFuncs).Parse
   }
   var dlg = document.getElementById('confirm-dialog');
   var txt = document.getElementById('confirm-text');
+  var typed = document.getElementById('confirm-typed');
+  var input = document.getElementById('confirm-input');
+  var hint = document.getElementById('confirm-typed-hint');
+  var ok = document.getElementById('confirm-ok');
   var pending = null;
   if (dlg && dlg.showModal) {
     document.querySelectorAll('form[data-confirm]').forEach(function (f) {
       f.addEventListener('submit', function (e) {
         e.preventDefault();
+        var requireVal = f.getAttribute('data-confirm-require');
         pending = f;
         txt.textContent = f.getAttribute('data-confirm');
+        if (requireVal !== null && requireVal !== undefined) {
+          typed.classList.remove('is-hidden');
+          hint.textContent = 'Type ' + requireVal + ' to confirm';
+          input.value = '';
+          input.dataset.require = requireVal;
+          ok.disabled = true;
+        } else {
+          typed.classList.add('is-hidden');
+          input.dataset.require = '';
+          ok.disabled = false;
+        }
         dlg.showModal();
       });
+    });
+    input.addEventListener('input', function () {
+      ok.disabled = input.value !== (input.dataset.require || '');
     });
     dlg.addEventListener('close', function () {
       if (dlg.returnValue === 'ok' && pending) { pending.submit(); }

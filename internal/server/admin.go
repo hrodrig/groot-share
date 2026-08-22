@@ -367,7 +367,7 @@ var adminUsersTmpl = template.Must(template.New("admin").Funcs(pageFuncs).Parse(
           <button class="btn btn-quiet btn-sm" type="submit">Activate</button>
         </form>
         {{if ne .ID $.ActorID}}
-        <form method="post" action="/admin/users/{{.ID}}/remove" data-confirm="This deletes {{.Username}} and their sessions and API keys. It cannot be undone.">
+        <form method="post" action="/admin/users/{{.ID}}/remove" data-confirm="This deletes {{.Username}} and their sessions and API keys. It cannot be undone." data-confirm-require="{{.Username}}">
           <button class="btn btn-danger-quiet btn-sm" type="submit">Remove</button>
         </form>
         {{end}}
