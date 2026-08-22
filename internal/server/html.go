@@ -227,6 +227,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
   font-size: 22px; font-weight: 650; letter-spacing: -0.01em;
 }
 .page-head .sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.page-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.export-group { display: inline-flex; align-items: center; gap: 6px; }
+.field-inline { display: inline-flex; align-items: center; }
+.field-inline input,
+.field-inline select {
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.field-inline input:focus,
+.field-inline select:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+.field-inline input { width: 11rem; max-width: 100%; }
 
 .card {
   background: var(--surface);

@@ -788,13 +788,44 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
     <h1>Activity</h1>
     <p class="sub">Audit log for uploads, downloads, and deletions. JSON at <span class="mono">GET /v1/audit</span>.</p>
   </div>
-  <a class="btn btn-quiet" href="/">Back to captures</a>
+  <div class="page-actions">
+    <a class="btn btn-quiet" href="/">Back to captures</a>
+    {{if .CanExport}}
+    <span class="export-group">
+      <a class="btn btn-sm" href="/v1/activity/export?format=csv{{if .FilterActor}}&amp;actor={{.FilterActor}}{{end}}{{if .FilterAction}}&amp;action={{.FilterAction}}{{end}}{{if .FilterWindow}}&amp;window={{.FilterWindow}}{{end}}">Export CSV</a>
+      <a class="btn btn-quiet btn-sm" href="/v1/activity/export?format=json{{if .FilterActor}}&amp;actor={{.FilterActor}}{{end}}{{if .FilterAction}}&amp;action={{.FilterAction}}{{end}}{{if .FilterWindow}}&amp;window={{.FilterWindow}}{{end}}">Export JSON</a>
+    </span>
+    {{end}}
+  </div>
 </div>
 <section class="card" aria-labelledby="ac-h">
   <div class="card-head">
     <h2 id="ac-h">Recent events</h2>
     <p class="hint">{{.Pager.Total}} total</p>
   </div>
+  <form class="filter-row" method="get" action="/activity">
+    <label class="field-inline">
+      <span class="visually-hidden">Action</span>
+      <select name="action">
+        <option value="">All actions</option>
+        {{range .AuditActions}}<option value="{{.}}"{{if eq $.FilterAction .}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+    <label class="field-inline">
+      <span class="visually-hidden">Actor</span>
+      <input type="search" name="actor" value="{{.FilterActor}}" placeholder="Actor" maxlength="80">
+    </label>
+    <label class="field-inline">
+      <span class="visually-hidden">Window</span>
+      <select name="window">
+        <option value="">All time</option>
+        <option value="24h"{{if eq .FilterWindow "24h"}} selected{{end}}>24h</option>
+        <option value="7d"{{if eq .FilterWindow "7d"}} selected{{end}}>7d</option>
+        <option value="30d"{{if eq .FilterWindow "30d"}} selected{{end}}>30d</option>
+      </select>
+    </label>
+    <button class="btn btn-quiet btn-sm filter-apply" type="submit">Filter</button>
+  </form>
   {{if .Audit}}
   <div class="table-wrap">
   <table class="grid">
