@@ -185,7 +185,7 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	id := downloadID(r)
 	rc, a, err := s.openDownload(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	defer func() { _ = rc.Close() }()

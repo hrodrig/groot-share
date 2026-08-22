@@ -140,23 +140,23 @@ func (s *Server) handleRevokeShare(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleShareDownload(w http.ResponseWriter, r *http.Request) {
 	token := strings.Trim(r.PathValue("token"), "/")
 	if token == "" {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	link, err := s.Store.ShareByTokenHash(r.Context(), auth.HashSecret(token))
 	if err != nil {
 		// Unknown token (or DB error): 404 either way, no oracle.
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	now := time.Now().UTC()
 	if !link.Active(now) {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	rc, a, err := s.openDownload(r.Context(), link.ArchiveID)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	defer func() { _ = rc.Close() }()

@@ -85,7 +85,7 @@ func (s *Server) handleSharesPage(w http.ResponseWriter, r *http.Request) {
 	id := strings.Trim(r.PathValue("id"), "/")
 	a, err := s.Store.ArchiveByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	links, err := s.Store.ListShareLinks(r.Context(), id)
@@ -124,7 +124,7 @@ func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 	id := strings.Trim(r.PathValue("id"), "/")
 	archive, err := s.Store.ArchiveByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -261,7 +261,7 @@ func (s *Server) handleSharesRevoke(w http.ResponseWriter, r *http.Request) {
 	raw := strings.Trim(r.PathValue("share_id"), "/")
 	shareID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || shareID <= 0 {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.RevokeShareLink(r.Context(), shareID, time.Now().UTC()); err != nil {

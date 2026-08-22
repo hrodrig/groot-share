@@ -102,7 +102,7 @@ func (s *Server) handleAdminUserRolePOST(w http.ResponseWriter, r *http.Request)
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -116,7 +116,7 @@ func (s *Server) handleAdminUserRolePOST(w http.ResponseWriter, r *http.Request)
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.GuardLastAdmin(r.Context(), id, newRole, u.Active); err != nil {
@@ -138,7 +138,7 @@ func (s *Server) handleAdminUserUsernamePOST(w http.ResponseWriter, r *http.Requ
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -168,12 +168,12 @@ func (s *Server) handleAdminUserDeactivatePOST(w http.ResponseWriter, r *http.Re
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.GuardLastAdmin(r.Context(), id, u.Role, false); err != nil {
@@ -195,12 +195,12 @@ func (s *Server) handleAdminUserActivatePOST(w http.ResponseWriter, r *http.Requ
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.UpdateUser(r.Context(), id, u.Role, true); err != nil {
@@ -218,7 +218,7 @@ func (s *Server) handleAdminUserRemovePOST(w http.ResponseWriter, r *http.Reques
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if id == ac.User.ID {
@@ -227,7 +227,7 @@ func (s *Server) handleAdminUserRemovePOST(w http.ResponseWriter, r *http.Reques
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if u.Active {
