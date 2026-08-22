@@ -65,7 +65,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/archives", s.requirePermission(auth.PermArchivesWrite, s.handleUpload))
 	mux.HandleFunc("GET /v1/archives/{id...}", s.requirePermission(auth.PermArchivesRead, s.handleDownload))
 	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
-	mux.HandleFunc("POST /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
+	// Form-driven delete (browser): literal "delete" segment before the
+	// archive id so {id...} can capture S3 keys with '/'. Distinct from
+	// the JSON DELETE /v1/archives/{id...} above; the route itself
+	// disambiguates the intent.
+	mux.HandleFunc("POST /v1/archives/delete/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
 	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.handleListAudit))
 	mux.HandleFunc("GET /v1/activity/export", s.requireAuth(s.handleActivityExport))
 	// Share routes: the archive id may contain '/' in vps-s3 (it's the

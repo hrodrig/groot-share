@@ -362,8 +362,9 @@ func downloadID(r *http.Request) string {
 // deleteID parses the archive id for the delete handlers, tolerating the
 // trailing "/delete" used by the HTML form POST. It never strips "/file",
 // so a GET to ".../delete" cannot resolve into a download.
+// deleteID returns the archive id from the path. The route itself
+// disambiguates intent (DELETE /v1/archives/{id...} vs POST
+// /v1/archives/delete/{id...}), so no suffix parsing is needed.
 func deleteID(r *http.Request) string {
-	id := strings.Trim(r.PathValue("id"), "/")
-	id = strings.TrimSuffix(id, "/delete")
-	return strings.TrimSuffix(id, "/")
+	return strings.Trim(r.PathValue("id"), "/")
 }

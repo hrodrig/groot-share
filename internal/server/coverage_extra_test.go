@@ -35,7 +35,7 @@ func TestDeleteTransitArchiveHTML(t *testing.T) {
 	mem.FailPuts = true
 	ck := loginCookie(t, s)
 	created := postArchive(t, s, ck, "transit.tar.gz", "in-transit")
-	req := httptest.NewRequest(http.MethodPost, "/v1/archives/"+created.ID+"/delete", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/archives/delete/"+created.ID, nil)
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)

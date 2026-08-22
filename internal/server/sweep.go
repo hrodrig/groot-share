@@ -16,10 +16,9 @@ import (
 )
 
 func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost && !strings.HasSuffix(strings.Trim(r.PathValue("id"), "/"), "/delete") {
-		s.handleNotFound(w, r)
-		return
-	}
+	// Routing is explicit: JSON API uses DELETE /v1/archives/{id...}
+	// and the HTML form uses POST /v1/archives/delete/{id...}. The
+	// fragment suffix sniff is gone — the route itself disambiguates.
 	id := deleteID(r)
 	a, err := s.removeArchive(r.Context(), id)
 	if err != nil {
