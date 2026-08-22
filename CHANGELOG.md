@@ -48,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   archive, remove user, revoke API key) now require typing the target
   name/key into a modal before the confirm button enables, replacing the
   plain browser `confirm()`. API keys remain shown once with a copy button
+- Completeness badge (Phase 10 / UX-08): local (vps) captures show a
+  `Complete` / `N of M jobs failed` / `Failed` badge read from the groot
+  `extras/manifest.json` job counters via a capped 64 KiB gzip→tar member
+  peek — fail-closed (non-groot or malformed archives are unmarked, never a
+  full decompress). `s3`/`transit` rows stay unmarked
 
 ## [0.4.0] — 2026-08-19
 

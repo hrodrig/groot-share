@@ -230,6 +230,13 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
   `GET /v1/activity/export?format=csv|json` (admin-only, honors the same
   filters, streams the full unpaginated log). Downloads are audited as
   `action=download` alongside uploads and deletes.
+- Completeness badge (Captures list): each **local (vps)** row reads the
+  groot `extras/manifest.json` via a bounding gzip→tar member peek and shows
+  the job outcome — `Complete` (`failed == 0`), `N of M jobs failed`
+  (`0 < failed < total`), or `Failed` (`failed == total`). The peek is
+  fail-closed (bad gzip, malformed JSON, missing member, or no job counts
+  render no badge) and capped at 64 KiB — never a full decompress. `s3` and
+  `transit` rows are unmarked (ranged bucket reads are out of scope).
 
 ## 9. Supply chain (must match groot-trigger)
 
