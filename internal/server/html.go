@@ -634,6 +634,19 @@ table.grid {
 .completeness-badge.tone-warn { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
 .completeness-badge.tone-err { color: var(--err); border-color: var(--err); background: var(--err-soft); }
 
+/* ---- share-link admin UI ---- */
+.share-warn { color: var(--warn); margin: 0 0 10px; }
+.share-url { display: flex; align-items: center; gap: 8px; }
+.share-url input { flex: 1; font: 500 12px/1.4 var(--mono); }
+.share-url .btn { flex-shrink: 0; }
+.ttl-fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 0 0 14px; }
+.ttl-fieldset legend { font: 600 11px/1 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding: 0 6px; }
+.ttl-presets { display: flex; gap: 6px; margin-bottom: 12px; }
+.pill-active { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.pill-expired { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.pill-exhausted { color: var(--muted); border-color: var(--line-strong); background: var(--surface-2); }
+.pill-revoked { color: var(--err); border-color: var(--err); background: var(--err-soft); }
+
 /* ---- archive cards (narrow viewports) ---- */
 .archive-cards { display: none; }
 .archive-card .card-title { font: 13px/1.4 var(--mono); word-break: break-all; }
