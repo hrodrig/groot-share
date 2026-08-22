@@ -224,6 +224,12 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
 - slog JSON (or text) lines to stdout — one JSON object per line when `GFS_LOG_FORMAT=json` (no process-name prefix; parseable by jq / Vector / Fluent Bit)
 - HTTP access line with status; never api_key/password
 - Audit table: actor, action, object key/id, ts, remote IP (respect trusted proxies later; v0.1 may use RemoteAddr only)
+- Activity page filter bar: actor (case-insensitive substring), action
+  (exact), time window (`24h`/`7d`/`30d`/all) via `actor`/`action`/`window`
+  query params. Admin CSV/JSON export at
+  `GET /v1/activity/export?format=csv|json` (admin-only, honors the same
+  filters, streams the full unpaginated log). Downloads are audited as
+  `action=download` alongside uploads and deletes.
 
 ## 9. Supply chain (must match groot-trigger)
 

@@ -39,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sortable table at ≤ 719px (key, source/storage pills, size, timestamp)
   with Download as a full-width primary button, copy-link preserved, and
   delete gated by role — no horizontal scroll on narrow screens
+- Activity filters + admin export (Phase 10 / UX-05): the Activity page
+  gains an actor substring / action / time-window filter bar (state in the
+  URL as `actor`, `action`, `window`; unknown values dropped). Admins get
+  CSV and JSON export buttons (`GET /v1/activity/export?format=csv|json`,
+  admin-only, honors the same filters, streams the full log)
+- Typed-name confirm (Phase 10 / UX-06): destructive actions (delete
+  archive, remove user, revoke API key) now require typing the target
+  name/key into a modal before the confirm button enables, replacing the
+  plain browser `confirm()`. API keys remain shown once with a copy button
 
 ## [0.4.0] — 2026-08-19
 
