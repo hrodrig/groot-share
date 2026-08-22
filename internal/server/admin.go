@@ -11,7 +11,16 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-func requestBaseURL(r *http.Request) string {
+// requestBaseURL returns the base URL used to build share links.
+// If Config.BaseURL is set (operator-pinned via GFS_BASE_URL), it
+// wins and request headers are ignored — this is the fail-closed
+// mode. Otherwise the URL is derived from the request, which
+// requires running behind a trusted proxy that overwrites Host and
+// X-Forwarded-Proto; see SECURITY.md.
+func (s *Server) requestBaseURL(r *http.Request) string {
+	if s.Cfg.BaseURL != "" {
+		return s.Cfg.BaseURL
+	}
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
@@ -36,7 +45,7 @@ func (s *Server) handleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := s.pageShell()
 	mergeActorData(data, ac)
-	data["BaseURL"] = requestBaseURL(r)
+	data["BaseURL"] = s.requestBaseURL(r)
 	data["Nav"] = "admin"
 	data["Users"] = users
 	data["NoticeKind"], data["NoticeText"] = adminNotice(r.URL.Query().Get("notice"))

@@ -85,27 +85,30 @@ func TestUsersAPIEdgeCases(t *testing.T) {
 }
 
 func TestRequestBaseURLForwardedProto(t *testing.T) {
+	s, _ := identServer(t)
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Host = "gfs.example.com"
 	r.Header.Set("X-Forwarded-Proto", "https")
-	if got := requestBaseURL(r); got != "https://gfs.example.com" {
+	if got := s.requestBaseURL(r); got != "https://gfs.example.com" {
 		t.Fatalf("base url %q", got)
 	}
 }
 
 func TestRequestBaseURLHTTP(t *testing.T) {
+	s, _ := identServer(t)
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Host = "localhost:8080"
-	if got := requestBaseURL(r); got != "http://localhost:8080" {
+	if got := s.requestBaseURL(r); got != "http://localhost:8080" {
 		t.Fatalf("base url %q", got)
 	}
 }
 
 func TestRequestBaseURLTLS(t *testing.T) {
+	s, _ := identServer(t)
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Host = "gfs.example.com"
 	r.TLS = &tls.ConnectionState{}
-	if got := requestBaseURL(r); got != "https://gfs.example.com" {
+	if got := s.requestBaseURL(r); got != "https://gfs.example.com" {
 		t.Fatalf("base url %q", got)
 	}
 }

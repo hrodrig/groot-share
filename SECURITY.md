@@ -24,6 +24,13 @@ Absolute links (copy-download URL) use `Request.Host` and, when not serving TLS
 directly, `X-Forwarded-Proto`. The proxy must overwrite those headers; do **not**
 expose gfs to untrusted clients that can set `Host` / `X-Forwarded-*`.
 
+To make the external URL fully deterministic and avoid relying on
+proxy-overwritten headers, set `GFS_BASE_URL` (e.g.
+`https://share.example.com`). When set, gfs uses it verbatim for every share
+link it returns and ignores `X-Forwarded-Proto` / `Host` from the request.
+This is the fail-closed path; the env-var value must be an absolute
+`http(s)://` URL with a host, or gfs refuses to start.
+
 ## Supported versions
 
 | Version | Supported |

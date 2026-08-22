@@ -87,7 +87,7 @@ func (s *Server) handleCreateShare(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"id":         link.ID,
-		"url":        requestBaseURL(r) + "/s/" + raw,
+		"url":        s.requestBaseURL(r) + "/s/" + raw,
 		"expires_at": link.ExpiresAt.UTC().Format(time.RFC3339),
 		"max_uses":   link.MaxUses,
 		"label":      link.Label,

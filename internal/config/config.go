@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -53,6 +54,14 @@ type Config struct {
 	BrandSub string
 	// Footer replaces the authenticated footer. Empty → default. "-" hides.
 	Footer string
+
+	// BaseURL pins the external base URL used to build share links
+	// (e.g. https://share.example.com). When set, requestBaseURL
+	// returns it verbatim and ignores X-Forwarded-Proto/Host. When
+	// empty, the URL is derived from the request (operator must run
+	// behind a trusted proxy that overwrites those headers; see
+	// SECURITY.md).
+	BaseURL string
 
 	// LoginRateLimit caps POST /login per client IP and per username (0 = disabled).
 	LoginRateLimit LimitSpec
@@ -132,6 +141,13 @@ func LoadFromEnv() (Config, error) {
 	}
 	pathStyleDefault := cfg.S3Endpoint != ""
 	cfg.S3PathStyle = parseBool(os.Getenv("GFS_S3_PATH_STYLE"), pathStyleDefault)
+	cfg.BaseURL = strings.TrimSpace(os.Getenv("GFS_BASE_URL"))
+	if cfg.BaseURL != "" {
+		u, err := url.Parse(cfg.BaseURL)
+		if err != nil || !u.IsAbs() || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+			return Config{}, fmt.Errorf("GFS_BASE_URL must be an absolute http(s) URL with a host (fail closed)")
+		}
+	}
 	return cfg, nil
 }
 

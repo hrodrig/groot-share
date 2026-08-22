@@ -160,7 +160,7 @@ func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 		slog.Error("list share links", "error", err)
 		links = []store.ShareLink{link}
 	}
-	url := requestBaseURL(r) + "/s/" + raw
+	url := s.requestBaseURL(r) + "/s/" + raw
 	renderSharesPage(w, s, ac, sharesData{
 		ArchiveID:  id,
 		Key:        archive.Key,

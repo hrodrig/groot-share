@@ -85,7 +85,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText
 	data["Nav"] = "captures"
-	data["BaseURL"] = requestBaseURL(r)
+	data["BaseURL"] = s.requestBaseURL(r)
 	if ac != nil && ac.User.ID != 0 {
 		pins, perr := s.Store.ListPins(r.Context(), ac.User.ID, 16)
 		if perr != nil {
