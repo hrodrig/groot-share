@@ -67,6 +67,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
 	mux.HandleFunc("POST /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
 	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.handleListAudit))
+	mux.HandleFunc("GET /v1/activity/export", s.requireAuth(s.handleActivityExport))
 	mux.HandleFunc("POST /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleCreateShare))
 	mux.HandleFunc("GET /v1/archives/{id}/shares", s.requirePermission(auth.PermSharesManage, s.handleListShares))
 	mux.HandleFunc("DELETE /v1/archives/{id}/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.handleRevokeShare))

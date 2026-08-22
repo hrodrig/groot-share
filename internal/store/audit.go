@@ -71,7 +71,10 @@ func (s *Store) ListAuditPage(ctx context.Context, limit, offset int) ([]Audit, 
 
 // ListAuditFiltered returns newest first, matching f, with limit/offset.
 func (s *Store) ListAuditFiltered(ctx context.Context, f AuditFilter, limit, offset int) ([]Audit, error) {
-	if limit <= 0 {
+	// limit <= 0 means 50 per page; limit < 0 means "no limit" (used by the
+	// export path). offset < 0 is clamped to 0.
+	noLimit := limit < 0
+	if limit <= 0 && !noLimit {
 		limit = 50
 	}
 	if offset < 0 {
@@ -79,9 +82,13 @@ func (s *Store) ListAuditFiltered(ctx context.Context, f AuditFilter, limit, off
 	}
 	where, args := auditWhere(f)
 	args = append(args, limit, offset)
-	rows, err := s.db.QueryContext(ctx, `
+	q := `
 		SELECT id, actor, actor_id, action, object_id, object_key, remote_ip, created_at
-		FROM audit`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+		FROM audit` + where + ` ORDER BY id DESC`
+	if !noLimit {
+		q += ` LIMIT ? OFFSET ?`
+	}
+	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list audit: %w", err)
 	}
