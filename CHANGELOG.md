@@ -21,6 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The one-shot "Copy" button on the share create result now confirms with
   "Copied!" feedback (with a clipboard fallback for non-secure contexts).
 
+### Changed
+
+- Admin CSV/JSON activity export now downloads as a timestamped file
+  `gfs-activity-YYYYMMDDHHMM.csv` / `.json` (UTC, minute precision) instead of
+  a bare `activity.csv` / `activity.json`.
+
+### Docs
+
+- Operator documentation now warns that `GFS_TOPOLOGY` is a deploy-time
+  choice: switching between `vps` and `vps-s3` after ingesting captures does
+  **not** migrate archives between disk and bucket — pick the intended
+  topology before ingesting.
+
 ## [0.5.1] — 2026-08-22
 
 ### Changed

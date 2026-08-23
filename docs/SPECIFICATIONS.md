@@ -147,7 +147,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 |---------|---------|
 | `GFS_LISTEN` | default `:8080` |
 | `GFS_DATA_DIR` | SQLite + staging/home root (e.g. `/var/lib/gfs`) |
-| `GFS_TOPOLOGY` | `vps` \| `vps-s3` (`s3` alone is invalid — refuse start) |
+| `GFS_TOPOLOGY` | `vps` \| `vps-s3` (`s3` alone is invalid — refuse start). Deploy-time choice — **do not switch after ingesting captures** (see §2); captures in one mode are not migrated to the other |
 | `GFS_S3_*` | bucket, region, endpoint, prefix (`captures/`), path-style |
 | AWS creds | env `AWS_*` on the VPS only |
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
@@ -228,8 +228,9 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
   (exact), time window (`24h`/`7d`/`30d`/all) via `actor`/`action`/`window`
   query params. Admin CSV/JSON export at
   `GET /v1/activity/export?format=csv|json` (admin-only, honors the same
-  filters, streams the full unpaginated log). Downloads are audited as
-  `action=download` alongside uploads and deletes.
+  filters, streams the full unpaginated log). The download file is named
+  `gfs-activity-YYYYMMDDHHMM.csv` / `.json` (UTC, minute precision).
+  Downloads are audited as `action=download` alongside uploads and deletes.
 - Completeness badge (Captures list): each **local (vps)** row reads the
   groot `extras/manifest.json` via a bounding gzip→tar member peek and shows
   the job outcome — `Complete` (`failed == 0`), `N of M jobs failed`
