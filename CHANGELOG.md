@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `410 Gone` when the bump reports the link exhausted
   ([#38](https://github.com/hrodrig/groot-share/issues/38)).
 
+- Deleting an archive no longer leaves orphaned `share_links` / `archive_pins`
+  rows behind. `DeleteArchive` now drops dependents in the same transaction as
+  the archive row, and the vps-s3 delete path (`removeBucket`) cleans them too
+  via the new `Store.DeleteArchiveDependents`. Cleanup is explicit rather than
+  foreign-key driven because a vps-s3 object key may be shared/pinned without a
+  matching `archives` row
+  ([#39](https://github.com/hrodrig/groot-share/issues/39)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security

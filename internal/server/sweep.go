@@ -64,6 +64,11 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 			return store.Archive{}, err
 		}
 		s.listCache.invalidate()
+		// Drop share links and pins for the removed object (#39). The S3
+		// object has no `archives` row, so clean dependents explicitly.
+		if err := s.Store.DeleteArchiveDependents(ctx, id); err != nil {
+			slog.Warn("delete dependents", "id", id, "error", err)
+		}
 		return objectArchive(obj), nil
 	}
 	if !errors.Is(err, blob.ErrNotFound) {
@@ -75,6 +80,9 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 	}
 	if err := s.Store.DeleteTransit(ctx, tr.ID); err != nil {
 		return store.Archive{}, err
+	}
+	if err := s.Store.DeleteArchiveDependents(ctx, tr.S3Key); err != nil {
+		slog.Warn("delete dependents", "id", tr.S3Key, "error", err)
 	}
 	return store.Archive{ID: tr.S3Key, Key: tr.Key, Size: tr.Size, Source: blob.SourceForKey(tr.S3Key), Storage: "transit"}, nil
 }

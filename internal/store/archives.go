@@ -341,12 +341,49 @@ func (s *Store) ArchiveByID(ctx context.Context, id string) (Archive, error) {
 	return a, nil
 }
 
-// DeleteArchive removes the VPS home file then the sqlite row.
+// deleteDependentsTx removes share links and pins bound to an archive id, in
+// the caller's transaction. vps `DeleteArchive` runs it in the same tx as the
+// archive row delete; the vps-s3 `removeBucket` path has no `archives` row to
+// delete, so it calls this standalone (via DeleteArchiveDependents). #39.
+func (s *Store) deleteDependentsTx(ctx context.Context, tx *sql.Tx, archiveID string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM share_links WHERE archive_id = ?`, archiveID); err != nil {
+		return fmt.Errorf("delete dependents (shares): %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM archive_pins WHERE archive_id = ?`, archiveID); err != nil {
+		return fmt.Errorf("delete dependents (pins): %w", err)
+	}
+	return nil
+}
+
+// DeleteArchiveDependents removes share links and pins bound to an archive id
+// without touching the archive blob/row itself. Used by the vps-s3 delete path
+// where the object lives in S3 and has no `archives` row to cascade from.
+func (s *Store) DeleteArchiveDependents(ctx context.Context, archiveID string) error {
+	if archiveID == "" {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin dependents: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := s.deleteDependentsTx(ctx, tx, archiveID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// DeleteArchive removes the VPS home file then the sqlite row and its
+// dependent share_links / archive_pins rows.
 //
 // The file is removed first so a partial failure cannot leave an orphan blob
 // with no DB row to find it. If the blob is already gone we still drop the
 // row (treat as already-deleted); a real remove error aborts before the row
 // is touched so the archive stays listable and retryable.
+//
+// Dependents are cleaned explicitly (not via FOREIGN KEY) because in the
+// vps-s3 topology an archive id (S3 object key) may be shared/pinned without
+// a matching `archives` row, so no FK can enforce the cleanup there. #39.
 func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if !validArchiveID(id) {
 		return ErrNotFound
@@ -358,7 +395,12 @@ func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove blob: %w", err)
 	}
-	res, err := s.db.ExecContext(ctx, `DELETE FROM archives WHERE id = ?`, id)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin delete: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `DELETE FROM archives WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete archive: %w", err)
 	}
@@ -366,7 +408,10 @@ func (s *Store) DeleteArchive(ctx context.Context, id string) error {
 	if n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	if err := s.deleteDependentsTx(ctx, tx, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 type rowScanner interface {

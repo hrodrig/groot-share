@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestIngestListDownload(t *testing.T) {
@@ -91,6 +92,44 @@ func TestDeleteArchive(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(st.HomeDir(), a.ID+".tar.gz")); !os.IsNotExist(err) {
 		t.Fatalf("blob still there: %v", err)
+	}
+}
+
+// TestDeleteArchiveCleansDependents pins a fix for #39: deleting an archive
+// must also drop its share_links and archive_pins rows (explicit cleanup, not
+// FK cascade — vps-s3 archives may have no `archives` row). No orphans.
+func TestDeleteArchiveCleansDependents(t *testing.T) {
+	st := archiveStore(t)
+	ctx := context.Background()
+	a, err := st.Ingest(ctx, bytes.NewReader([]byte("cascade")), "cascade.tar.gz", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := st.UserByUsername(ctx, "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AddPin(ctx, root.ID, a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CreateShareLink(ctx, a.ID, "hash-cascade", root.ID, "label", 0, time.Now().UTC().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteArchive(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	var pins, shares int
+	if err := st.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM archive_pins WHERE archive_id = ?`, a.ID).Scan(&pins); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM share_links WHERE archive_id = ?`, a.ID).Scan(&shares); err != nil {
+		t.Fatal(err)
+	}
+	if pins != 0 {
+		t.Fatalf("orphan pins after delete: %d", pins)
+	}
+	if shares != 0 {
+		t.Fatalf("orphan shares after delete: %d", shares)
 	}
 }
 
