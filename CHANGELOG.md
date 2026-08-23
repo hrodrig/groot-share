@@ -48,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Captures page no longer re-opens and re-scans each `.tar.gz` manifest on
   every render ([#41](https://github.com/hrodrig/groot-share/issues/41)).
 
+- The SQLite connection pool is raised from 1 to 4 connections so concurrent
+  reads (auth lookups, listings) no longer queue behind a single connection.
+  `busy_timeout` and `journal_mode=WAL` are now set in the DSN and applied to
+  every pooled connection, keeping concurrent access safe
+  ([#40](https://github.com/hrodrig/groot-share/issues/40)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
