@@ -125,30 +125,55 @@ func LoadFromEnv() (Config, error) {
 	if cfg.SFTPInbox != "" && !filepath.IsAbs(cfg.SFTPInbox) {
 		return Config{}, fmt.Errorf("GFS_SFTP_INBOX must be an absolute path (fail closed)")
 	}
-	if cfg.Topology != TopologyVPS && cfg.Topology != TopologyVPSS3 {
-		return Config{}, fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", topo)
-	}
-	if cfg.DataDir == "" {
-		return Config{}, fmt.Errorf("GFS_DATA_DIR is required (fail closed)")
-	}
-	if cfg.Topology == TopologyVPSS3 {
-		if cfg.S3Bucket == "" {
-			return Config{}, fmt.Errorf("GFS_S3_BUCKET is required for topology vps-s3 (fail closed)")
-		}
-		if strings.TrimSpace(os.Getenv("AWS_ACCESS_KEY_ID")) == "" || strings.TrimSpace(os.Getenv("AWS_SECRET_ACCESS_KEY")) == "" {
-			return Config{}, fmt.Errorf("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required for topology vps-s3 (fail closed)")
-		}
-	}
 	pathStyleDefault := cfg.S3Endpoint != ""
 	cfg.S3PathStyle = parseBool(os.Getenv("GFS_S3_PATH_STYLE"), pathStyleDefault)
 	cfg.BaseURL = strings.TrimSpace(os.Getenv("GFS_BASE_URL"))
-	if cfg.BaseURL != "" {
-		u, err := url.Parse(cfg.BaseURL)
-		if err != nil || !u.IsAbs() || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-			return Config{}, fmt.Errorf("GFS_BASE_URL must be an absolute http(s) URL with a host (fail closed)")
-		}
+	if err := cfg.validate(); err != nil {
+		return Config{}, err
 	}
 	return cfg, nil
+}
+
+// validate applies cross-field fail-closed checks after the raw env is loaded.
+// It is split out from LoadFromEnv to keep each function's cyclomatic
+// complexity low.
+func (c Config) validate() error {
+	if c.Topology != TopologyVPS && c.Topology != TopologyVPSS3 {
+		return fmt.Errorf("GFS_TOPOLOGY is required (vps|vps-s3); %q is invalid (fail closed)", c.Topology)
+	}
+	if c.DataDir == "" {
+		return fmt.Errorf("GFS_DATA_DIR is required (fail closed)")
+	}
+	if c.Topology == TopologyVPSS3 {
+		if err := c.validateS3(); err != nil {
+			return err
+		}
+	}
+	return c.validateBaseURL()
+}
+
+// validateS3 enforces the vps-s3 requirements (bucket + AWS creds).
+func (c Config) validateS3() error {
+	if c.S3Bucket == "" {
+		return fmt.Errorf("GFS_S3_BUCKET is required for topology vps-s3 (fail closed)")
+	}
+	if strings.TrimSpace(os.Getenv("AWS_ACCESS_KEY_ID")) == "" || strings.TrimSpace(os.Getenv("AWS_SECRET_ACCESS_KEY")) == "" {
+		return fmt.Errorf("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are required for topology vps-s3 (fail closed)")
+	}
+	return nil
+}
+
+// validateBaseURL fails closed on a malformed GFS_BASE_URL (absolute http(s)
+// with a host only).
+func (c Config) validateBaseURL() error {
+	if c.BaseURL == "" {
+		return nil
+	}
+	u, err := url.Parse(c.BaseURL)
+	if err != nil || !u.IsAbs() || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return fmt.Errorf("GFS_BASE_URL must be an absolute http(s) URL with a host (fail closed)")
+	}
+	return nil
 }
 
 // ParseLimitSpec parses "N/1m", "N/1h", "N/30s", or "0" / empty / off (disabled).
