@@ -66,6 +66,11 @@ type Config struct {
 	// LoginRateLimit caps POST /login per client IP and per username (0 = disabled).
 	LoginRateLimit LimitSpec
 
+	// CSP overrides the Content-Security-Policy header emitted on HTML pages.
+	// Empty → a built-in default (script/style allow 'unsafe-inline', required
+	// by the inline front end). \"-\" disables the CSP header entirely.
+	CSP string
+
 	// SFTPInbox is an absolute drop directory for groot upload.sftp. Empty = watcher off.
 	SFTPInbox string
 	// SFTPPoll is the inbox poll interval (default 30s).
@@ -122,6 +127,7 @@ func LoadFromEnv() (Config, error) {
 	}
 	cfg.SFTPInbox = strings.TrimSpace(os.Getenv("GFS_SFTP_INBOX"))
 	cfg.SFTPPoll = parseDuration(os.Getenv("GFS_SFTP_POLL"), 30*time.Second)
+	cfg.CSP = strings.TrimSpace(os.Getenv("GFS_CSP"))
 	if cfg.SFTPInbox != "" && !filepath.IsAbs(cfg.SFTPInbox) {
 		return Config{}, fmt.Errorf("GFS_SFTP_INBOX must be an absolute path (fail closed)")
 	}

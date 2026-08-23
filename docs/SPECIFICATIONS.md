@@ -160,6 +160,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_FOOTER` | Authenticated footer. Default `gfs vX · groot · groot-share`. Plain text replaces it. `-` hides |
 | `GFS_SFTP_INBOX` | Absolute directory for groot `upload.sftp` drops. Empty/unset → watcher off. gfs does **not** run an SFTP server |
 | `GFS_SFTP_POLL` | Inbox poll interval (default `30s`) |
+| `GFS_CSP` | Override the `Content-Security-Policy` header emitted on HTML pages. Default is a built-in policy (`'self'` + `'unsafe-inline'` for script/style, required by the inline front end). `-` disables the CSP header. |
 
 Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit. `gfs.db` is `chmod 0600` on open. The SQLite connection enables `foreign_keys`, WAL, and `busy_timeout`.
 

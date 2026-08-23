@@ -93,7 +93,7 @@ func (s *Server) Handler() http.Handler {
 	// (browser) or return a structured JSON error (API). Specific
 	// patterns registered above always win on priority.
 	mux.HandleFunc("/", s.handleNotFound)
-	return s.accessLog(mux)
+	return s.securityHeaders(s.accessLog(mux))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {

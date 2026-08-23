@@ -54,6 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every pooled connection, keeping concurrent access safe
   ([#40](https://github.com/hrodrig/groot-share/issues/40)).
 
+- All responses now carry defensive security headers — `nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a
+  `Permissions-Policy`, `Strict-Transport-Security` (TLS only), and a
+  `Content-Security-Policy` (overridable via `GFS_CSP`, or disabled with
+  `GFS_CSP=-`) ([#44](https://github.com/hrodrig/groot-share/issues/44)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
