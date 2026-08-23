@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -126,7 +127,7 @@ func (s *Server) handleActivityExport(w http.ResponseWriter, r *http.Request) {
 			out = append(out, auditJSON(ev))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Disposition", `attachment; filename="activity.json"`)
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="gfs-activity-%s.json"`, time.Now().UTC().Format("200601021504")))
 		_ = json.NewEncoder(w).Encode(map[string]any{"items": out, "total": len(out)})
 		return
 	}
@@ -147,7 +148,7 @@ func (s *Server) handleActivityExport(w http.ResponseWriter, r *http.Request) {
 		b.WriteByte('\n')
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="activity.csv"`)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="gfs-activity-%s.csv"`, time.Now().UTC().Format("200601021504")))
 	_, _ = w.Write([]byte(b.String()))
 }
 

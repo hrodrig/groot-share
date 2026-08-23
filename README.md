@@ -5,7 +5,7 @@
 **📦** _Web and API door for groot `.tar.gz` archives when a VPS exists_
 
 [![Release](https://img.shields.io/github/v/release/hrodrig/groot-share?display_name=tag&label=release&logo=github)](https://github.com/hrodrig/groot-share/releases)
-[![Version](https://img.shields.io/badge/version-0.5.1-blue)](https://github.com/hrodrig/groot-share/releases)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue)](https://github.com/hrodrig/groot-share/releases)
 [![Go](https://img.shields.io/badge/Go-1.26.6-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![CI](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml)
@@ -91,6 +91,17 @@ Deploy-time choice. **No per-upload “also S3” flag.**
 | **S3 only** | **no** | Bucket via groot `upload.s3` | S3 client (Cyberduck, `aws`, rclone, …) |
 | **VPS + S3** | yes | Staging on VPS → **bucket is home** | gfs (from bucket + HTTP/S3 ingest keys) |
 
+> **⚠️ Choose your topology up front — switching later is not a migration.**
+> `GFS_TOPOLOGY` is a deploy-time decision, not a runtime toggle. Archives are
+> stored differently in each mode: on **`vps`** they live on the local disk
+> (`GFS_DATA_DIR`); on **`vps-s3`** the bucket is the source of truth and the
+> VPS disk only holds *in-transit* staging. Captures uploaded in one mode are
+> **not** automatically carried over to the other, so changing `GFS_TOPOLOGY`
+> (or pointing `GFS_DATA_DIR` at a fresh path) afterwards can make previously
+> uploaded captures disappear from the list even though the data still exists
+> elsewhere. Pick the topology that matches your intended use **before** you
+> start ingesting; if you must switch later, re-ingest the archives explicitly.
+
 Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **When not to use gfs:** [docs/ALTERNATIVES.md](docs/ALTERNATIVES.md).
 
 ## Features
@@ -138,7 +149,7 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 
 | Variable | Purpose |
 |----------|---------|
-| `GFS_TOPOLOGY` | **Required.** `vps` or `vps-s3` |
+| `GFS_TOPOLOGY` | **Required.** `vps` or `vps-s3`. Deploy-time choice — **do not switch after ingesting captures** (see [Operator topologies](#operator-topologies)); captures in one mode are not migrated to the other. |
 | `GFS_DATA_DIR` | **Required.** SQLite + home/staging root |
 | `GFS_LISTEN` | Bind address (default `:8080`) |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | First admin when user table is empty; ignored once users exist |

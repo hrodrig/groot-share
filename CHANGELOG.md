@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-08-22
+
+### Added
+
+- `GFS_BASE_URL` (optional): pins the base URL used in generated share-link
+  download URLs. When set, `requestBaseURL` returns it verbatim (instead of
+  deriving from `Request.Host` / `X-Forwarded-Proto`); it must be an absolute
+  `http(s)` URL with a host or gfs refuses to start (fail-closed). The trusted
+  reverse-proxy expectations are unchanged when it is left empty
+  (`SECURITY.md` / `.env.example` updated).
+- Friendly 404 (UI): unknown routes render a branded HTML 404 page through the
+  standard `pageShell`; `/v1/*` API paths still return a JSON error.
+- Share create form preset TTLs (`24 hours` / `7 days`) now show a selected
+  state (`is-active`) and clear when a custom "until" datetime is typed.
+- The one-shot "Copy" button on the share create result now confirms with
+  "Copied!" feedback (with a clipboard fallback for non-secure contexts).
+
+### Changed
+
+- **Breaking — share routes moved off `/v1/archives/`:** the JSON API is now
+  `GET/POST /v1/shares/{id...}` and `DELETE /v1/shares/{share_id}`, and the
+  HTML UI is `GET/POST /shares/{id...}` + `POST /shares/{share_id}/revoke`.
+  The `{id...}` wildcard sits at the end of the path so it can capture
+  `vps-s3` S3 object keys containing `/` (Go 1.22+ `ServeMux` forbids a
+  mid-path wildcard, which made the old nested layout 404 for such keys).
+  Revoke is keyed by the share row id alone. SPEC §12 updated to match.
+- `GET /s/{token}` now returns **410 Gone** (with a reason page — revoked /
+  expired / exhausted) for a known share token whose link is no longer
+  servable, instead of a plain 404. Unknown or malformed tokens still return
+  **404** so token-guessing gets no oracle.
+- Admin CSV/JSON activity export now downloads as a timestamped file
+  `gfs-activity-YYYYMMDDHHMM.csv` / `.json` (UTC, minute precision) instead of
+  a bare `activity.csv` / `activity.json`.
+
+### Docs
+
+- Operator documentation now warns that `GFS_TOPOLOGY` is a deploy-time
+  choice: switching between `vps` and `vps-s3` after ingesting captures does
+  **not** migrate archives between disk and bucket — pick the intended
+  topology before ingesting.
+
 ## [0.5.1] — 2026-08-22
 
 ### Changed
@@ -216,7 +257,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/hrodrig/groot-share/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/hrodrig/groot-share/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hrodrig/groot-share/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hrodrig/groot-share/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/hrodrig/groot-share/compare/v0.2.4...v0.3.0

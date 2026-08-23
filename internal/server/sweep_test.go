@@ -125,7 +125,7 @@ func TestGetDeletePathNotFound(t *testing.T) {
 	created := postArchive(t, s, ck, "secret.tar.gz", "secret-bytes")
 
 	for _, path := range []string{
-		"/v1/archives/" + created.ID + "/delete",
+		"/v1/archives/delete/" + created.ID,
 		"/v1/archives/" + created.ID + "/file/delete",
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

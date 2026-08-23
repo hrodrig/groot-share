@@ -6,13 +6,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-// shareCreateRequest is the JSON body for POST /v1/archives/{id}/shares.
+// shareCreateRequest is the JSON body for POST /v1/shares/{id...}.
 // Exactly one of ExpiresAt (RFC3339) or ExpiresIn (Go duration) is allowed.
 type shareCreateRequest struct {
 	ExpiresAt string `json:"expires_at"`
@@ -28,7 +29,7 @@ func (s *Server) handleCreateShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Resolve the archive first so a 404 is honest for unknown ids.
-	if _, err := s.Store.ArchiveByID(r.Context(), id); err != nil {
+	if _, err := s.resolveArchive(r.Context(), id); err != nil {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
@@ -87,7 +88,7 @@ func (s *Server) handleCreateShare(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"id":         link.ID,
-		"url":        requestBaseURL(r) + "/s/" + raw,
+		"url":        s.requestBaseURL(r) + "/s/" + raw,
 		"expires_at": link.ExpiresAt.UTC().Format(time.RFC3339),
 		"max_uses":   link.MaxUses,
 		"label":      link.Label,
@@ -100,7 +101,7 @@ func (s *Server) handleListShares(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	if _, err := s.Store.ArchiveByID(r.Context(), id); err != nil {
+	if _, err := s.resolveArchive(r.Context(), id); err != nil {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
@@ -130,8 +131,7 @@ func (s *Server) handleRevokeShare(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	id := strings.Trim(r.PathValue("id"), "/")
-	s.recordUserAudit(r, "share_revoke", raw, id)
+	s.recordUserAudit(r, "share_revoke", raw, "")
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"revoked": true})
 }
@@ -140,23 +140,23 @@ func (s *Server) handleRevokeShare(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleShareDownload(w http.ResponseWriter, r *http.Request) {
 	token := strings.Trim(r.PathValue("token"), "/")
 	if token == "" {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	link, err := s.Store.ShareByTokenHash(r.Context(), auth.HashSecret(token))
 	if err != nil {
 		// Unknown token (or DB error): 404 either way, no oracle.
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	now := time.Now().UTC()
-	if !link.Active(now) {
-		http.NotFound(w, r)
+	if reason := shareInactiveReason(link, now); reason != "" {
+		s.writeShareGone(w, r, reason)
 		return
 	}
 	rc, a, err := s.openDownload(r.Context(), link.ArchiveID)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	defer func() { _ = rc.Close() }()
@@ -201,3 +201,82 @@ func shareJSON(l store.ShareLink, now time.Time) map[string]any {
 	}
 	return out
 }
+
+// shareInactiveReason returns a stable machine string explaining why a link is
+// no longer servable, or "" when it is still active. Order matches store.
+// ShareLink.Active: revoked (explicit admin action) wins over expiry/exhaust.
+func shareInactiveReason(l store.ShareLink, now time.Time) string {
+	switch {
+	case !l.RevokedAt.IsZero():
+		return "revoked"
+	case !l.ExpiresAt.IsZero() && !now.Before(l.ExpiresAt):
+		return "expired"
+	case l.MaxUses > 0 && l.UseCount >= l.MaxUses:
+		return "exhausted"
+	default:
+		return ""
+	}
+}
+
+// writeShareGone renders a 410 Gone HTML page with a clear, honest reason for
+// a share link that once existed but is no longer servable (revoked, expired,
+// or use-limit reached). Distinct from 404, which is reserved for tokens that
+// do not resolve, so token-guessing gets no oracle. Unlike the API-facing
+// handleNotFound, this always renders HTML: /s/{token} is a public download
+// opened in a browser by a human, not an API client.
+func (s *Server) writeShareGone(w http.ResponseWriter, r *http.Request, reason string) {
+	var title, body string
+	switch reason {
+	case "revoked":
+		title = "Share link revoked"
+		body = "This share link was revoked and no longer works."
+	case "expired":
+		title = "Share link expired"
+		body = "This share link has expired."
+	case "exhausted":
+		title = "Share link used up"
+		body = "This share link reached its download limit and no longer works."
+	default:
+		title = "Share link unavailable"
+		body = "This share link is no longer available."
+	}
+	data := s.pageShell()
+	data["GoneTitle"] = title
+	data["GoneBody"] = body
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusGone)
+	_ = shareGoneTmpl.Execute(w, data)
+}
+
+var shareGoneTmpl = template.Must(template.New("share-gone").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Share link</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="appbar-start">
+      <a class="brand" href="/">
+        <span class="crate" aria-hidden="true"></span>
+        <span class="wordmark">gfs</span>
+        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
+      </a>
+    </div>
+    <div class="appbar-side">
+      {{.ThemeToggle}}
+    </div>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <section class="card" style="max-width:460px;margin:48px auto;">
+    <div class="card-head">
+      <h2>410 — {{.GoneTitle}}</h2>
+      <p class="hint">{{.GoneBody}}</p>
+    </div>
+    <div style="padding:16px 24px 20px;">
+      <a class="btn" href="/">Go to Home</a>
+    </div>
+  </section>
+</main>
+{{.ThemeToggleScript}}
+</body></html>
+`))

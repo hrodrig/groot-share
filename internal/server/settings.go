@@ -125,7 +125,7 @@ func (s *Server) handleSettingsAPIKeyRevokePOST(w http.ResponseWriter, r *http.R
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.DeleteAPIKey(r.Context(), id, ac.User.ID); err != nil {

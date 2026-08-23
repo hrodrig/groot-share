@@ -13,7 +13,7 @@ import (
 // sharesPageGET is a tiny helper: admin GET of the shares page for an archive.
 func sharesPageGET(t *testing.T, s *Server, ck *http.Cookie, archiveID string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/archives/"+archiveID+"/shares", nil)
+	req := httptest.NewRequest(http.MethodGet, "/shares/"+archiveID, nil)
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
@@ -54,7 +54,7 @@ func TestSharesPageNonAdminForbidden(t *testing.T) {
 	createUserWithRole(t, st, "up", "up-secret-12", auth.RoleUploader)
 	upler := loginAs(t, s, "up", "up-secret-12")
 
-	req := httptest.NewRequest(http.MethodGet, "/archives/"+created.ID+"/shares", nil)
+	req := httptest.NewRequest(http.MethodGet, "/shares/"+created.ID, nil)
 	req.AddCookie(upler)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
@@ -69,7 +69,7 @@ func TestSharesCreateFormShowsURLOnce(t *testing.T) {
 	created := postArchive(t, s, ck, "vendor.tar.gz", "vendor-bytes")
 
 	form := url.Values{"expires_in": {"24h"}, "label": {"acme"}}
-	req := httptest.NewRequest(http.MethodPost, "/archives/"+created.ID+"/shares", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/shares/"+created.ID, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
@@ -106,7 +106,7 @@ func TestSharesCreateFormValidationFailsClosed(t *testing.T) {
 		{"expires_in": {"24h"}, "max_uses": {"-1"}}, // negative max uses
 	}
 	for _, form := range cases {
-		req := httptest.NewRequest(http.MethodPost, "/archives/"+created.ID+"/shares", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/shares/"+created.ID, strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.AddCookie(ck)
 		rr := httptest.NewRecorder()
@@ -128,7 +128,7 @@ func TestSharesCreateFormBadArchive404(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)
 	form := url.Values{"expires_in": {"24h"}}
-	req := httptest.NewRequest(http.MethodPost, "/archives/does-not-exist/shares", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/shares/does-not-exist", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
@@ -145,7 +145,7 @@ func TestSharesRevokeForm(t *testing.T) {
 	out := createShare(t, s, ck, created.ID, `{"expires_in":"24h"}`)
 	shareID := formatID(out["id"].(float64))
 
-	req := httptest.NewRequest(http.MethodPost, "/archives/"+created.ID+"/shares/"+shareID+"/revoke", nil)
+	req := httptest.NewRequest(http.MethodPost, "/shares/"+shareID+"/revoke", nil)
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
@@ -171,16 +171,12 @@ func TestSharesRevokeForm(t *testing.T) {
 func TestSharesRevokeUnknown404(t *testing.T) {
 	s, _ := identServer(t)
 	ck := loginCookie(t, s)
-	created := postArchive(t, s, ck, "vendor.tar.gz", "vendor-bytes")
 
-	req := httptest.NewRequest(http.MethodPost, "/archives/"+created.ID+"/shares/999999/revoke", nil)
+	req := httptest.NewRequest(http.MethodPost, "/shares/999999/revoke", nil)
 	req.AddCookie(ck)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
-	if rr.Code != http.StatusSeeOther {
+	if rr.Code != http.StatusNotFound {
 		t.Fatalf("unknown revoke %d", rr.Code)
-	}
-	if loc := rr.Header().Get("Location"); !strings.Contains(loc, "notice=missing") {
-		t.Fatalf("unknown revoke redirect %q", loc)
 	}
 }

@@ -311,6 +311,48 @@ func (s *Server) openVPSS3(ctx context.Context, id string) (io.ReadCloser, store
 	}, nil
 }
 
+// resolveArchive returns the archive metadata for id, transparently
+// handling both vps (32-hex opaque id) and vps-s3 (S3 object key,
+// which may contain '/'). It is the share-flow counterpart to
+// openDownload (which additionally opens a reader for the body).
+func (s *Server) resolveArchive(ctx context.Context, id string) (store.Archive, error) {
+	if id == "" || strings.Contains(id, "..") {
+		return store.Archive{}, store.ErrNotFound
+	}
+	if s.useBucket() {
+		return s.resolveArchiveVPSS3(ctx, id)
+	}
+	return s.Store.ArchiveByID(ctx, id)
+}
+
+// resolveArchiveVPSS3 mirrors openVPSS3 but skips the body read; the
+// share handlers only need the archive metadata.
+func (s *Server) resolveArchiveVPSS3(ctx context.Context, id string) (store.Archive, error) {
+	if !blob.UnderPrefix(s.Cfg.S3Prefix, id) {
+		return store.Archive{}, store.ErrNotFound
+	}
+	obj, err := s.Blobs.Head(ctx, id)
+	if err == nil {
+		return objectArchive(obj), nil
+	}
+	if !errors.Is(err, blob.ErrNotFound) {
+		return store.Archive{}, err
+	}
+	tr, err := s.Store.TransitByS3Key(ctx, id)
+	if err != nil {
+		return store.Archive{}, store.ErrNotFound
+	}
+	return store.Archive{
+		ID:        tr.S3Key,
+		Key:       tr.Key,
+		Size:      tr.Size,
+		SHA256:    tr.SHA256,
+		Source:    blob.SourceForKey(tr.S3Key),
+		Storage:   "transit",
+		CreatedAt: tr.CreatedAt,
+	}, nil
+}
+
 func downloadID(r *http.Request) string {
 	id := strings.Trim(r.PathValue("id"), "/")
 	id = strings.TrimSuffix(id, "/file")
@@ -320,8 +362,9 @@ func downloadID(r *http.Request) string {
 // deleteID parses the archive id for the delete handlers, tolerating the
 // trailing "/delete" used by the HTML form POST. It never strips "/file",
 // so a GET to ".../delete" cannot resolve into a download.
+// deleteID returns the archive id from the path. The route itself
+// disambiguates intent (DELETE /v1/archives/{id...} vs POST
+// /v1/archives/delete/{id...}), so no suffix parsing is needed.
 func deleteID(r *http.Request) string {
-	id := strings.Trim(r.PathValue("id"), "/")
-	id = strings.TrimSuffix(id, "/delete")
-	return strings.TrimSuffix(id, "/")
+	return strings.Trim(r.PathValue("id"), "/")
 }

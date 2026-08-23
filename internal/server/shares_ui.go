@@ -83,9 +83,9 @@ func (s *Server) handleSharesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := strings.Trim(r.PathValue("id"), "/")
-	a, err := s.Store.ArchiveByID(r.Context(), id)
+	a, err := s.resolveArchive(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	links, err := s.Store.ListShareLinks(r.Context(), id)
@@ -114,7 +114,7 @@ func renderSharesPage(w http.ResponseWriter, s *Server, ac *Actor, d sharesData)
 	_ = sharesTmpl.Execute(w, data)
 }
 
-// handleSharesCreate handles POST /archives/{id}/shares (form-encoded).
+// handleSharesCreate handles POST /shares/{id...} (form-encoded).
 func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 	ac := actorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermSharesManage) {
@@ -122,9 +122,9 @@ func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := strings.Trim(r.PathValue("id"), "/")
-	archive, err := s.Store.ArchiveByID(r.Context(), id)
+	archive, err := s.resolveArchive(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -160,7 +160,7 @@ func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
 		slog.Error("list share links", "error", err)
 		links = []store.ShareLink{link}
 	}
-	url := requestBaseURL(r) + "/s/" + raw
+	url := s.requestBaseURL(r) + "/s/" + raw
 	renderSharesPage(w, s, ac, sharesData{
 		ArchiveID:  id,
 		Key:        archive.Key,
@@ -235,7 +235,7 @@ func (s *Server) renderSharesField(w http.ResponseWriter, r *http.Request, ac *A
 }
 
 func archiveKeyOrID(s *Server, r *http.Request, id string) string {
-	if a, err := s.Store.ArchiveByID(r.Context(), id); err == nil {
+	if a, err := s.resolveArchive(r.Context(), id); err == nil {
 		return a.Key
 	}
 	return id
@@ -257,19 +257,24 @@ func (s *Server) handleSharesRevoke(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id := strings.Trim(r.PathValue("id"), "/")
 	raw := strings.Trim(r.PathValue("share_id"), "/")
 	shareID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || shareID <= 0 {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
+		return
+	}
+	// Look up the archive id so we can redirect to its shares page.
+	link, err := s.Store.ShareByID(r.Context(), shareID)
+	if err != nil {
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.RevokeShareLink(r.Context(), shareID, time.Now().UTC()); err != nil {
-		http.Redirect(w, r, "/archives/"+url.PathEscape(id)+"/shares?notice=missing", http.StatusSeeOther)
+		http.Redirect(w, r, "/shares/"+url.PathEscape(link.ArchiveID)+"?notice=missing", http.StatusSeeOther)
 		return
 	}
-	s.recordUserAudit(r, "share_revoke", raw, id)
-	http.Redirect(w, r, "/archives/"+url.PathEscape(id)+"/shares?notice=revoked", http.StatusSeeOther)
+	s.recordUserAudit(r, "share_revoke", raw, link.ArchiveID)
+	http.Redirect(w, r, "/shares/"+url.PathEscape(link.ArchiveID)+"?notice=revoked", http.StatusSeeOther)
 }
 
 func shareNotice(token string) (kind, text string) {
@@ -360,7 +365,7 @@ var sharesTmpl = template.Must(template.New("shares").Funcs(pageFuncs).Parse(`<!
 <section class="card" aria-labelledby="create-h">
   <div class="card-head"><h2 id="create-h">Create share link</h2></div>
   <div class="card-body">
-  <form method="post" action="/archives/{{.Shares.ArchiveID}}/shares" class="stack-form">
+  <form method="post" action="/shares/{{.Shares.ArchiveID}}" class="stack-form">
     <fieldset class="ttl-fieldset">
       <legend>Expiry</legend>
       <div class="ttl-presets" role="group" aria-label="Preset TTL">
@@ -400,7 +405,7 @@ var sharesTmpl = template.Must(template.New("shares").Funcs(pageFuncs).Parse(`<!
       <td><span class="pill pill-{{.Status}}">{{.Status}}</span></td>
       <td class="actions">
         {{if .Active}}
-        <form method="post" action="/archives/{{$.Shares.ArchiveID}}/shares/{{.ID}}/revoke" data-confirm="Revoke this share link? It will stop working immediately.">
+        <form method="post" action="/shares/{{.ID}}/revoke" data-confirm="Revoke this share link? It will stop working immediately.">
           <button class="btn btn-danger-quiet btn-sm" type="submit">Revoke</button>
         </form>
         {{end}}
@@ -431,15 +436,57 @@ var sharesTmpl = template.Must(template.New("shares").Funcs(pageFuncs).Parse(`<!
   var presets = document.querySelectorAll('button[data-ttl]');
   var expiresIn = document.getElementById('expires-in');
   var untilInput = document.querySelector('input[name="expires_at_local"]');
+  function clearActive() {
+    presets.forEach(function (b) { b.classList.remove('is-active'); });
+  }
   presets.forEach(function (b) {
     b.addEventListener('click', function () {
       expiresIn.value = b.getAttribute('data-ttl');
       untilInput.value = '';
+      clearActive();
+      b.classList.add('is-active');
     });
   });
   untilInput.addEventListener('input', function () {
-    if (untilInput.value !== '') { expiresIn.value = ''; }
+    if (untilInput.value !== '') {
+      expiresIn.value = '';
+      clearActive();
+    }
   });
+  var copyTargets = document.querySelectorAll('button.copy-link[data-copy-url]');
+  copyTargets.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = btn.getAttribute('data-copy-url');
+      var done = function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('is-active');
+        setTimeout(function () {
+          btn.textContent = original;
+          btn.classList.remove('is-active');
+        }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () { fallbackCopy(url, done); });
+      } else {
+        fallbackCopy(url, done);
+      }
+    });
+  });
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      done();
+    } catch (e) {}
+    document.body.removeChild(ta);
+  }
   var dlg = document.getElementById('confirm-dialog');
   var txt = document.getElementById('confirm-text');
   var pending = null;

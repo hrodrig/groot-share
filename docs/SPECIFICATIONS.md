@@ -147,7 +147,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 |---------|---------|
 | `GFS_LISTEN` | default `:8080` |
 | `GFS_DATA_DIR` | SQLite + staging/home root (e.g. `/var/lib/gfs`) |
-| `GFS_TOPOLOGY` | `vps` \| `vps-s3` (`s3` alone is invalid — refuse start) |
+| `GFS_TOPOLOGY` | `vps` \| `vps-s3` (`s3` alone is invalid — refuse start). Deploy-time choice — **do not switch after ingesting captures** (see §2); captures in one mode are not migrated to the other |
 | `GFS_S3_*` | bucket, region, endpoint, prefix (`captures/`), path-style |
 | AWS creds | env `AWS_*` on the VPS only |
 | `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
@@ -228,8 +228,9 @@ VPS + S3: delete bucket objects (home). Staging leftovers older than a grace per
   (exact), time window (`24h`/`7d`/`30d`/all) via `actor`/`action`/`window`
   query params. Admin CSV/JSON export at
   `GET /v1/activity/export?format=csv|json` (admin-only, honors the same
-  filters, streams the full unpaginated log). Downloads are audited as
-  `action=download` alongside uploads and deletes.
+  filters, streams the full unpaginated log). The download file is named
+  `gfs-activity-YYYYMMDDHHMM.csv` / `.json` (UTC, minute precision).
+  Downloads are audited as `action=download` alongside uploads and deletes.
 - Completeness badge (Captures list): each **local (vps)** row reads the
   groot `extras/manifest.json` via a bounding gzip→tar member peek and shows
   the job outcome — `Complete` (`failed == 0`), `N of M jobs failed`
@@ -273,10 +274,16 @@ Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), 
 
 | Method | Path | Auth | Behavior |
 |--------|------|------|----------|
-| POST | `/v1/archives/{id}/shares` | admin session | Create link; body `{ "expires_at" }` **or** `{ "expires_in" }`; optional `label`, `max_uses`. Response includes full URL **once**. |
-| GET | `/v1/archives/{id}/shares` | admin session | List active and historical links (no raw token) |
-| DELETE | `/v1/archives/{id}/shares/{share_id}` | admin session | Revoke (`share_revoke` audit) |
-| GET | `/s/{token}` | none | Stream archive until expired, revoked, or uses exhausted; `share_download` audit |
+| POST | `/v1/shares/{id...}` | admin session | Create link; body `{ "expires_at" }` **or** `{ "expires_in" }`; optional `label`, `max_uses`. Response includes full URL **once**. |
+| GET | `/v1/shares/{id...}` | admin session | List active and historical links (no raw token) |
+| DELETE | `/v1/shares/{share_id}` | admin session | Revoke by share row id (`share_revoke` audit; archive id resolved for the audit row) |
+| GET | `/s/{token}` | none | Stream archive until expired, revoked, or uses exhausted; `share_download` audit. Unknown token → `404`. Known-but-dead link (revoked / expired / exhausted) → `410 Gone` with a clear reason page. |
+
+> **Path note:** share routes moved off `/v1/archives/` to top-level `/v1/shares/{id...}` so
+> the `{id...}` wildcard can capture `vps-s3` S3 object keys containing `/`. Go 1.22+
+> `ServeMux` forbids a mid-path wildcard, which is what made the old
+> `/v1/archives/{id}/shares` layout 404 for such keys. Revoke is keyed by the share row
+> `id` alone (not the archive id in the path).
 
 - Token: high entropy (32 random bytes, hex); store SHA-256 hash only (same spirit as api_key). Raw token shown once in the create response.
 - `expires_at` / `expires_in` are mutually exclusive; exactly one is required. `max_uses` defaults to `0` (unlimited); `1` is one-shot.
@@ -285,16 +292,16 @@ Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), 
 - `share_download` audit actor is the literal `share` (public); the raw token is never logged or stored.
 
 **Share-link admin UI (Phase 10 / UX-09):** a server-rendered admin page at
-`GET /archives/{id}/shares` (admin session) lists active/expired/revoked links,
+`GET /shares/{id...}` (admin session) lists active/expired/revoked links,
 and offers a create form — preset TTLs `24h`/`7d` plus a custom absolute
 `datetime-local`, optional label, optional `max_uses` — and per-link Revoke.
-`POST /archives/{id}/shares` (form-encoded) renders the created URL **once** in
+`POST /shares/{id...}` (form-encoded) renders the created URL **once** in
 the response body (the raw token is shown only in that one render; it never
 appears in a `Location` header, a URL, or an access-log path, and `GET` of the
 page never re-emits it). Revoke is an HTML alias `POST
-/archives/{id}/shares/{share_id}/revoke` that redirects with `notice=revoked`
+/shares/{share_id}/revoke` that redirects with `notice=revoked`
 (no token in the redirect). Non-admins receive `403` on all three routes. The
-Phase 9 JSON API (`POST/GET/DELETE /v1/archives/{id}/shares`) is unchanged.
+Phase 9 JSON API (`POST/GET/DELETE /v1/shares/...`) is unchanged.
 
 Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`.
 
@@ -302,4 +309,6 @@ Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planni
 
 *SPEC approved 2026-08-12 from GFS-CONSENSUS.md + groot-trigger supply-chain reference.*  
 *§12 added 2026-08-13 — external share links (Phase 9, admin-only).*  
-*§12 UI note added 2026-08-21 — share-link admin UI (Phase 10, UX-09).*
+*§12 UI note added 2026-08-21 — share-link admin UI (Phase 10, UX-09).*  
+*§12 410 note added 2026-08-22 — dead share links return 410 Gone, not 404.*
+*§12 route table updated 2026-08-22 — share routes at top-level `/v1/shares/{id...}` / `/shares/{id...}` (moved off `/v1/archives/...` for `vps-s3` keys with `/`).*

@@ -1,13 +1,13 @@
 # Roadmap: gfs
 
-**Last reviewed:** 2026-08-19
+**Last reviewed:** 2026-08-22
 
 ## Current focus
 
 | Track | Status |
 |-------|--------|
-| Product | **v0.4.0**. Phase 9 share links shipped (API). Phase 10 catalog UX next. |
-| Operator UX | **Phase 10 locked** (2026-08-19). Evidence locker. Steal Captures layout from the v0 mock; implement in vanilla HTML. Includes **UX-09 share-link admin UI** (plan 10-07) backing Phase 9's API. |
+| Product | **v0.6.0**. Phase 10 catalog UX shipped (share-link admin UI, 410 Gone, preset TTLs, timestamped activity export). |
+| Operator UX | **Phase 10 done** (2026-08-22). Evidence locker complete; share-link admin UI (UX-09) and 410 Gone landed. Next band: backlog items. |
 
 ## Overview
 
@@ -24,7 +24,7 @@ Stand up the groot-trigger supply chain, then a VPS binary that authenticates us
 - [x] **Phase 7: Users CRUD + RBAC** — Roles, scoped api_keys, admin user management (completed 2026-08-13, shipped in v0.2.0)
 - [x] **Phase 8: SFTP inbox watcher** — Poll groot SFTP drop dir; `source=sftp`; UI pill (completed 2026-08-19)
 - [x] **Phase 9: External share links** — Admin-only time-limited URLs for third-party download + audit (completed 2026-08-19, shipped v0.4.0 — API only; admin UI deferred to Phase 10)
-- [ ] **Phase 10: Operational catalog UX** — Incident evidence locker: cluster-first catalog, upload progress, mobile cards, compliance Activity (planned 2026-08-19; vanilla HTML, no SPA)
+- [x] **Phase 10: Operational catalog UX** — Incident evidence locker: cluster-first catalog, upload progress, mobile cards, compliance Activity (completed 2026-08-22, shipped v0.6.0)
 
 ## Phase Details
 
@@ -195,12 +195,12 @@ Context: `.planning/phases/08-sftp-watcher/08-CONTEXT.md`
   2. `GET /s/{token}` works without auth until `expires_at`, revocation, or `max_uses` — gfs proxies bytes on `vps` and `vps-s3`
   3. Audit rows: `share_create`, `share_download`, `share_revoke`; raw token never in logs or audit
 
-**Plans:** 1/1 complete (API; admin UI moved to Phase 10 — see UX share-links below)
+**Plans:** 1/1 complete (API; admin UI completed in Phase 10 — see UX share-links below)
 
 Plans:
 
 - [x] 09-01: `share_links` schema + admin API + public `/s/{token}` download + audit
-- [ ] 09-02: Captures admin UI — **deferred to Phase 10** (share-link management UI lives with the rest of the Captures UX)
+- [x] 09-02: Captures admin UI — **completed in Phase 10** (share-link management UI landed with the Captures UX, plan 10-07)
 
 Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
 
@@ -232,7 +232,7 @@ Context: `.planning/phases/09-external-share-links/09-CONTEXT.md`
   8. Completeness badge only when manifest peek exists (`Complete` / `N of M jobs failed` / all-failed `Failed`); filename-only rows stay unmarked
   9. **Share-link admin UI (UX-09):** on a Captures row, admin can create a time-limited share link (preset TTLs `24h`/`7d` + custom until-date, optional label, optional `max_uses`), copy the URL once, and list/revoke active links per archive. Backs onto the Phase 9 API (`POST/GET/DELETE /v1/archives/{id}/shares`); no raw token shown again after create.
 
-**Plans:** 2/7 plans complete
+**Plans:** 7/7 plans complete
 
 Plans:
 
@@ -251,7 +251,7 @@ Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `
 - [x] **UX-2: Copy capture link** — per-row control in Captures copies the absolute download URL (`/v1/archives/{id}/file`) for pasting into GitLab, Bitbucket, Jira, etc.
 - [ ] **UX-4: Producer origin** — Trigger / Scheduled / Manual only after groot (or sidecar) supplies it; never infer from `source` http/s3/sftp
 - [ ] **UX-3: Role walkthrough** — after Phase 10, test Captures/Upload/Activity as viewer, uploader, and admin (not a code plan)
-- [ ] **UX-09: Share-link admin UI** — Captures row action to create/list/revoke share links (see Phase 10, plan 10-07); API already shipped in v0.4.0
+- [x] **UX-09: Share-link admin UI** — Captures row action to create/list/revoke share links (shipped v0.6.0, Phase 10 plan 10-07); API already shipped in v0.4.0
 - [x] **999.1: audit fixes** — shipped v0.4.0: B-5 (ingest 500), B-6 (gzip magic), B-9 (EqualHash drop), B-10 (cookie Secure), B-13 (signal loops), B-14 (blob-first delete), I-2 (GoReleaser ~2.16), I-3 (manager.Uploader justification). Remaining: **I-5** openpgp false positive (documented, no fix). Context: `.planning/phases/999.1-audit-fixes/CONTEXT.md`
 
 ## Progress
@@ -269,5 +269,5 @@ Context: implement in `internal/server/identity.go`, `html.go`, `settings.go`, `
 | 6. Housekeeping | 1/1 | Complete    | 2026-08-12 |
 | 7. RBAC | 3/3 | Complete | 2026-08-13 |
 | 8. SFTP watcher | 2/2 | Complete | 2026-08-19 |
-| 9. External share links | 1/1 | Complete | 2026-08-19 |
-| 10. Operational catalog UX | 0/7 | Planned | — |
+| 9. External share links | 2/2 | Complete | 2026-08-19 (API) / 2026-08-22 (admin UI) |
+| 10. Operational catalog UX | 7/7 | Complete | 2026-08-22 |

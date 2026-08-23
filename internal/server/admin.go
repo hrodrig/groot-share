@@ -11,7 +11,16 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-func requestBaseURL(r *http.Request) string {
+// requestBaseURL returns the base URL used to build share links.
+// If Config.BaseURL is set (operator-pinned via GFS_BASE_URL), it
+// wins and request headers are ignored — this is the fail-closed
+// mode. Otherwise the URL is derived from the request, which
+// requires running behind a trusted proxy that overwrites Host and
+// X-Forwarded-Proto; see SECURITY.md.
+func (s *Server) requestBaseURL(r *http.Request) string {
+	if s.Cfg.BaseURL != "" {
+		return s.Cfg.BaseURL
+	}
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
@@ -36,7 +45,7 @@ func (s *Server) handleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := s.pageShell()
 	mergeActorData(data, ac)
-	data["BaseURL"] = requestBaseURL(r)
+	data["BaseURL"] = s.requestBaseURL(r)
 	data["Nav"] = "admin"
 	data["Users"] = users
 	data["NoticeKind"], data["NoticeText"] = adminNotice(r.URL.Query().Get("notice"))
@@ -102,7 +111,7 @@ func (s *Server) handleAdminUserRolePOST(w http.ResponseWriter, r *http.Request)
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -116,7 +125,7 @@ func (s *Server) handleAdminUserRolePOST(w http.ResponseWriter, r *http.Request)
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.GuardLastAdmin(r.Context(), id, newRole, u.Active); err != nil {
@@ -138,7 +147,7 @@ func (s *Server) handleAdminUserUsernamePOST(w http.ResponseWriter, r *http.Requ
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -168,12 +177,12 @@ func (s *Server) handleAdminUserDeactivatePOST(w http.ResponseWriter, r *http.Re
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.GuardLastAdmin(r.Context(), id, u.Role, false); err != nil {
@@ -195,12 +204,12 @@ func (s *Server) handleAdminUserActivatePOST(w http.ResponseWriter, r *http.Requ
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if err := s.Store.UpdateUser(r.Context(), id, u.Role, true); err != nil {
@@ -218,7 +227,7 @@ func (s *Server) handleAdminUserRemovePOST(w http.ResponseWriter, r *http.Reques
 	}
 	id, err := parseUserID(r.PathValue("id"))
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if id == ac.User.ID {
@@ -227,7 +236,7 @@ func (s *Server) handleAdminUserRemovePOST(w http.ResponseWriter, r *http.Reques
 	}
 	u, err := s.Store.UserByID(r.Context(), id)
 	if err != nil {
-		http.NotFound(w, r)
+		s.handleNotFound(w, r)
 		return
 	}
 	if u.Active {
