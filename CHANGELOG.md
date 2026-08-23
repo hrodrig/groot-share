@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   login, so the `sessions` table no longer grows monotonically between the
   hourly sweep ([#51](https://github.com/hrodrig/groot-share/issues/51)).
 
+- Completeness badges are memoized per local archive for one minute, so the
+  Captures page no longer re-opens and re-scans each `.tar.gz` manifest on
+  every render ([#41](https://github.com/hrodrig/groot-share/issues/41)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security

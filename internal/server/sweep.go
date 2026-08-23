@@ -65,6 +65,7 @@ func (s *Server) removeBucket(ctx context.Context, id string) (store.Archive, er
 			return store.Archive{}, err
 		}
 		s.listCache.invalidate()
+		s.completenessCache.invalidate()
 		// Drop share links and pins for the removed object (#39). The S3
 		// object has no `archives` row, so clean dependents explicitly.
 		if err := s.Store.DeleteArchiveDependents(ctx, id); err != nil {

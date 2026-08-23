@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/hrodrig/groot-share/internal/store"
 )
@@ -93,11 +95,25 @@ func isManifestMember(name string) bool {
 
 // completenessBadgeOf peeks the manifest of a local (vps) archive and returns
 // its badge. Non-local rows (s3, transit) and any peek failure return ok=false
-// so the row stays unmarked — never an error, never log spam.
+// so the row stays unmarked — never an error, never log spam. Results are
+// memoized per archive id for completenessCacheTTL so a page of N local
+// archives doesn't open N .tar.gz files on every render.
 func (s *Server) completenessBadgeOf(a store.Archive) (completenessBadge, bool) {
 	if a.Storage != "local" {
 		return completenessBadge{}, false
 	}
+	now := time.Now()
+	if badge, ok, found := s.completenessCache.get(a.ID, now); found {
+		return badge, ok
+	}
+	badge, ok := s.computeBadge(a)
+	s.completenessCache.set(a.ID, badge, ok, now)
+	return badge, ok
+}
+
+// computeBadge does the uncached manifest peek. Split out so the cache wraps
+// only the expensive file open + gzip/tar scan.
+func (s *Server) computeBadge(a store.Archive) (completenessBadge, bool) {
 	p, err := s.Store.BlobPath(a.ID)
 	if err != nil {
 		return completenessBadge{}, false
@@ -112,6 +128,52 @@ func (s *Server) completenessBadgeOf(a store.Archive) (completenessBadge, bool) 
 		return completenessBadge{}, false
 	}
 	return badgeFromJobs(total, success, failed), true
+}
+
+// completenessCache memoizes completeness badges per archive id to avoid
+// reopening and re-scanning the .tar.gz on every Captures render. The zero
+// value is a cold, thread-safe cache. TTL bounds staleness so a badge
+// converges within a minute if the underlying file changes.
+type completenessCache struct {
+	mu      sync.Mutex
+	entries map[string]completenessEntry
+}
+
+type completenessEntry struct {
+	badge  completenessBadge
+	ok     bool
+	filled time.Time
+}
+
+// completenessCacheTTL bounds staleness of a cached badge.
+const completenessCacheTTL = 60 * time.Second
+
+func (c *completenessCache) get(id string, now time.Time) (completenessBadge, bool, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.entries == nil {
+		return completenessBadge{}, false, false
+	}
+	e, ok := c.entries[id]
+	if !ok || now.Sub(e.filled) >= completenessCacheTTL {
+		return completenessBadge{}, false, false
+	}
+	return e.badge, e.ok, true
+}
+
+func (c *completenessCache) set(id string, badge completenessBadge, ok bool, now time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.entries == nil {
+		c.entries = make(map[string]completenessEntry)
+	}
+	c.entries[id] = completenessEntry{badge: badge, ok: ok, filled: now}
+}
+
+func (c *completenessCache) invalidate() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries = nil
 }
 
 func badgeFromJobs(total, success, failed int) completenessBadge {

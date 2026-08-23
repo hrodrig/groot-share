@@ -26,6 +26,9 @@ type Server struct {
 	LoginLimit *ratelimit.Limiter
 	// listCache memoizes vps-s3 listings (zero-value = cold, safe).
 	listCache listCache
+	// completenessCache memoizes per-archive completeness badges (zero-value =
+	// cold, safe). Only local (vps) archives consult it.
+	completenessCache completenessCache
 }
 
 // Handler returns the root mux with middleware.

@@ -7,8 +7,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // grootArchive builds a .tar.gz whose only member is extras/manifest.json with
@@ -213,4 +215,51 @@ func gzipOnly(t *testing.T, payload []byte) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+// TestCompletenessBadgeCached verifies completenessBadgeOf memoizes the badge
+// per archive id, so a later render doesn't re-open the .tar.gz within TTL
+// (it returns the cached badge even if the file changed on disk), and that
+// expiry recomputes.
+func TestCompletenessBadgeCached(t *testing.T) {
+	s, st := identServer(t)
+	archive := grootArchive(t, `{"jobs":{"total":2,"success":2,"failed":0}}`, nil)
+	a, err := st.Ingest(context.Background(), bytes.NewReader(archive), "cache-test.tar.gz", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Storage != "local" {
+		t.Fatalf("expected local storage, got %q", a.Storage)
+	}
+
+	badge, ok := s.completenessBadgeOf(a)
+	if !ok || badge.Label != "Complete" {
+		t.Fatalf("first peek: ok=%v badge=%+v", ok, badge)
+	}
+
+	// Corrupt the file on disk after the first (cached) peek. Within TTL the
+	// badge must still come from the cache, proving the file wasn't re-opened.
+	p, err := st.BlobPath(a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("corrupted"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	badge, ok = s.completenessBadgeOf(a)
+	if !ok || badge.Label != "Complete" {
+		t.Fatalf("cache must hold badge within TTL: ok=%v badge=%+v", ok, badge)
+	}
+
+	// Force expiry and recompute: the corrupted file no longer yields a badge.
+	s.completenessCache.mu.Lock()
+	s.completenessCache.entries[a.ID] = completenessEntry{
+		badge:  badge,
+		ok:     ok,
+		filled: time.Now().Add(-completenessCacheTTL - time.Second),
+	}
+	s.completenessCache.mu.Unlock()
+	if _, ok = s.completenessBadgeOf(a); ok {
+		t.Fatal("expired cache must recompute and fail on corrupted file")
+	}
 }
