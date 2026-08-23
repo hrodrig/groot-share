@@ -215,7 +215,7 @@ func (s *Server) renderSharesNotice(w http.ResponseWriter, r *http.Request, ac *
 	renderSharesPage(w, s, ac, sharesData{
 		ArchiveID:  id,
 		Key:        archiveKeyOrID(s, r, id),
-		Links:      mustListShares(s, r, id),
+		Links:      listSharesOrNil(s, r, id),
 		NoticeKind: shareNoticeKind(notice),
 		NoticeText: shareNoticeText(notice),
 	})
@@ -225,7 +225,7 @@ func (s *Server) renderSharesField(w http.ResponseWriter, r *http.Request, ac *A
 	renderSharesPage(w, s, ac, sharesData{
 		ArchiveID:   id,
 		Key:         archiveKeyOrID(s, r, id),
-		Links:       mustListShares(s, r, id),
+		Links:       listSharesOrNil(s, r, id),
 		FormLabel:   label,
 		FormMaxUses: maxUses,
 		FormUntil:   until,
@@ -241,7 +241,7 @@ func archiveKeyOrID(s *Server, r *http.Request, id string) string {
 	return id
 }
 
-func mustListShares(s *Server, r *http.Request, id string) []shareView {
+func listSharesOrNil(s *Server, r *http.Request, id string) []shareView {
 	links, err := s.Store.ListShareLinks(r.Context(), id)
 	if err != nil {
 		slog.Warn("list share links", "error", err)
