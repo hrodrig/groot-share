@@ -91,6 +91,17 @@ Deploy-time choice. **No per-upload “also S3” flag.**
 | **S3 only** | **no** | Bucket via groot `upload.s3` | S3 client (Cyberduck, `aws`, rclone, …) |
 | **VPS + S3** | yes | Staging on VPS → **bucket is home** | gfs (from bucket + HTTP/S3 ingest keys) |
 
+> **⚠️ Choose your topology up front — switching later is not a migration.**
+> `GFS_TOPOLOGY` is a deploy-time decision, not a runtime toggle. Archives are
+> stored differently in each mode: on **`vps`** they live on the local disk
+> (`GFS_DATA_DIR`); on **`vps-s3`** the bucket is the source of truth and the
+> VPS disk only holds *in-transit* staging. Captures uploaded in one mode are
+> **not** automatically carried over to the other, so changing `GFS_TOPOLOGY`
+> (or pointing `GFS_DATA_DIR` at a fresh path) afterwards can make previously
+> uploaded captures disappear from the list even though the data still exists
+> elsewhere. Pick the topology that matches your intended use **before** you
+> start ingesting; if you must switch later, re-ingest the archives explicitly.
+
 Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **When not to use gfs:** [docs/ALTERNATIVES.md](docs/ALTERNATIVES.md).
 
 ## Features
@@ -138,7 +149,7 @@ Environment-only (`GFS_*`). See [docs/SPECIFICATIONS.md §5](docs/SPECIFICATIONS
 
 | Variable | Purpose |
 |----------|---------|
-| `GFS_TOPOLOGY` | **Required.** `vps` or `vps-s3` |
+| `GFS_TOPOLOGY` | **Required.** `vps` or `vps-s3`. Deploy-time choice — **do not switch after ingesting captures** (see [Operator topologies](#operator-topologies)); captures in one mode are not migrated to the other. |
 | `GFS_DATA_DIR` | **Required.** SQLite + home/staging root |
 | `GFS_LISTEN` | Bind address (default `:8080`) |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | First admin when user table is empty; ignored once users exist |

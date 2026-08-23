@@ -276,7 +276,7 @@ Copy patterns from [`groot-trigger`](https://github.com/hrodrig/groot-trigger), 
 | POST | `/v1/archives/{id}/shares` | admin session | Create link; body `{ "expires_at" }` **or** `{ "expires_in" }`; optional `label`, `max_uses`. Response includes full URL **once**. |
 | GET | `/v1/archives/{id}/shares` | admin session | List active and historical links (no raw token) |
 | DELETE | `/v1/archives/{id}/shares/{share_id}` | admin session | Revoke (`share_revoke` audit) |
-| GET | `/s/{token}` | none | Stream archive until expired, revoked, or uses exhausted; `share_download` audit |
+| GET | `/s/{token}` | none | Stream archive until expired, revoked, or uses exhausted; `share_download` audit. Unknown token → `404`. Known-but-dead link (revoked / expired / exhausted) → `410 Gone` with a clear reason page. |
 
 - Token: high entropy (32 random bytes, hex); store SHA-256 hash only (same spirit as api_key). Raw token shown once in the create response.
 - `expires_at` / `expires_in` are mutually exclusive; exactly one is required. `max_uses` defaults to `0` (unlimited); `1` is one-shot.
@@ -302,4 +302,5 @@ Requirements: **SHARE-01..03** in `.planning/REQUIREMENTS.md`. Context: `.planni
 
 *SPEC approved 2026-08-12 from GFS-CONSENSUS.md + groot-trigger supply-chain reference.*  
 *§12 added 2026-08-13 — external share links (Phase 9, admin-only).*  
-*§12 UI note added 2026-08-21 — share-link admin UI (Phase 10, UX-09).*
+*§12 UI note added 2026-08-21 — share-link admin UI (Phase 10, UX-09).*  
+*§12 410 note added 2026-08-22 — dead share links return 410 Gone, not 404.*

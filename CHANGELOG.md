@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `GET /s/{token}` now returns **410 Gone** (with a reason page — revoked /
+  expired / exhausted) for a known share token whose link is no longer
+  servable, instead of a plain 404. Unknown or malformed tokens still return
+  **404** so token-guessing gets no oracle.
+
+### Added
+
+- Share create form preset TTLs (`24 hours` / `7 days`) now show a selected
+  state (`is-active`) and clear when a custom "until" datetime is typed.
+- The one-shot "Copy" button on the share create result now confirms with
+  "Copied!" feedback (with a clipboard fallback for non-secure contexts).
+
 ## [0.5.1] — 2026-08-22
 
 ### Changed
