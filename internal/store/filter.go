@@ -40,6 +40,14 @@ func (s *Store) ListArchivesFiltered(ctx context.Context, f Filter) ([]Archive, 
 	return applyFilter(all, f), nil
 }
 
+// FilterInMemory applies f to an in-memory list, treating empty Storage as
+// "local" (so "storage=local" matches both literal "local" rows and
+// historical "" rows). Exported so the server package can reuse the same
+// predicate as the SQL path instead of keeping a drifting duplicate.
+func FilterInMemory(items []Archive, f Filter) []Archive {
+	return applyFilter(items, f)
+}
+
 func applyFilter(items []Archive, f Filter) []Archive {
 	if f.IsZero() {
 		return items
