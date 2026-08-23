@@ -59,6 +59,26 @@ func TestUnknownPath404AccessLog(t *testing.T) {
 	}
 }
 
+func TestNotFoundEscapesUserPath(t *testing.T) {
+	s := &Server{}
+	rr := httptest.NewRecorder()
+	p := "/<script>alert('xss')</script>"
+	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, p, nil))
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("want 404, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	// The raw, unescaped <script> must never reach the HTML body.
+	if strings.Contains(body, "<script>alert('xss')</script>") {
+		t.Fatalf("unescaped user path rendered in HTML: %s", body)
+	}
+	// The escaped form must be present — angle brackets turned into entities
+	// so the browser never parses it as markup.
+	if !strings.Contains(body, "/&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;") {
+		t.Fatalf("expected escaped path, got: %s", body)
+	}
+}
+
 func TestHealthzSkipsAccessLog(t *testing.T) {
 	var buf bytes.Buffer
 	logging.SetupWriter(&buf, "json", "info")

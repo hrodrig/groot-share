@@ -2,9 +2,9 @@
 package server
 
 import (
+	"html/template"
 	"net/http"
 	"strings"
-	"text/template"
 )
 
 // notFoundTmpl renders the 404 page reusing the page shell (brand, theme,
