@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -159,10 +160,25 @@ func (s *Server) handleShareDownload(w http.ResponseWriter, r *http.Request) {
 		s.handleNotFound(w, r)
 		return
 	}
-	defer func() { _ = rc.Close() }()
-	// Increment use after a successful open (one-shot links consume once).
-	if _, err := s.Store.IncrementShareUse(r.Context(), link.ID); err != nil {
-		slog.Warn("share use increment", "error", err, "share", link.ID)
+	// Increment the use atomically BEFORE serving, draining the cap so a
+	// max_uses=N link cannot oversell under concurrency. Fail closed: if the
+	// atomic bump reports exhausted/revoked/expired, do not stream the bytes.
+	if _, err := s.Store.IncrementShareUse(r.Context(), link.ID, now); err != nil {
+		switch {
+		case errors.Is(err, store.ErrShareExhausted):
+			_ = rc.Close()
+			s.writeShareGone(w, r, "exhausted")
+			return
+		case errors.Is(err, store.ErrShareNotFound):
+			_ = rc.Close()
+			s.handleNotFound(w, r)
+			return
+		default:
+			// DB hiccup mid-request: log but serve (the link already passed
+			// the Active check; failing closed on a transient error would
+			// break legitimate downloads). Matches prior lenient behavior.
+			slog.Warn("share use increment", "error", err, "share", link.ID)
+		}
 	}
 	s.recordShareDownload(r, link, a)
 	serveBlob(w, r, a, rc)

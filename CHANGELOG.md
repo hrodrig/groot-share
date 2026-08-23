@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Share link `max_uses` race (TOCTOU): concurrent downloads on a `max_uses=N`
+  link could all pass the in-memory `Active()` check and oversell the cap.
+  `IncrementShareUse` now performs an atomic conditional `UPDATE` (checks
+  revoke / expiry / use-cap in the `WHERE`), and `GET /s/{token}` fails closed
+  with `410 Gone` when the bump reports the link exhausted
+  ([#38](https://github.com/hrodrig/groot-share/issues/38)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
