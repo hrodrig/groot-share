@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (previously a one-request-per-unique-IP pattern left a permanent empty key)
   ([#43](https://github.com/hrodrig/groot-share/issues/43)).
 
+- `POST /login` no longer mis-parses a form-encoded body when the client also
+  sends `Accept: application/json`. The JSON/form branch now keys off the
+  request `Content-Type` alone, so the body parse and the response shape can't
+  disagree ([#50](https://github.com/hrodrig/groot-share/issues/50)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security

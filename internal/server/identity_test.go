@@ -533,6 +533,27 @@ func TestLoginBadRequestMalformedJSON(t *testing.T) {
 	}
 }
 
+// TestLoginFormBodyWithJSONAccept pins #50: the response shape follows the
+// request's Content-Type, not its Accept header. A form-encoded body must be
+// parsed as a form and answered with an HTML response (302/error page), even
+// when the client also sends Accept: application/json — otherwise an API
+// client that posts a form would be answered in JSON it isn't expecting.
+func TestLoginFormBodyWithJSONAccept(t *testing.T) {
+	s, _ := identServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/login",
+		strings.NewReader("username=root&password=wrong"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("form-body login %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct == "application/json" {
+		t.Fatalf("form body must yield an HTML error, got Content-Type %q", ct)
+	}
+}
+
 func TestCreateUserInvalidRoleJSON(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)

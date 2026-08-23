@@ -228,8 +228,12 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, value string, maxAge in
 }
 
 func parseLogin(r *http.Request) (username, password string, asJSON bool, err error) {
-	asJSON = wantsJSON(r) || strings.Contains(r.Header.Get("Content-Type"), "application/json")
-	if asJSON && strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+	// A JSON Content-Type marks this as an API login: both the body parse and
+	// the response shape (JSON error/body vs HTML redirect) key off the same
+	// single check, so they can't disagree. The browser leaves Content-Type as
+	// application/x-www-form-urlencoded (ParseForm) despite sending the form.
+	asJSON = strings.Contains(r.Header.Get("Content-Type"), "application/json")
+	if asJSON {
 		var body struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
@@ -241,9 +245,9 @@ func parseLogin(r *http.Request) (username, password string, asJSON bool, err er
 		return strings.TrimSpace(body.Username), body.Password, true, nil
 	}
 	if err = r.ParseForm(); err != nil {
-		return "", "", asJSON, err
+		return "", "", false, err
 	}
-	return strings.TrimSpace(r.Form.Get("username")), r.Form.Get("password"), asJSON, nil
+	return strings.TrimSpace(r.Form.Get("username")), r.Form.Get("password"), false, nil
 }
 
 func (s *Server) loginFail(w http.ResponseWriter, r *http.Request, asJSON bool, code int, msg string) {
