@@ -124,8 +124,8 @@ func TestShareRevokeThen404(t *testing.T) {
 	dl := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, dl)
-	if rr.Code != http.StatusNotFound {
-		t.Fatalf("revoked download %d", rr.Code)
+	if rr.Code != http.StatusGone {
+		t.Fatalf("revoked download should 410 Gone, got %d", rr.Code)
 	}
 }
 
@@ -145,8 +145,8 @@ func TestShareOneShotExhausts(t *testing.T) {
 	dl2 := httptest.NewRequest(http.MethodGet, "/s/"+token, nil)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, dl2)
-	if rr.Code != http.StatusNotFound {
-		t.Fatalf("second download should 404, got %d", rr.Code)
+	if rr.Code != http.StatusGone {
+		t.Fatalf("second download should 410 Gone, got %d", rr.Code)
 	}
 }
 

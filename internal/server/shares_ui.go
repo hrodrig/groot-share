@@ -436,15 +436,57 @@ var sharesTmpl = template.Must(template.New("shares").Funcs(pageFuncs).Parse(`<!
   var presets = document.querySelectorAll('button[data-ttl]');
   var expiresIn = document.getElementById('expires-in');
   var untilInput = document.querySelector('input[name="expires_at_local"]');
+  function clearActive() {
+    presets.forEach(function (b) { b.classList.remove('is-active'); });
+  }
   presets.forEach(function (b) {
     b.addEventListener('click', function () {
       expiresIn.value = b.getAttribute('data-ttl');
       untilInput.value = '';
+      clearActive();
+      b.classList.add('is-active');
     });
   });
   untilInput.addEventListener('input', function () {
-    if (untilInput.value !== '') { expiresIn.value = ''; }
+    if (untilInput.value !== '') {
+      expiresIn.value = '';
+      clearActive();
+    }
   });
+  var copyTargets = document.querySelectorAll('button.copy-link[data-copy-url]');
+  copyTargets.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = btn.getAttribute('data-copy-url');
+      var done = function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('is-active');
+        setTimeout(function () {
+          btn.textContent = original;
+          btn.classList.remove('is-active');
+        }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () { fallbackCopy(url, done); });
+      } else {
+        fallbackCopy(url, done);
+      }
+    });
+  });
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      done();
+    } catch (e) {}
+    document.body.removeChild(ta);
+  }
   var dlg = document.getElementById('confirm-dialog');
   var txt = document.getElementById('confirm-text');
   var pending = null;

@@ -90,7 +90,7 @@ func TestSharesVPSS3EndToEnd(t *testing.T) {
 		t.Fatalf("revoke: %d %s", rr.Code, rr.Body.String())
 	}
 
-	// 5. Public download via /s/{token} now 404s.
+	// 5. Public download via /s/{token} now yields 410 Gone (revoked link).
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
 		t.Fatalf("parse url: %v", err)
@@ -98,7 +98,7 @@ func TestSharesVPSS3EndToEnd(t *testing.T) {
 	dlReq := httptest.NewRequest(http.MethodGet, parsed.Path, nil)
 	rr = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, dlReq)
-	if rr.Code != http.StatusNotFound {
+	if rr.Code != http.StatusGone {
 		t.Fatalf("revoked download: %d %s", rr.Code, rr.Body.String())
 	}
 }
