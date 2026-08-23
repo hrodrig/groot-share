@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-08-22
+
+### Security
+
+- **Reflected XSS fixed (GHSA/go/reflected-xss):** the friendly 404 page
+  (`notfound.go`) and the 410 share-gone page (`share.go`) rendered interpolated
+  values with `text/template`, which does not context-escape HTML. A crafted
+  request path could inject markup. Both templates now use `html/template`, so
+  `{{.Path}}` and the like are escaped automatically. A regression test
+  (`TestNotFoundEscapesUserPath`) locks the escaping behavior.
+
 ## [0.6.0] — 2026-08-22
 
 ### Added
@@ -257,7 +268,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/hrodrig/groot-share/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/hrodrig/groot-share/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hrodrig/groot-share/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hrodrig/groot-share/compare/v0.4.0...v0.5.0
