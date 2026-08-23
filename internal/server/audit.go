@@ -21,6 +21,9 @@ func (s *Server) recordAudit(r *http.Request, action string, a store.Archive) {
 		ev.Actor = ac.User.Username
 		ev.ActorID = ac.User.ID
 	}
+	// Fail-open by design: an audit insert failure is logged but never blocks
+	// the primary operation. see SECURITY.md §Audit for the rationale and the
+	// open follow-up for hardening admin actions.
 	if err := s.Store.InsertAudit(r.Context(), ev); err != nil {
 		slog.Error("audit insert", "error", err, "action", action)
 	}
@@ -35,6 +38,7 @@ func (s *Server) recordUserAudit(r *http.Request, action, objectID, objectKey st
 		ev.Actor = ac.User.Username
 		ev.ActorID = ac.User.ID
 	}
+	// Same fail-open contract as recordAudit; see SECURITY.md §Audit.
 	if err := s.Store.InsertAudit(r.Context(), ev); err != nil {
 		slog.Error("audit insert", "error", err, "action", action)
 	}
