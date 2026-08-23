@@ -73,6 +73,13 @@ func (s *Server) handleLoginPOST(w http.ResponseWriter, r *http.Request) {
 		s.loginFail(w, r, asJSON, http.StatusInternalServerError, "internal")
 		return
 	}
+	// Opportunistic purge so the sessions table doesn't grow monotonically
+	// between sweep cycles. Best-effort: a failure here must not fail login.
+	if n, err := s.Store.PurgeExpiredSessions(r.Context(), time.Now()); err != nil {
+		slog.Warn("purge sessions", "error", err)
+	} else if n > 0 {
+		slog.Info("purged expired sessions", "count", n)
+	}
 	s.setSessionCookie(w, raw, int(sessionTTL.Seconds()))
 	if asJSON {
 		w.Header().Set("Content-Type", "application/json")

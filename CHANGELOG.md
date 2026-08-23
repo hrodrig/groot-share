@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request `Content-Type` alone, so the body parse and the response shape can't
   disagree ([#50](https://github.com/hrodrig/groot-share/issues/50)).
 
+- Expired sessions are now also purged opportunistically on each successful
+  login, so the `sessions` table no longer grows monotonically between the
+  hourly sweep ([#51](https://github.com/hrodrig/groot-share/issues/51)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
