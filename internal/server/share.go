@@ -2,11 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/hrodrig/groot-share/internal/auth"
