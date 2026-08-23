@@ -13,6 +13,11 @@ type Limiter struct {
 	events map[string][]time.Time
 	max    int
 	window time.Duration
+
+	// lastSweep paces the inline janitor: the whole map is swept at most once
+	// per window, on an Allow() call, so keys whose events have all expired
+	// are evicted without a background goroutine.
+	lastSweep time.Time
 }
 
 // New returns a limiter of limit events per window per key.
@@ -42,6 +47,8 @@ func (l *Limiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	l.sweepLocked(now)
+
 	prev := l.events[key]
 	kept := prev[:0]
 	for _, t := range prev {
@@ -55,4 +62,29 @@ func (l *Limiter) Allow(key string) bool {
 	}
 	l.events[key] = append(kept, now)
 	return true
+}
+
+// sweepLocked evicts keys whose events have all fallen out of the window. It
+// runs at most once per window (paced by lastSweep) so the map does not grow
+// unbounded when callers rotate through many short-lived keys (e.g. one login
+// attempt per unique IP). Caller must hold l.mu.
+func (l *Limiter) sweepLocked(now time.Time) {
+	if now.Sub(l.lastSweep) < l.window {
+		return
+	}
+	l.lastSweep = now
+	cutoff := now.Add(-l.window)
+	for key, times := range l.events {
+		kept := times[:0]
+		for _, t := range times {
+			if t.After(cutoff) {
+				kept = append(kept, t)
+			}
+		}
+		if len(kept) == 0 {
+			delete(l.events, key)
+			continue
+		}
+		l.events[key] = kept
+	}
 }

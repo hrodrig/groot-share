@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sweep) if the protected set cannot be read
   ([#45](https://github.com/hrodrig/groot-share/issues/45)).
 
+- `ratelimit.Limiter` no longer grows its key map without bound. A paced
+  inline janitor evicts keys whose events have all fallen out of the window
+  (previously a one-request-per-unique-IP pattern left a permanent empty key)
+  ([#43](https://github.com/hrodrig/groot-share/issues/43)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
