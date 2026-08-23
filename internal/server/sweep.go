@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -99,7 +100,17 @@ func (s *Server) SweepOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	protected, err := s.Store.ProtectedArchiveIDs(ctx, now)
+	if err != nil {
+		// Fail closed: if we can't tell what's pinned/shared, don't delete
+		// anything this cycle rather than risk deleting a protected archive.
+		return fmt.Errorf("retention protected set: %w", err)
+	}
 	for _, a := range retain.Pick(items, s.Cfg.KeepLast, s.Cfg.MaxAgeDays, now) {
+		if _, ok := protected[a.ID]; ok {
+			// Pinned or actively shared — retention must not delete it (#45).
+			continue
+		}
 		if _, err := s.removeArchive(ctx, a.ID); err != nil {
 			slog.Warn("retention delete failed", "id", a.ID, "error", err)
 			continue

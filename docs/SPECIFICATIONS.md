@@ -219,6 +219,12 @@ Job (timer in-process or cron): delete objects that violate **either** keep_last
 VPS only: delete files + sqlite rows if any.  
 VPS + S3: delete bucket objects (home). Staging leftovers older than a grace period are swept as incidents (ERROR log including `last_error`), not as the retention set.
 
+**Pinned/shared archives are protected:** an object with at least one `archive_pins`
+row, or at least one active `share_links` row (not revoked, not expired, not
+exhausted), is excluded from retention regardless of its age or position beyond
+`keep_last`. If the protected set cannot be queried the sweep aborts (fail-closed)
+rather than delete without protection.
+
 ## 8. Observability
 
 - slog JSON (or text) lines to stdout — one JSON object per line when `GFS_LOG_FORMAT=json` (no process-name prefix; parseable by jq / Vector / Fluent Bit)

@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matching `archives` row
   ([#39](https://github.com/hrodrig/groot-share/issues/39)).
 
+- Retention no longer deletes pinned or actively-shared archives.
+  `SweepOnce` consults `Store.ProtectedArchiveIDs` (pins + non-revoked/expired/
+  exhausted share links) and skips those objects, and fails closed (aborts the
+  sweep) if the protected set cannot be read
+  ([#45](https://github.com/hrodrig/groot-share/issues/45)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
