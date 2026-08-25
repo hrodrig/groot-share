@@ -12,7 +12,7 @@ func archiveWithKey(key string, createdAt time.Time) Archive {
 func TestApplyFilterEmptyIsNoOp(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	items := []Archive{
-		archiveWithKey("groot-prod-eks-1-20260821.tar.gz", now),
+		archiveWithKey("groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz", now),
 	}
 	got := applyFilter(items, Filter{})
 	if len(got) != 1 {
@@ -23,9 +23,9 @@ func TestApplyFilterEmptyIsNoOp(t *testing.T) {
 func TestApplyFilterByCluster(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	items := []Archive{
-		archiveWithKey("groot-prod-eks-1-20260821.tar.gz", now),
-		archiveWithKey("groot-prod-eks-1-20260822.tar.gz", now),
-		archiveWithKey("groot-stage-20260823.tar.gz", now),
+		archiveWithKey("groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-ghi9012-20260823-190000-stage.tar.gz", now),
 		archiveWithKey("manual-upload.tar.gz", now),
 	}
 	got := applyFilter(items, Filter{Cluster: "prod-eks-1"})
@@ -37,9 +37,9 @@ func TestApplyFilterByCluster(t *testing.T) {
 func TestApplyFilterByQuery(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	items := []Archive{
-		archiveWithKey("groot-prod-eks-1-20260821.tar.gz", now),
-		archiveWithKey("groot-prod-eks-1-20260822.tar.gz", now),
-		archiveWithKey("groot-stage-20260823.tar.gz", now),
+		archiveWithKey("groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-ghi9012-20260823-190000-stage.tar.gz", now),
 	}
 	got := applyFilter(items, Filter{Query: "2026"})
 	if len(got) != 3 {
@@ -55,8 +55,8 @@ func TestApplyFilterBySince(t *testing.T) {
 	old := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	fresh := time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC)
 	items := []Archive{
-		archiveWithKey("groot-prod-eks-1-20260801.tar.gz", old),
-		archiveWithKey("groot-prod-eks-1-20260821.tar.gz", fresh),
+		archiveWithKey("groot-capture-abc1234-20260801-000000-prod-eks-1.tar.gz", old),
+		archiveWithKey("groot-capture-def5678-20260821-000000-prod-eks-1.tar.gz", fresh),
 	}
 	cutoff := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
 	got := applyFilter(items, Filter{Since: cutoff})
@@ -68,9 +68,9 @@ func TestApplyFilterBySince(t *testing.T) {
 func TestApplyFilterBySource(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	items := []Archive{
-		{Key: "groot-prod-eks-1-20260821.tar.gz", Source: "http", Storage: "local", CreatedAt: now},
-		{Key: "groot-prod-eks-1-20260822.tar.gz", Source: "sftp", Storage: "local", CreatedAt: now},
-		{Key: "groot-prod-eks-1-20260823.tar.gz", Source: "s3", Storage: "s3", CreatedAt: now},
+		{Key: "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz", Source: "http", Storage: "local", CreatedAt: now},
+		{Key: "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz", Source: "sftp", Storage: "local", CreatedAt: now},
+		{Key: "groot-capture-ghi9012-20260823-190000-prod-eks-1.tar.gz", Source: "s3", Storage: "s3", CreatedAt: now},
 	}
 	got := applyFilter(items, Filter{Source: "sftp"})
 	if len(got) != 1 {
@@ -96,9 +96,9 @@ func TestApplyFilterCombined(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	old := now.Add(-48 * time.Hour)
 	items := []Archive{
-		archiveWithKey("groot-prod-eks-1-20260821.tar.gz", now), // cluster ok, fresh
-		archiveWithKey("groot-prod-eks-1-20260819.tar.gz", old), // cluster ok, but old
-		archiveWithKey("groot-stage-20260821.tar.gz", now),      // fresh, but wrong cluster
+		archiveWithKey("groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz", now), // cluster ok, fresh
+		archiveWithKey("groot-capture-def5678-20260819-190000-prod-eks-1.tar.gz", old), // cluster ok, but old
+		archiveWithKey("groot-capture-ghi9012-20260821-190000-stage.tar.gz", now),      // fresh, but wrong cluster
 	}
 	got := applyFilter(items, Filter{Cluster: "prod-eks-1", Since: now.Add(-24 * time.Hour)})
 	if len(got) != 1 {
@@ -109,10 +109,10 @@ func TestApplyFilterCombined(t *testing.T) {
 func TestClusterCountsExcludesUnparsedKeys(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	items := []Archive{
-		archiveWithKey("groot-prod-eks-1-20260821.tar.gz", now),
-		archiveWithKey("groot-prod-eks-1-20260822.tar.gz", now),
-		archiveWithKey("groot-prod-eks-1-20260823.tar.gz", now),
-		archiveWithKey("groot-stage-20260821.tar.gz", now),
+		archiveWithKey("groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-ghi9012-20260823-190000-prod-eks-1.tar.gz", now),
+		archiveWithKey("groot-capture-jkl3456-20260821-190000-stage.tar.gz", now),
 		archiveWithKey("manual-upload.tar.gz", now), // no timestamp
 	}
 	counts := ClusterCounts(items)
@@ -131,9 +131,9 @@ func TestClusterCountsExcludesUnparsedKeys(t *testing.T) {
 func TestClusterCountsAlphaTiebreak(t *testing.T) {
 	now := time.Date(2026, 8, 21, 19, 0, 0, 0, time.UTC)
 	items := []Archive{
-		archiveWithKey("groot-zeta-20260821.tar.gz", now),
-		archiveWithKey("groot-alpha-20260821.tar.gz", now),
-		archiveWithKey("groot-mike-20260821.tar.gz", now),
+		archiveWithKey("groot-capture-abc1234-20260821-190000-zeta.tar.gz", now),
+		archiveWithKey("groot-capture-def5678-20260821-190000-alpha.tar.gz", now),
+		archiveWithKey("groot-capture-ghi9012-20260821-190000-mike.tar.gz", now),
 	}
 	counts := ClusterCounts(items)
 	// Same count → alpha asc: alpha, mike, zeta

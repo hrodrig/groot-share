@@ -63,6 +63,40 @@ func TestPingNil(t *testing.T) {
 	}
 }
 
+// TestPoolConnCount pins the max-open-conns fix (#40): a pool of 1 serialized
+// every authenticated request behind a single connection. More than one permit
+// concurrent reads (auth lookups, listings) beside a long write.
+func TestPoolConnCount(t *testing.T) {
+	st, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+	if got := st.db.Stats().MaxOpenConnections; got != 4 {
+		t.Fatalf("MaxOpenConnections=%d want 4", got)
+	}
+}
+
+// TestSecondConnPragmas verifies the per-connection DSN pragmas hold on a
+// pooled connection beyond the seed one that applySQLitePragmas configured.
+func TestSecondConnPragmas(t *testing.T) {
+	st, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+	// Open a second raw connection to simulate a concurrent pool member.
+	conn, err := st.db.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	var timeout string
+	if err := conn.QueryRowContext(context.Background(), `PRAGMA busy_timeout`).Scan(&timeout); err != nil || timeout != "5000" {
+		t.Fatalf("busy_timeout on second conn = %q %v", timeout, err)
+	}
+}
+
 func TestOpenNotWritable(t *testing.T) {
 	dir := t.TempDir()
 	blocked := filepath.Join(dir, "blocked")

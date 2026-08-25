@@ -127,6 +127,7 @@ func (s *Server) copyOrTransit(ctx context.Context, st store.Staged, s3key, sour
 		slog.Warn("archive meta index", "error", err, "id", a.ID)
 	}
 	s.listCache.invalidate()
+	s.completenessCache.invalidate()
 	return a, nil
 }
 

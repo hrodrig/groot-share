@@ -76,3 +76,58 @@ func TestPaginateSlice(t *testing.T) {
 		t.Fatalf("%+v", pv)
 	}
 }
+
+func pageWindowNums(current, total int) (kinds []string, nums []int, gaps int) {
+	for _, r := range pageWindow(current, total) {
+		kinds = append(kinds, r.Kind)
+		if r.Kind == "ellipsis" {
+			gaps++
+			continue
+		}
+		nums = append(nums, r.Page)
+	}
+	return kinds, nums, gaps
+}
+
+func TestPageWindow(t *testing.T) {
+	cases := []struct {
+		name      string
+		current   int
+		total     int
+		wantFirst int
+		wantLast  int
+		wantPages []int
+		wantGaps  int
+	}{
+		{name: "short range lists every page", current: 3, total: 5, wantFirst: 1, wantLast: 5, wantPages: []int{1, 2, 3, 4, 5}, wantGaps: 0},
+		{name: "large range shows window and both gaps", current: 20, total: 543, wantFirst: 1, wantLast: 543, wantPages: []int{1, 19, 20, 21, 543}, wantGaps: 2},
+		{name: "on first page no left gap", current: 1, total: 543, wantFirst: 1, wantLast: 543, wantGaps: 1},
+		{name: "on last page no right gap", current: 543, total: 543, wantFirst: 1, wantLast: 543, wantGaps: 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			kinds, nums, gaps := pageWindowNums(tc.current, tc.total)
+			if kinds[0] != "page" || nums[0] != tc.wantFirst {
+				t.Fatalf("first slot = %q/%d, want page %d", kinds[0], nums[0], tc.wantFirst)
+			}
+			if kinds[len(kinds)-1] != "page" || nums[len(nums)-1] != tc.wantLast {
+				t.Fatalf("last slot = %q/%d, want page %d", kinds[len(kinds)-1], nums[len(nums)-1], tc.wantLast)
+			}
+			if gaps != tc.wantGaps {
+				t.Fatalf("gaps = %d, want %d", gaps, tc.wantGaps)
+			}
+			if tc.wantPages != nil {
+				have := map[int]bool{}
+				for _, p := range nums {
+					have[p] = true
+				}
+				for _, p := range tc.wantPages {
+					if !have[p] {
+						t.Fatalf("page %d missing from window %v", p, nums)
+					}
+				}
+			}
+		})
+	}
+}

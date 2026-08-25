@@ -30,3 +30,28 @@ func TestAllowWindow(t *testing.T) {
 		t.Fatal("other key ok")
 	}
 }
+
+// TestSweepEvictsExpiredKeys pins #43: keys whose events have all aged out of
+// the window must be removed so the map does not grow unbounded with
+// short-lived keys (one request per unique IP).
+func TestSweepEvictsExpiredKeys(t *testing.T) {
+	l := New(1, 10*time.Millisecond)
+
+	// Populate several distinct keys.
+	for i := 0; i < 10; i++ {
+		l.Allow("key-" + string(rune('a'+i)))
+	}
+	if got := len(l.events); got != 10 {
+		t.Fatalf("want 10 keys after populating, got %d", got)
+	}
+
+	// Wait past the window, then trigger a paced sweep via a new Allow.
+	time.Sleep(20 * time.Millisecond)
+	l.Allow("fresh")
+	if got := len(l.events); got != 1 {
+		t.Fatalf("want only the fresh key to remain after sweep, got %d", got)
+	}
+	if _, ok := l.events["fresh"]; !ok {
+		t.Fatal("fresh key must survive the sweep")
+	}
+}

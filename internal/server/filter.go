@@ -127,49 +127,8 @@ func (b FilterURLBuilder) Without(key string) template.URL {
 	return b.With(key, "")
 }
 
-// applyFilterInMemory runs the filter on an in-memory list, treating
-// empty Storage as "local" (so the filter "storage=local" matches both
-// the literal "local" rows and the historical "" rows). This mirrors
-// the storage normalization handleHome does before counting.
+// applyFilterInMemory delegates to store.FilterInMemory so the in-memory
+// predicate stays identical to the SQL path (no duplicate copy to drift).
 func applyFilterInMemory(items []store.Archive, f store.Filter) []store.Archive {
-	if f.IsZero() {
-		return items
-	}
-	out := make([]store.Archive, 0, len(items))
-	q := strings.ToLower(strings.TrimSpace(f.Query))
-	for _, a := range items {
-		if !serverArchivePasses(a, f, q) {
-			continue
-		}
-		out = append(out, a)
-	}
-	return out
-}
-
-func serverArchivePasses(a store.Archive, f store.Filter, q string) bool {
-	if f.Source != "" && a.Source != f.Source {
-		return false
-	}
-	if f.Storage != "" {
-		storage := a.Storage
-		if storage == "" {
-			storage = "local"
-		}
-		if storage != f.Storage {
-			return false
-		}
-	}
-	if !f.Since.IsZero() && a.CreatedAt.Before(f.Since) {
-		return false
-	}
-	if q != "" && !strings.Contains(strings.ToLower(a.Key), q) {
-		return false
-	}
-	if f.Cluster != "" {
-		slug, ok := store.ParseClusterSlug(a.Key)
-		if !ok || slug != f.Cluster {
-			return false
-		}
-	}
-	return true
+	return store.FilterInMemory(items, f)
 }

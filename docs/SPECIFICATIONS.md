@@ -109,9 +109,9 @@ admin only); per-user pin strip (only when the user has at least one pin);
 facet bar (cluster chips with counts, search box, time-window chips, hidden
 when the inventory is empty); table of archives. Cluster slugs come from
 `store.ParseClusterSlug` which is deliberately conservative: anything that
-does not match the
-`<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape
-returns `""` and is excluded from the cluster count rather than guessed.
+does not match the `<prefix>-<short>[-since-<duration>]-<message?>-<YYYYMMDD>-<HHMMSS>-<cluster>.tar.gz`
+shape (the cluster is everything AFTER the timestamp anchor) returns `""` and
+is excluded from the cluster count rather than guessed.
 
 Facet query params: `cluster` (exact slug, empty = no filter), `q`
 (case-insensitive substring of the archive key, empty = no filter), `window`
@@ -150,7 +150,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_TOPOLOGY` | `vps` \| `vps-s3` (`s3` alone is invalid — refuse start). Deploy-time choice — **do not switch after ingesting captures** (see §2); captures in one mode are not migrated to the other |
 | `GFS_S3_*` | bucket, region, endpoint, prefix (`captures/`), path-style |
 | AWS creds | env `AWS_*` on the VPS only |
-| `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
+| `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90. `0` disables the corresponding limit (`GFS_KEEP_LAST=0` keeps everything by rank; `GFS_MAX_AGE_DAYS=0` keeps everything regardless of age). Safety ceilings on positive values: keep_last clamps to **10000**, max_age_days clamps to **768** |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | first admin only; required when the user table is empty |
 | `GFS_BOOTSTRAP_ADMIN_NAME` | first admin display name (default `Administrator`) |
 | `GFS_MAX_UPLOAD_BYTES` | default 32GiB; stream cap (`http.MaxBytesReader`) |
@@ -160,6 +160,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_FOOTER` | Authenticated footer. Default `gfs vX · groot · groot-share`. Plain text replaces it. `-` hides |
 | `GFS_SFTP_INBOX` | Absolute directory for groot `upload.sftp` drops. Empty/unset → watcher off. gfs does **not** run an SFTP server |
 | `GFS_SFTP_POLL` | Inbox poll interval (default `30s`) |
+| `GFS_CSP` | Override the `Content-Security-Policy` header emitted on HTML pages. Default is a built-in policy (`'self'` + `'unsafe-inline'` for script/style, required by the inline front end). `-` disables the CSP header. |
 
 Fail closed: `vps-s3` without bucket/creds → exit. Empty data dir permissions → exit. Empty user table without bootstrap env → exit. `gfs.db` is `chmod 0600` on open. The SQLite connection enables `foreign_keys`, WAL, and `busy_timeout`.
 
@@ -218,6 +219,12 @@ Display **Name** is required (max 80). The app bar shows it truncated at 30 rune
 Job (timer in-process or cron): delete objects that violate **either** keep_last **or** max_age_days.  
 VPS only: delete files + sqlite rows if any.  
 VPS + S3: delete bucket objects (home). Staging leftovers older than a grace period are swept as incidents (ERROR log including `last_error`), not as the retention set.
+
+**Pinned/shared archives are protected:** an object with at least one `archive_pins`
+row, or at least one active `share_links` row (not revoked, not expired, not
+exhausted), is excluded from retention regardless of its age or position beyond
+`keep_last`. If the protected set cannot be queried the sweep aborts (fail-closed)
+rather than delete without protection.
 
 ## 8. Observability
 

@@ -10,8 +10,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrodrig/groot-share/internal/auth"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 func loginCookie(t *testing.T, s *Server) *http.Cookie {
@@ -340,3 +342,46 @@ func TestUploadRejectsNonGzipBody(t *testing.T) {
 		}
 	}
 }
+
+// TestServeBlobKnownSize pins #48: a known size sets Content-Length so the
+// client can show progress; an unknown size (multipart S3 stream) falls back
+// to chunked and must not set Content-Length.
+func TestServeBlobKnownSize(t *testing.T) {
+	body := []byte("hello-gzip-bytes")
+	a := store.Archive{Key: "run.tar.gz", Size: int64(len(body)), CreatedAt: time.Now().UTC()}
+	rr := httptest.NewRecorder()
+	serveBlob(rr, httptest.NewRequest(http.MethodGet, "/x", nil), a, nopCloser{Reader: bytes.NewReader(body)})
+	if got := rr.Header().Get("Content-Length"); got != "16" {
+		t.Fatalf("Content-Length = %q, want size %d", got, len(body))
+	}
+	if got := rr.Header().Get("Content-Type"); got != "application/gzip" {
+		t.Fatalf("Content-Type = %q", got)
+	}
+	if rr.Body.String() != string(body) {
+		t.Fatalf("body mismatch")
+	}
+	_ = rr.Result().Body.Close()
+}
+
+// TestServeBlobUnknownSize pins #48 (chunked fallback): Size 0 means the
+// length is unknown (S3 multipart), so Content-Length must be omitted.
+func TestServeBlobUnknownSize(t *testing.T) {
+	body := []byte("streamed-without-known-length")
+	a := store.Archive{Key: "run.tar.gz", Size: 0, CreatedAt: time.Now().UTC()}
+	rr := httptest.NewRecorder()
+	serveBlob(rr, httptest.NewRequest(http.MethodGet, "/x", nil), a, nopCloser{Reader: bytes.NewReader(body)})
+	if got := rr.Header().Get("Content-Length"); got != "" {
+		t.Fatalf("Content-Length = %q, want empty (chunked)", got)
+	}
+	if rr.Body.String() != string(body) {
+		t.Fatalf("body mismatch")
+	}
+	_ = rr.Result().Body.Close()
+}
+
+// nopCloser adapts an io.Reader to io.ReadCloser for tests.
+type nopCloser struct {
+	io.Reader
+}
+
+func (nopCloser) Close() error { return nil }

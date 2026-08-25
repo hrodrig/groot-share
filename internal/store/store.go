@@ -24,12 +24,20 @@ func Open(dataDir string) (*Store, error) {
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
 		return nil, fmt.Errorf("mkdir data dir: %w", err)
 	}
-	dsn := filepath.Join(dataDir, "gfs.db")
+	dbPath := filepath.Join(dataDir, "gfs.db")
+	// DSN pragmas apply per-connection, so every pooled connection gets them
+	// (busy_timeout avoids SQLITE_BUSY under concurrency; WAL is per-connection
+	// in modernc). foreign_keys stays in applySQLitePragmas on the seed
+	// connection too, but the DSN form is what keeps concurrent writers honest.
+	dsn := "file:" + dbPath + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
-	db.SetMaxOpenConns(1)
+	// SQLite writes are serialized in-process anyway; a small pool lets reads
+	// (auth lookups, listings) proceed without queuing behind a long write.
+	// WAL + busy_timeout make concurrent access safe. See issue #40.
+	db.SetMaxOpenConns(4)
 	db.SetConnMaxLifetime(time.Hour)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -41,7 +49,7 @@ func Open(dataDir string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	if err := os.Chmod(dsn, 0o600); err != nil {
+	if err := os.Chmod(dbPath, 0o600); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("chmod db: %w", err)
 	}

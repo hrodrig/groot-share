@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-25
+
+### Added
+
+- Retention now treats `0` as "disable that limit": `GFS_KEEP_LAST=0`
+  keeps everything by rank (no count cap), and `GFS_MAX_AGE_DAYS=0` keeps
+  everything regardless of age. Positive values are safety-capped:
+  `GFS_KEEP_LAST` clamps to a maximum of 10000, and `GFS_MAX_AGE_DAYS` clamps
+  to a maximum of 768. `retain.Pick` treats a negative value as the legacy
+  default (20 / 90). The 10000 / 768 ceilings are reasonable defaults rather
+  than a hard product requirement; an operator who hits one should open an
+  issue to make it configurable.
+
+- The Captures/Activity pagers now support **First**/**Last** jump buttons, a
+  numeric page window (current page highlighted, ellipsis across large gaps),
+  and a **Go-to-page** input. With hundreds of pages you can now jump straight
+  to a page or to either edge instead of clicking Next page by page
+  ([#57](https://github.com/hrodrig/groot-share/issues/57)).
+
+### Changed
+
+- **Capture filename parsing is now positional.** `store.ParseClusterSlug`
+  anchors on the terminal `-YYYYMMDD-HHMMSS` timestamp and treats everything
+  after it as the cluster slug, so a cluster name can contain arbitrary
+  characters (DO-style hosts, UUIDs, dots, dashes, even `develop`) without
+  ambiguity. Old archives whose `--message` came *after* the timestamp follow
+  the legacy content-based parse only where unambiguous. Pair with **groot
+  `1.1.3`**, which writes the new `<…>-<timestamp>-<cluster>` order.
+
+### Fixed
+
+- Share link `max_uses` race (TOCTOU): concurrent downloads on a `max_uses=N`
+  link could all pass the in-memory `Active()` check and oversell the cap.
+  `IncrementShareUse` now performs an atomic conditional `UPDATE` (checks
+  revoke / expiry / use-cap in the `WHERE`), and `GET /s/{token}` fails closed
+  with `410 Gone` when the bump reports the link exhausted
+  ([#38](https://github.com/hrodrig/groot-share/issues/38)).
+
+- Deleting an archive no longer leaves orphaned `share_links` / `archive_pins`
+  rows behind. `DeleteArchive` now drops dependents in the same transaction as
+  the archive row, and the vps-s3 delete path (`removeBucket`) cleans them too
+  via the new `Store.DeleteArchiveDependents`. Cleanup is explicit rather than
+  foreign-key driven because a vps-s3 object key may be shared/pinned without a
+  matching `archives` row
+  ([#39](https://github.com/hrodrig/groot-share/issues/39)).
+
+- Retention no longer deletes pinned or actively-shared archives.
+  `SweepOnce` consults `Store.ProtectedArchiveIDs` (pins + non-revoked/expired/
+  exhausted share links) and skips those objects, and fails closed (aborts the
+  sweep) if the protected set cannot be read
+  ([#45](https://github.com/hrodrig/groot-share/issues/45)).
+
+- `ratelimit.Limiter` no longer grows its key map without bound. A paced
+  inline janitor evicts keys whose events have all fallen out of the window
+  (previously a one-request-per-unique-IP pattern left a permanent empty key)
+  ([#43](https://github.com/hrodrig/groot-share/issues/43)).
+
+- `POST /login` no longer mis-parses a form-encoded body when the client also
+  sends `Accept: application/json`. The JSON/form branch now keys off the
+  request `Content-Type` alone, so the body parse and the response shape can't
+  disagree ([#50](https://github.com/hrodrig/groot-share/issues/50)).
+
+- Expired sessions are now also purged opportunistically on each successful
+  login, so the `sessions` table no longer grows monotonically between the
+  hourly sweep ([#51](https://github.com/hrodrig/groot-share/issues/51)).
+
+- Completeness badges are memoized per local archive for one minute, so the
+  Captures page no longer re-opens and re-scans each `.tar.gz` manifest on
+  every render ([#41](https://github.com/hrodrig/groot-share/issues/41)).
+
+- The SQLite connection pool is raised from 1 to 4 connections so concurrent
+  reads (auth lookups, listings) no longer queue behind a single connection.
+  `busy_timeout` and `journal_mode=WAL` are now set in the DSN and applied to
+  every pooled connection, keeping concurrent access safe
+  ([#40](https://github.com/hrodrig/groot-share/issues/40)).
+
+- All responses now carry defensive security headers — `nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a
+  `Permissions-Policy`, `Strict-Transport-Security` (TLS only), and a
+  `Content-Security-Policy` (overridable via `GFS_CSP`, or disabled with
+  `GFS_CSP=-`) ([#44](https://github.com/hrodrig/groot-share/issues/44)).
+
 ## [0.6.1] — 2026-08-22
 
 ### Security
@@ -95,9 +177,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   endpoints (also reachable via the unpin form-alias); the strip renders on
   Captures only when the user has at least one pin
 - Filename cluster parser (`store.ParseClusterSlug`): best-effort extract of
-  the cluster slug from a groot basename (`<prefix>-<cluster>-<YYYYMMDD>...tar.gz`,
-  with optional `-since-` marker stripped). Conservative: returns `""` rather
-  than guessing when the name does not look like a timestamped capture
+  the cluster slug from a groot basename (`<prefix>-<short>[-since-<duration>]-<message?>-<YYYYMMDD>-<HHMMSS>-<cluster>.tar.gz`,
+  the cluster being everything after the timestamp anchor). Conservative:
+  returns `""` rather than guessing when the name does not look like a
+  timestamped capture
 - Captures facet bar (Phase 10 / UX-02): cluster chips with counts (always
   reflect the full inventory, not the post-filter one), search box
   (case-insensitive substring of the archive key), time-window chips
@@ -268,7 +351,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/hrodrig/groot-share/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/hrodrig/groot-share/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/hrodrig/groot-share/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hrodrig/groot-share/compare/v0.5.0...v0.5.1

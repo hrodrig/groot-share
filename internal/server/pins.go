@@ -60,7 +60,7 @@ func (s *Server) handlePin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method_not_allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	a, err := s.resolveArchiveForPin(r, id)
+	a, err := s.resolveArchive(r.Context(), id)
 	if err != nil {
 		if err == store.ErrNotFound {
 			if wantsJSON(r) {
@@ -86,18 +86,6 @@ func (s *Server) handlePin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-// resolveArchiveForPin returns the archive metadata the pin row should
-// snapshot. On VPS + S3 the id may be a bucket key, so we look it up via the
-// same path the download uses. We do NOT silently accept unknown ids — the
-// row has to point at a real archive so the UI link is clickable.
-func (s *Server) resolveArchiveForPin(r *http.Request, id string) (store.Archive, error) {
-	_, a, err := s.openDownload(r.Context(), id)
-	if err != nil {
-		return store.Archive{}, err
-	}
-	return a, nil
 }
 
 // pinRoutes registers the pin endpoints. We use PermArchivesRead (granted to

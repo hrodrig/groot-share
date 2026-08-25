@@ -31,6 +31,27 @@ link it returns and ignores `X-Forwarded-Proto` / `Host` from the request.
 This is the fail-closed path; the env-var value must be an absolute
 `http(s)://` URL with a host, or gfs refuses to start.
 
+## Client IP (audit / access log)
+
+gfs records the value of `r.RemoteAddr` only — it does **not** read
+`X-Forwarded-For` or any other proxy header. On the standard deployment the
+reverse proxy terminates the client connection, so the IP written to the audit
+log and the access log is the **proxy's** IP, not the end client's. If you need
+the true client IP, configure your proxy to pass it and gate on that being a
+trusted hop; gfs itself performs no such parsing today. (There is no way to
+make `RemoteAddr` a client IP without either terminating TLS at gfs or teaching
+gfs to trust a proxy hop.)
+
+## Audit (fail-open)
+
+`InsertAudit` failures are logged at error level and then ignored — the primary
+operation (upload, download, delete, or an admin user/API-key mutation) always
+proceeds. This is a deliberate **fail-open** trade-off: an audit-log outage
+must not take down the file service it is meant to watch. It means a
+persistent `audit` table failure could, in principle, let a write go
+unrecorded. Hardening admin actions so their audit record is required before
+the action completes is tracked as a follow-up.
+
 ## Supported versions
 
 | Version | Supported |

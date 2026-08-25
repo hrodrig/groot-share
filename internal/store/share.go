@@ -39,6 +39,18 @@ func (l ShareLink) Active(now time.Time) bool {
 
 var errShareNotFound = errors.New("share link not found")
 
+// ErrShareNotFound is the exported form of errShareNotFound for handlers.
+var ErrShareNotFound = errShareNotFound
+
+// ErrShareExhausted reports that the link's use_count already met max_uses
+// (or it was since revoked/expired) at the moment of the atomic increment.
+// Callers fail closed; see IncrementShareUse.
+var ErrShareExhausted = errors.New("share link exhausted")
+
+// errShareExhausted is the internal alias kept for store-internal error
+// checks; it is the same error value as ErrShareExhausted.
+var errShareExhausted = ErrShareExhausted
+
 func shareTime(s string) time.Time {
 	if s == "" {
 		return time.Time{}
@@ -181,12 +193,19 @@ func (s *Store) RevokeShareLink(ctx context.Context, shareID int64, now time.Tim
 	return nil
 }
 
-// IncrementShareUse bumps use_count atomically and returns the new count plus
-// whether the link is still usable (active, not exhausted). Callers check
-// Active() before incrementing to avoid race on the last use.
-func (s *Store) IncrementShareUse(ctx context.Context, id int64) (int, error) {
+// IncrementShareUse atomically bumps use_count, failing closed when the link
+// is already exhausted, revoked, or expired. The revoke/expiry/use-cap checks
+// live in the UPDATE's WHERE so N concurrent requests on a max_uses=N link
+// cannot all pass a stale in-memory Active() check: only the first N succeed,
+// the rest get errShareExhausted.
+func (s *Store) IncrementShareUse(ctx context.Context, id int64, now time.Time) (int, error) {
 	res, err := s.db.ExecContext(ctx, `
-		UPDATE share_links SET use_count = use_count + 1 WHERE id = ?`, id)
+		UPDATE share_links
+		   SET use_count = use_count + 1
+		 WHERE id = ?
+		   AND revoked_at = ''
+		   AND (expires_at = '' OR expires_at > ?)
+		   AND (max_uses = 0 OR use_count < max_uses)`, id, formatShareTime(now))
 	if err != nil {
 		return 0, fmt.Errorf("increment share use: %w", err)
 	}
@@ -195,7 +214,14 @@ func (s *Store) IncrementShareUse(ctx context.Context, id int64) (int, error) {
 		return 0, fmt.Errorf("increment share use rows: %w", err)
 	}
 	if n == 0 {
-		return 0, errShareNotFound
+		// Distinguish "unknown id" (404) from "known but no longer servable"
+		// (exhausted / revoked / expired) so handlers can fail closed honestly.
+		if _, lookErr := s.ShareByID(ctx, id); errors.Is(lookErr, errShareNotFound) {
+			return 0, errShareNotFound
+		} else if lookErr != nil {
+			return 0, lookErr
+		}
+		return 0, errShareExhausted
 	}
 	var count int
 	if err := s.db.QueryRowContext(ctx, `SELECT use_count FROM share_links WHERE id = ?`, id).Scan(&count); err != nil {

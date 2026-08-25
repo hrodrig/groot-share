@@ -26,6 +26,9 @@ type Server struct {
 	LoginLimit *ratelimit.Limiter
 	// listCache memoizes vps-s3 listings (zero-value = cold, safe).
 	listCache listCache
+	// completenessCache memoizes per-archive completeness badges (zero-value =
+	// cold, safe). Only local (vps) archives consult it.
+	completenessCache completenessCache
 }
 
 // Handler returns the root mux with middleware.
@@ -90,7 +93,7 @@ func (s *Server) Handler() http.Handler {
 	// (browser) or return a structured JSON error (API). Specific
 	// patterns registered above always win on priority.
 	mux.HandleFunc("/", s.handleNotFound)
-	return s.accessLog(mux)
+	return s.securityHeaders(s.accessLog(mux))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {

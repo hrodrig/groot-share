@@ -36,6 +36,56 @@ func TestDeleteArchiveAPI(t *testing.T) {
 	}
 }
 
+func TestRetentionSkipsPinnedArchive(t *testing.T) {
+	// #45: an archive with a pin must survive retention regardless of its age
+	// or position relative to keep_last.
+	s, _ := identServer(t)
+	s.Cfg.KeepLast = 1
+	s.Cfg.MaxAgeDays = 0
+	ck := loginCookie(t, s)
+	pinned := postArchive(t, s, ck, "a.tar.gz", "oldest")
+	postArchive(t, s, ck, "b.tar.gz", "two")
+	postArchive(t, s, ck, "c.tar.gz", "three")
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/pin/archives/"+pinned.ID, nil)
+	req.Header.Set("Accept", "application/json")
+	req.AddCookie(ck)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("pin %d %s", rr.Code, rr.Body.String())
+	}
+
+	if err := s.SweepOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	list := authedGET(t, s, ck, "/v1/archives")
+	if !strings.Contains(list.Body.String(), pinned.ID) {
+		t.Fatalf("pinned archive must be retained: %s", list.Body.String())
+	}
+}
+
+func TestRetentionSkipsSharedArchive(t *testing.T) {
+	// #45: an archive with an active share link must survive retention.
+	s, _ := identServer(t)
+	s.Cfg.KeepLast = 1
+	s.Cfg.MaxAgeDays = 0
+	ck := loginCookie(t, s)
+	shared := postArchive(t, s, ck, "a.tar.gz", "oldest")
+	postArchive(t, s, ck, "b.tar.gz", "two")
+	postArchive(t, s, ck, "c.tar.gz", "three")
+
+	createShare(t, s, ck, shared.ID, `{"expires_in":"24h"}`)
+
+	if err := s.SweepOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	list := authedGET(t, s, ck, "/v1/archives")
+	if !strings.Contains(list.Body.String(), shared.ID) {
+		t.Fatalf("shared archive must be retained: %s", list.Body.String())
+	}
+}
+
 func TestRetentionKeepLast(t *testing.T) {
 	s, _ := identServer(t)
 	s.Cfg.KeepLast = 2

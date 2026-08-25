@@ -533,6 +533,54 @@ func TestLoginBadRequestMalformedJSON(t *testing.T) {
 	}
 }
 
+// TestLoginFormBodyWithJSONAccept pins #50: the response shape follows the
+// request's Content-Type, not its Accept header. A form-encoded body must be
+// parsed as a form and answered with an HTML response (302/error page), even
+// when the client also sends Accept: application/json — otherwise an API
+// client that posts a form would be answered in JSON it isn't expecting.
+func TestLoginFormBodyWithJSONAccept(t *testing.T) {
+	s, _ := identServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/login",
+		strings.NewReader("username=root&password=wrong"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("form-body login %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct == "application/json" {
+		t.Fatalf("form body must yield an HTML error, got Content-Type %q", ct)
+	}
+}
+
+func TestLoginPurgesExpiredSessions(t *testing.T) {
+	s, st := identServer(t)
+	ctx := context.Background()
+	// Seed an already-expired session.
+	if err := st.CreateSession(ctx, 1, auth.HashSecret("expired-token"), time.Now().Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	// A successful login must opportunistically purge it.
+	body := strings.NewReader(`{"username":"root","password":"correct-horse"}`)
+	req := httptest.NewRequest(http.MethodPost, "/login", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("login %d %s", rr.Code, rr.Body.String())
+	}
+	// If login purged, no expired rows remain.
+	n, err := st.PurgeExpiredSessions(ctx, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("expected login to purge the expired session, %d still present", n)
+	}
+}
+
 func TestCreateUserInvalidRoleJSON(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
