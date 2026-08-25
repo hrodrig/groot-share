@@ -159,9 +159,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   endpoints (also reachable via the unpin form-alias); the strip renders on
   Captures only when the user has at least one pin
 - Filename cluster parser (`store.ParseClusterSlug`): best-effort extract of
-  the cluster slug from a groot basename (`<prefix>-<cluster>-<YYYYMMDD>...tar.gz`,
-  with optional `-since-` marker stripped). Conservative: returns `""` rather
-  than guessing when the name does not look like a timestamped capture
+  the cluster slug from a groot basename (`<prefix>-<short>[-since-<duration>]-<message?>-<YYYYMMDD>-<HHMMSS>-<cluster>.tar.gz`,
+  the cluster being everything after the timestamp anchor). Conservative:
+  returns `""` rather than guessing when the name does not look like a
+  timestamped capture
 - Captures facet bar (Phase 10 / UX-02): cluster chips with counts (always
   reflect the full inventory, not the post-filter one), search box
   (case-insensitive substring of the archive key), time-window chips

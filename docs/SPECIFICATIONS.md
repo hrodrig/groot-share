@@ -109,9 +109,9 @@ admin only); per-user pin strip (only when the user has at least one pin);
 facet bar (cluster chips with counts, search box, time-window chips, hidden
 when the inventory is empty); table of archives. Cluster slugs come from
 `store.ParseClusterSlug` which is deliberately conservative: anything that
-does not match the
-`<prefix>-<cluster>-<YYYYMMDD>[<sep>?<HHMMSS>][-since-<slug>].tar.gz` shape
-returns `""` and is excluded from the cluster count rather than guessed.
+does not match the `<prefix>-<short>[-since-<duration>]-<message?>-<YYYYMMDD>-<HHMMSS>-<cluster>.tar.gz`
+shape (the cluster is everything AFTER the timestamp anchor) returns `""` and
+is excluded from the cluster count rather than guessed.
 
 Facet query params: `cluster` (exact slug, empty = no filter), `q`
 (case-insensitive substring of the archive key, empty = no filter), `window`

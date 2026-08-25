@@ -69,9 +69,9 @@ func TestHomeSummaryStripWithItems(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
 	// Three archives: two from one cluster, one from another.
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
-	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-ghi9012-20260823-190000-stage.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(admin)
@@ -105,7 +105,7 @@ func TestHomeSummaryStripVPSS3Topology(t *testing.T) {
 	s.Cfg.Topology = "vps-s3"
 	s.Blobs = blob.NewMemory()
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-stage-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-jkl3456-20260821-190000-stage.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(admin)
@@ -195,8 +195,8 @@ func TestHomePinStripVisibleWhenPinned(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
 	// Upload two archives, pin both.
-	rr1 := dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
-	rr2 := dashboardArchive(t, s, admin, "groot-stage-20260822.tar.gz")
+	rr1 := dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
+	rr2 := dashboardArchive(t, s, admin, "groot-capture-mno7890-20260822-190000-stage.tar.gz")
 	pinFromResp(t, s, admin, decodeArchiveID(t, rr1))
 	pinFromResp(t, s, admin, decodeArchiveID(t, rr2))
 
@@ -208,10 +208,10 @@ func TestHomePinStripVisibleWhenPinned(t *testing.T) {
 	if !strings.Contains(body, `class="card pin-strip"`) {
 		t.Fatalf("pin strip missing: %s", body)
 	}
-	if !strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+	if !strings.Contains(body, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz") {
 		t.Fatalf("first pinned key missing: %s", body)
 	}
-	if !strings.Contains(body, "groot-stage-20260822.tar.gz") {
+	if !strings.Contains(body, "groot-capture-mno7890-20260822-190000-stage.tar.gz") {
 		t.Fatalf("second pinned key missing: %s", body)
 	}
 	// Unpin form posts to the right path.
@@ -223,7 +223,7 @@ func TestHomePinStripVisibleWhenPinned(t *testing.T) {
 func TestHomePinStripUnpinFormRedirects(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	rr1 := dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	rr1 := dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
 	id := decodeArchiveID(t, rr1)
 	pinFromResp(t, s, admin, id)
 
@@ -310,7 +310,7 @@ func TestHomeEmptyStateNoArchives(t *testing.T) {
 func TestHomeEmptyStateNoMatchWithFilters(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/?cluster=does-not-exist", nil)
 	req.AddCookie(admin)
@@ -331,7 +331,7 @@ func TestHomeEmptyStateNoMatchWithFilters(t *testing.T) {
 func TestHomeClearFiltersLinkGoesToRoot(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/?cluster=foo", nil)
 	req.AddCookie(admin)
@@ -365,9 +365,9 @@ func TestHomeFilterBarHiddenWhenNoArchives(t *testing.T) {
 func TestHomeFilterBarVisibleWithArchives(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
-	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-ghi9012-20260823-190000-stage.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(admin)
@@ -393,22 +393,22 @@ func TestHomeFilterBarVisibleWithArchives(t *testing.T) {
 func TestHomeClusterFilterAppliesToList(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
-	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-ghi9012-20260823-190000-stage.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/?cluster=prod-eks-1", nil)
 	req.AddCookie(admin)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
 	body := rr.Body.String()
-	if !strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+	if !strings.Contains(body, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz") {
 		t.Fatalf("prod 0821 missing: %s", body)
 	}
-	if !strings.Contains(body, "groot-prod-eks-1-20260822.tar.gz") {
+	if !strings.Contains(body, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz") {
 		t.Fatalf("prod 0822 missing: %s", body)
 	}
-	if strings.Contains(body, "groot-stage-20260823.tar.gz") {
+	if strings.Contains(body, "groot-capture-ghi9012-20260823-190000-stage.tar.gz") {
 		t.Fatalf("stage must be filtered out: %s", body)
 	}
 }
@@ -416,19 +416,19 @@ func TestHomeClusterFilterAppliesToList(t *testing.T) {
 func TestHomeQueryFilterAppliesToList(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
-	dashboardArchive(t, s, admin, "groot-stage-20260823.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-ghi9012-20260823-190000-stage.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/?q=20260822", nil)
 	req.AddCookie(admin)
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, req)
 	body := rr.Body.String()
-	if !strings.Contains(body, "groot-prod-eks-1-20260822.tar.gz") {
+	if !strings.Contains(body, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz") {
 		t.Fatalf("q=20260822 should match 0822: %s", body)
 	}
-	if strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+	if strings.Contains(body, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz") {
 		t.Fatalf("q=20260822 must not match 0821: %s", body)
 	}
 }
@@ -438,8 +438,8 @@ func TestHomeWindowFilterAppliesToList(t *testing.T) {
 	admin := loginCookie(t, s)
 	// Two archives, but the test only cares that the filter does not
 	// blank the page when both are within 24h.
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260821.tar.gz")
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/?window=24h", nil)
 	req.AddCookie(admin)
@@ -447,7 +447,7 @@ func TestHomeWindowFilterAppliesToList(t *testing.T) {
 	s.Handler().ServeHTTP(rr, req)
 	body := rr.Body.String()
 	// Both archives have CreatedAt=now, so both should appear under 24h.
-	if !strings.Contains(body, "groot-prod-eks-1-20260821.tar.gz") {
+	if !strings.Contains(body, "groot-capture-abc1234-20260821-190000-prod-eks-1.tar.gz") {
 		t.Fatalf("window=24h should include now's archive: %s", body)
 	}
 	// Window chip should be marked active.
@@ -459,7 +459,7 @@ func TestHomeWindowFilterAppliesToList(t *testing.T) {
 func TestHomeArchiveCardsVisibleToUploader(t *testing.T) {
 	s, _ := identServer(t)
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(admin)
@@ -482,7 +482,7 @@ func TestHomeArchiveCardsVisibleToUploader(t *testing.T) {
 		t.Fatalf("card copy-link action missing: %s", body)
 	}
 	// Admin (CanDelete) gets a delete form on the card.
-	if !strings.Contains(body, `data-confirm="Delete groot-prod-eks-1-20260822.tar.gz? This cannot be undone."`) {
+	if !strings.Contains(body, `data-confirm="Delete groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz? This cannot be undone."`) {
 		t.Fatalf("card delete action missing for admin: %s", body)
 	}
 }
@@ -492,7 +492,7 @@ func TestHomeArchiveCardsNoDeleteForViewer(t *testing.T) {
 	createUserWithRole(t, st, "view", "view-secret-1", auth.RoleViewer)
 	// A viewer cannot upload, so seed an archive as admin first.
 	admin := loginCookie(t, s)
-	dashboardArchive(t, s, admin, "groot-prod-eks-1-20260822.tar.gz")
+	dashboardArchive(t, s, admin, "groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz")
 
 	ck := loginAs(t, s, "view", "view-secret-1")
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -503,7 +503,7 @@ func TestHomeArchiveCardsNoDeleteForViewer(t *testing.T) {
 	if !strings.Contains(body, `class="archive-cards"`) {
 		t.Fatalf("viewer should still see archive cards: %s", body)
 	}
-	if strings.Contains(body, `data-confirm="Delete groot-prod-eks-1-20260822.tar.gz? This cannot be undone."`) {
+	if strings.Contains(body, `data-confirm="Delete groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz? This cannot be undone."`) {
 		t.Fatalf("viewer must not see a card delete action: %s", body)
 	}
 }
