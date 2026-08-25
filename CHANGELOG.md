@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-25
+
 ### Added
 
 - Retention now treats `0` as "disable that limit": `GFS_KEEP_LAST=0`
@@ -17,6 +19,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default (20 / 90). The 10000 / 768 ceilings are reasonable defaults rather
   than a hard product requirement; an operator who hits one should open an
   issue to make it configurable.
+
+- The Captures/Activity pagers now support **First**/**Last** jump buttons, a
+  numeric page window (current page highlighted, ellipsis across large gaps),
+  and a **Go-to-page** input. With hundreds of pages you can now jump straight
+  to a page or to either edge instead of clicking Next page by page
+  ([#57](https://github.com/hrodrig/groot-share/issues/57)).
+
+### Changed
+
+- **Capture filename parsing is now positional.** `store.ParseClusterSlug`
+  anchors on the terminal `-YYYYMMDD-HHMMSS` timestamp and treats everything
+  after it as the cluster slug, so a cluster name can contain arbitrary
+  characters (DO-style hosts, UUIDs, dots, dashes, even `develop`) without
+  ambiguity. Old archives whose `--message` came *after* the timestamp follow
+  the legacy content-based parse only where unambiguous. Pair with **groot
+  `1.1.3`**, which writes the new `<…>-<timestamp>-<cluster>` order.
 
 ### Fixed
 
@@ -333,7 +351,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/hrodrig/groot-share/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/hrodrig/groot-share/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/hrodrig/groot-share/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hrodrig/groot-share/compare/v0.5.0...v0.5.1
