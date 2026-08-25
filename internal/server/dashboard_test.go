@@ -5,13 +5,16 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/blob"
+	"github.com/hrodrig/groot-share/internal/store"
 )
 
 // dashboardArchive uploads a single archive with the given filename and
@@ -505,5 +508,75 @@ func TestHomeArchiveCardsNoDeleteForViewer(t *testing.T) {
 	}
 	if strings.Contains(body, `data-confirm="Delete groot-capture-def5678-20260822-190000-prod-eks-1.tar.gz? This cannot be undone."`) {
 		t.Fatalf("viewer must not see a card delete action: %s", body)
+	}
+}
+
+// TestHomePagerJumpAndEdges verifies the pager exposes first/last, a numeric
+// page window, and a jump-to-page control when the inventory spans pages.
+func TestHomePagerJumpAndEdges(t *testing.T) {
+	s, st := identServer(t)
+	admin := loginCookie(t, s)
+
+	// Seed 51 archives so pageSize=25 yields 3 pages (first, middle, last).
+	ctx := context.Background()
+	for i := 0; i < 51; i++ {
+		name := fmt.Sprintf("groot-capture-%05d-20260821-190000-prod-eks-1.tar.gz", i)
+		if err := st.InsertArchiveMeta(ctx, store.Archive{
+			ID:         fmt.Sprintf("id-%05d", i),
+			Key:        name,
+			Size:       100,
+			SHA256:     fmt.Sprintf("%064d", i),
+			Source:     "http",
+			UploadedBy: 1,
+			CreatedAt:  time.Now().UTC().Add(time.Duration(i) * time.Second),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Page 2 (middle): every edge control + jump + window must render.
+	req := httptest.NewRequest(http.MethodGet, "/?page=2", nil)
+	req.AddCookie(admin)
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("home: %d", rr.Code)
+	}
+	body := rr.Body.String()
+
+	for _, want := range []string{
+		`« First`,      // first-page button
+		`Last »`,       // last-page button
+		`>Previous<`,   // prev (still enabled on middle page)
+		`>Next<`,       // next (still enabled on middle page)
+		`id="arch-go"`, // jump-to-page input
+		`name="page"`,  // jump form targets the page param
+		`Page 2 of 3`,  // meta line
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("pager missing %q:\n%s", want, body)
+		}
+	}
+
+	// The numeric window must include the concrete page numbers 1, 2, 3:
+	// page 1 renders as href="?" (default, no param) and 3 as href="?page=3";
+	// the current page is a highlighted span.
+	for _, want := range []string{`<a class="pager-num" href="?">1</a>`, `pager-current`, `href="?page=3"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("pager window missing %q:\n%s", want, body)
+		}
+	}
+
+	// Page 1 (first): First/Previous must be disabled/absent as links.
+	req = httptest.NewRequest(http.MethodGet, "/?page=1", nil)
+	req.AddCookie(admin)
+	rr = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, req)
+	body = rr.Body.String()
+	if strings.Contains(body, `href="?page=1"`) {
+		t.Fatalf("page 1 should not render a link to itself: %s", body)
+	}
+	if !strings.Contains(body, `aria-disabled="true"`) {
+		t.Fatalf("disabled first/last placeholder expected on page 1: %s", body)
 	}
 }

@@ -76,3 +76,75 @@ func TestPaginateSlice(t *testing.T) {
 		t.Fatalf("%+v", pv)
 	}
 }
+
+func TestPageWindow(t *testing.T) {
+	labels := func(refs []pageRef) (kind []string, pages []int) {
+		for _, r := range refs {
+			kind = append(kind, r.Kind)
+			pages = append(pages, r.Page)
+		}
+		return kind, pages
+	}
+	pageNums := func(refs []pageRef) []int {
+		var out []int
+		for _, r := range refs {
+			if r.Kind == "page" {
+				out = append(out, r.Page)
+			}
+		}
+		return out
+	}
+
+	// Short range: every page listed, no gaps.
+	if refs := pageWindow(3, 5); len(refs) != 5 || len(pageNums(refs)) != 5 {
+		t.Fatalf("short range: %+v", refs)
+	}
+
+	// Large inventory (543 pages, current 20): must expose first, last, and
+	// the window around 20, with ellipsis gaps on both sides.
+	refs := pageWindow(20, 543)
+	kinds, pages := labels(refs)
+	if kinds[0] != "page" || pages[0] != 1 {
+		t.Fatalf("first slot should be page 1: %+v", refs)
+	}
+	if kinds[len(kinds)-1] != "page" || pages[len(pages)-1] != 543 {
+		t.Fatalf("last slot should be page 543: %+v", refs)
+	}
+	// The current page 20 must be present and (window=1) 19 and 21 too.
+	nums := map[int]bool{}
+	for _, p := range pageNums(refs) {
+		nums[p] = true
+	}
+	for _, want := range []int{1, 19, 20, 21, 543} {
+		if !nums[want] {
+			t.Fatalf("page %d missing from window %+v", want, refs)
+		}
+	}
+	// At least two ellipsis gaps (left + right).
+	gaps := 0
+	for _, k := range kinds {
+		if k == "ellipsis" {
+			gaps++
+		}
+	}
+	if gaps < 2 {
+		t.Fatalf("expected >=2 gaps, got %d in %+v", gaps, refs)
+	}
+
+	// First page: no left gap before page 1.
+	refs = pageWindow(1, 543)
+	kinds, pages = labels(refs)
+	if kinds[0] != "page" || pages[0] != 1 {
+		t.Fatalf("first page edge: %+v", refs)
+	}
+	if kinds[1] == "ellipsis" {
+		t.Fatalf("no gap expected right after page 1 when on page 1: %+v", refs)
+	}
+
+	// Last page: no right gap after the last page.
+	refs = pageWindow(543, 543)
+	kinds, pages = labels(refs)
+	if kinds[len(kinds)-1] != "page" || pages[len(pages)-1] != 543 {
+		t.Fatalf("last page edge: %+v", refs)
+	}
+}

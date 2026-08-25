@@ -511,9 +511,30 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
   </ul>
   {{if gt .Pager.Total 0}}
   <nav class="pager" aria-label="Archives pagination">
-    {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
+    <div class="pager-edge">
+      {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
+    </div>
     <div class="pager-center">
       <p class="pager-meta">Page {{.Pager.Page}} of {{.Pager.TotalPages}} · {{.Pager.Total}} captures</p>
+      <div class="pager-tools">
+        {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.FirstPage .Pager}}" title="First page">« First</a>{{else}}<span class="btn btn-quiet btn-sm" aria-disabled="true" title="First page">« First</span>{{end}}
+        <div class="pager-pages">
+          {{range .Pager.Pages}}
+            {{if eq .Kind "page"}}
+              {{if eq .Page $.Pager.Page}}<span class="pager-current" aria-current="page">{{.Label}}</span>{{else}}<a class="pager-num" href="{{pagerurl .Page $.Pager}}">{{.Label}}</a>{{end}}
+            {{else}}<span class="pager-gap" aria-hidden="true">{{.Label}}</span>{{end}}
+          {{end}}
+        </div>
+        {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.LastPage .Pager}}" title="Last page">Last »</a>{{else}}<span class="btn btn-quiet btn-sm" aria-disabled="true" title="Last page">Last »</span>{{end}}
+      </div>
+      <form class="pager-jump" method="get" action="">
+        {{if .Pager.HiddenSort}}<input type="hidden" name="sort" value="{{.Pager.HiddenSort}}">{{end}}
+        {{if .Pager.HiddenOrder}}<input type="hidden" name="order" value="{{.Pager.HiddenOrder}}">{{end}}
+        <input type="hidden" name="per_page" value="{{.Pager.PageSize}}">
+        <label for="arch-go">Go to page</label>
+        <input id="arch-go" type="number" name="page" min="1" max="{{.Pager.TotalPages}}" value="{{.Pager.Page}}" inputmode="numeric">
+        <button class="btn btn-quiet btn-sm" type="submit">Go</button>
+      </form>
       <form class="pager-size" method="get">
         {{if .Pager.HiddenSort}}<input type="hidden" name="sort" value="{{.Pager.HiddenSort}}">{{end}}
         {{if .Pager.HiddenOrder}}<input type="hidden" name="order" value="{{.Pager.HiddenOrder}}">{{end}}
@@ -523,7 +544,9 @@ var homeTmpl = template.Must(template.New("home").Funcs(pageFuncs).Parse(`<!DOCT
         </select>
       </form>
     </div>
-    {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.NextPage .Pager}}">Next</a>{{else}}<span></span>{{end}}
+    <div class="pager-edge">
+      {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.NextPage .Pager}}">Next</a>{{else}}<span></span>{{end}}
+    </div>
   </nav>
   {{end}}
   {{else}}
@@ -890,9 +913,30 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
   </div>
   {{if gt .Pager.Total 0}}
   <nav class="pager" aria-label="Activity pagination">
-    {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
+    <div class="pager-edge">
+      {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.PrevPage .Pager}}">Previous</a>{{else}}<span></span>{{end}}
+    </div>
     <div class="pager-center">
       <p class="pager-meta">Page {{.Pager.Page}} of {{.Pager.TotalPages}} · {{.Pager.Total}} events</p>
+      <div class="pager-tools">
+        {{if .Pager.HasPrev}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.FirstPage .Pager}}" title="First page">« First</a>{{else}}<span class="btn btn-quiet btn-sm" aria-disabled="true" title="First page">« First</span>{{end}}
+        <div class="pager-pages">
+          {{range .Pager.Pages}}
+            {{if eq .Kind "page"}}
+              {{if eq .Page $.Pager.Page}}<span class="pager-current" aria-current="page">{{.Label}}</span>{{else}}<a class="pager-num" href="{{pagerurl .Page $.Pager}}">{{.Label}}</a>{{end}}
+            {{else}}<span class="pager-gap" aria-hidden="true">{{.Label}}</span>{{end}}
+          {{end}}
+        </div>
+        {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.LastPage .Pager}}" title="Last page">Last »</a>{{else}}<span class="btn btn-quiet btn-sm" aria-disabled="true" title="Last page">Last »</span>{{end}}
+      </div>
+      <form class="pager-jump" method="get" action="">
+        {{if .Pager.HiddenSort}}<input type="hidden" name="sort" value="{{.Pager.HiddenSort}}">{{end}}
+        {{if .Pager.HiddenOrder}}<input type="hidden" name="order" value="{{.Pager.HiddenOrder}}">{{end}}
+        <input type="hidden" name="per_page" value="{{.Pager.PageSize}}">
+        <label for="act-go">Go to page</label>
+        <input id="act-go" type="number" name="page" min="1" max="{{.Pager.TotalPages}}" value="{{.Pager.Page}}" inputmode="numeric">
+        <button class="btn btn-quiet btn-sm" type="submit">Go</button>
+      </form>
       <form class="pager-size" method="get">
         <label for="act-per-page">Per page</label>
         <select id="act-per-page" name="per_page" onchange="this.form.submit()">
@@ -900,7 +944,9 @@ var activityTmpl = template.Must(template.New("activity").Funcs(pageFuncs).Parse
         </select>
       </form>
     </div>
-    {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.NextPage .Pager}}">Next</a>{{else}}<span></span>{{end}}
+    <div class="pager-edge">
+      {{if .Pager.HasNext}}<a class="btn btn-quiet btn-sm" href="{{pagerurl .Pager.NextPage .Pager}}">Next</a>{{else}}<span></span>{{end}}
+    </div>
   </nav>
   {{end}}
   {{else}}

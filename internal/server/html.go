@@ -594,9 +594,37 @@ table.grid {
   padding: 12px 20px 16px;
   border-top: 1px solid var(--line);
 }
-.pager > span { min-width: 5.5rem; }
+.pager-edge { min-width: 5.5rem; display: flex; justify-content: center; }
 .pager-center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
 .pager-meta { font-size: 13px; margin: 0; text-align: center; }
+.pager-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pager-pages { display: flex; align-items: center; gap: 2px; }
+.pager-num, .pager-current, .pager-gap {
+  min-width: 2rem; height: 2rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; text-decoration: none;
+}
+.pager-num { color: var(--muted); border-radius: var(--radius-sm); }
+.pager-num:hover { background: var(--surface); color: var(--ink); }
+.pager-current {
+  font-weight: 700; color: var(--ink);
+  background: var(--accent, var(--surface));
+  border-radius: var(--radius-sm);
+}
+.pager-gap { color: var(--muted); }
+.pager-jump {
+  display: flex; align-items: center; gap: 6px; margin: 0;
+  font-size: 13px; color: var(--muted);
+}
+.pager-jump input[type="number"] {
+  width: 4.5rem;
+  font: 600 13px/1 var(--sans);
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
 .pager-size {
   display: flex; align-items: center; gap: 6px; margin: 0;
   font-size: 13px; color: var(--muted);
