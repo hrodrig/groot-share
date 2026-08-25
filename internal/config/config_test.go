@@ -269,6 +269,86 @@ func TestRetentionDefaults(t *testing.T) {
 	}
 }
 
+func TestRetentionZeroDisablesCount(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_KEEP_LAST", "0")
+	t.Setenv("GFS_MAX_AGE_DAYS", "90")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 0 {
+		t.Fatalf("GFS_KEEP_LAST=0 should yield 0 (keep everything): %+v", cfg)
+	}
+	if cfg.MaxAgeDays != 90 {
+		t.Fatalf("max_age should stay 90: %+v", cfg)
+	}
+}
+
+func TestRetentionCapsCeilings(t *testing.T) {
+	t.Setenv("GFS_TOPOLOGY", "vps")
+	t.Setenv("GFS_DATA_DIR", t.TempDir())
+	t.Setenv("GFS_KEEP_LAST", "50000")
+	t.Setenv("GFS_MAX_AGE_DAYS", "9999")
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.KeepLast != 10000 {
+		t.Fatalf("GFS_KEEP_LAST=50000 should clamp to 10000: %+v", cfg)
+	}
+	if cfg.MaxAgeDays != 768 {
+		t.Fatalf("GFS_MAX_AGE_DAYS=9999 should clamp to 768: %+v", cfg)
+	}
+}
+
+func TestParseKeepLast(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int
+	}{
+		{"", 20},
+		{"nope", 20},
+		{"-1", 20},
+		{"0", 0},
+		{"1", 1},
+		{"20", 20},
+		{"9999", 9999},
+		{"10000", 10000},
+		{"10001", 10000},
+		{"99999999", 10000},
+	}
+	for _, c := range cases {
+		if got := parseKeepLast(c.in); got != c.want {
+			t.Fatalf("parseKeepLast(%q) = %d, want %d", c.in, got, c.want)
+		}
+	}
+}
+
+func TestParseMaxAgeDays(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int
+	}{
+		{"", 90},
+		{"nope", 90},
+		{"0", 0},
+		{"-5", 90},
+		{"1", 1},
+		{"90", 90},
+		{"767", 767},
+		{"768", 768},
+		{"769", 768},
+		{"9999", 768},
+	}
+	for _, c := range cases {
+		if got := parseMaxAgeDays(c.in); got != c.want {
+			t.Fatalf("parseMaxAgeDays(%q) = %d, want %d", c.in, got, c.want)
+		}
+	}
+}
+
 func TestParseIntRejectsOverflow(t *testing.T) {
 	if parseInt("nope", 20) != 20 {
 		t.Fatal("invalid")

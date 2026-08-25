@@ -91,6 +91,19 @@ const (
 	maxBrandSubRunes     = 32
 	maxFooterRunes       = 120
 	maxNameRunes         = 80
+
+	// DefaultKeepLast is the retention keep-N count when GFS_KEEP_LAST is unset.
+	DefaultKeepLast = 20
+	// DefaultMaxAgeDays is the retention age cap when GFS_MAX_AGE_DAYS is unset.
+	DefaultMaxAgeDays = 90
+	// MaxKeepLast is the absolute ceiling for GFS_KEEP_LAST values (safety cap).
+	// Reasonable default, not a hard product requirement: if an operator needs
+	// more, they should open an issue to make the ceiling configurable rather
+	// than us baking in a higher number here.
+	MaxKeepLast = 10000
+	// MaxMaxAgeDays is the absolute ceiling for GFS_MAX_AGE_DAYS (safety cap).
+	// Same configurability caveat as MaxKeepLast (open an issue if you hit it).
+	MaxMaxAgeDays = 768
 )
 
 // LoadFromEnv reads configuration. Returns error if topology/data dir are
@@ -112,8 +125,8 @@ func LoadFromEnv() (Config, error) {
 		BootstrapAdminName: ClipPlain(envOr("GFS_BOOTSTRAP_ADMIN_NAME", DefaultBootstrapName), maxNameRunes),
 		CookieSecure:       parseBool(os.Getenv("GFS_COOKIE_SECURE"), true),
 		MaxUploadBytes:     parseInt64(os.Getenv("GFS_MAX_UPLOAD_BYTES"), 32<<30),
-		KeepLast:           parseInt(os.Getenv("GFS_KEEP_LAST"), 20),
-		MaxAgeDays:         parseInt(os.Getenv("GFS_MAX_AGE_DAYS"), 90),
+		KeepLast:           parseKeepLast(os.Getenv("GFS_KEEP_LAST")),
+		MaxAgeDays:         parseMaxAgeDays(os.Getenv("GFS_MAX_AGE_DAYS")),
 		RetentionEvery:     parseDuration(os.Getenv("GFS_RETENTION_EVERY"), time.Hour),
 		StagingGrace:       parseDuration(os.Getenv("GFS_STAGING_GRACE"), 24*time.Hour),
 		LoginSimple:        parseBool(os.Getenv("GFS_LOGIN_SIMPLE"), false),
@@ -237,6 +250,48 @@ func parseInt(s string, def int) int {
 		return def
 	}
 	return int(n)
+}
+
+// parseKeepLast parses GFS_KEEP_LAST. Empty/unparseable → DefaultKeepLast.
+// 0 → 0 (retention keeps everything by count, age cap only). Values above
+// MaxKeepLast are clamped to MaxKeepLast (safety ceiling).
+func parseKeepLast(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return DefaultKeepLast
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return DefaultKeepLast
+	}
+	if n == 0 {
+		return 0
+	}
+	if n > MaxKeepLast {
+		return MaxKeepLast
+	}
+	return n
+}
+
+// parseMaxAgeDays parses GFS_MAX_AGE_DAYS. Empty/unparseable → DefaultMaxAgeDays.
+// 0 → 0 (age cap disabled: keep everything regardless of age). Negative → default.
+// Values above MaxMaxAgeDays are clamped to MaxMaxAgeDays (safety ceiling).
+func parseMaxAgeDays(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return DefaultMaxAgeDays
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return DefaultMaxAgeDays
+	}
+	if n == 0 {
+		return 0
+	}
+	if n > MaxMaxAgeDays {
+		return MaxMaxAgeDays
+	}
+	return n
 }
 
 func parseDuration(s string, def time.Duration) time.Duration {

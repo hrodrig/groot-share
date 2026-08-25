@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Retention now treats `0` as "disable that limit": `GFS_KEEP_LAST=0`
+  keeps everything by rank (no count cap), and `GFS_MAX_AGE_DAYS=0` keeps
+  everything regardless of age. Positive values are safety-capped:
+  `GFS_KEEP_LAST` clamps to a maximum of 10000, and `GFS_MAX_AGE_DAYS` clamps
+  to a maximum of 768. `retain.Pick` treats a negative value as the legacy
+  default (20 / 90). The 10000 / 768 ceilings are reasonable defaults rather
+  than a hard product requirement; an operator who hits one should open an
+  issue to make it configurable.
+
 ### Fixed
 
 - Share link `max_uses` race (TOCTOU): concurrent downloads on a `max_uses=N`

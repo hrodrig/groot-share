@@ -150,7 +150,7 @@ Environment / file (names may match trigger `GROOT_*` style with `GFS_` prefix):
 | `GFS_TOPOLOGY` | `vps` \| `vps-s3` (`s3` alone is invalid — refuse start). Deploy-time choice — **do not switch after ingesting captures** (see §2); captures in one mode are not migrated to the other |
 | `GFS_S3_*` | bucket, region, endpoint, prefix (`captures/`), path-style |
 | AWS creds | env `AWS_*` on the VPS only |
-| `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90 |
+| `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS` | retention defaults 20 / 90. `0` disables the corresponding limit (`GFS_KEEP_LAST=0` keeps everything by rank; `GFS_MAX_AGE_DAYS=0` keeps everything regardless of age). Safety ceilings on positive values: keep_last clamps to **10000**, max_age_days clamps to **768** |
 | `GFS_BOOTSTRAP_ADMIN` / `GFS_BOOTSTRAP_PASSWORD` | first admin only; required when the user table is empty |
 | `GFS_BOOTSTRAP_ADMIN_NAME` | first admin display name (default `Administrator`) |
 | `GFS_MAX_UPLOAD_BYTES` | default 32GiB; stream cap (`http.MaxBytesReader`) |
