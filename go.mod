@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.22.25
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.103.2
 	github.com/aws/smithy-go v1.27.1
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	modernc.org/sqlite v1.56.0
 )
 

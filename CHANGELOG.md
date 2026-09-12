@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Bump `golang.org/x/crypto` to **v0.56.0** (**GO-2026-6354** / **GO-2026-6355**).
+
 ### Changed
 
 - GFS-CONSENSUS: Azure Blob / `vps-azure` only after groot **#98** (`upload.azure`); not near-term.
