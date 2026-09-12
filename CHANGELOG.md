@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- GFS-CONSENSUS: Azure Blob / `vps-azure` only after groot **#98** (`upload.azure`); not near-term.
+
 ## [0.7.0] — 2026-08-25
 
 ### Added
