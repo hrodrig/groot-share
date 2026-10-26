@@ -6,7 +6,7 @@
 
 [![Release](https://img.shields.io/github/v/release/hrodrig/groot-share?display_name=tag&label=release&logo=github)](https://github.com/hrodrig/groot-share/releases)
 [![Version](https://img.shields.io/badge/version-0.7.0-blue)](https://github.com/hrodrig/groot-share/releases)
-[![Go](https://img.shields.io/badge/Go-1.26.6-00ADD8?logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.27.3-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![CI](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml)
 [![gghstats clones](https://gghstats.hermesrodriguez.com/api/v1/badge/hrodrig/groot-share?metric=clones)](https://gghstats.hermesrodriguez.com/hrodrig/groot-share)
@@ -128,7 +128,7 @@ Details and open questions: [docs/GFS-CONSENSUS.md](docs/GFS-CONSENSUS.md). **Wh
 
 ## Quick start (local)
 
-**Requirements:** Go 1.26+ (see [`go.mod`](go.mod)).
+**Requirements:** Go 1.27+ (see [`go.mod`](go.mod)).
 
 ```bash
 git clone https://github.com/hrodrig/groot-share.git

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Go 1.26.6 → 1.27.3** in `go.mod` and the **Dockerfile** builder (`golang:1.27.3-alpine`). `crypto/x509` rejects chains that include compromised eMudhra intermediates (**CVE-2026-111943** / **GO-2026-6809**). Toolchain minor move, so the product cut is a minor. golangci-lint **v2.12.2 → v2.14.0** (v2.12.2 exits on `go 1.27` modules).
 - Bump `golang.org/x/crypto` to **v0.56.0** (**GO-2026-6354** / **GO-2026-6355**).
 
 ### Changed
