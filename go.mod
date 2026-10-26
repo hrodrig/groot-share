@@ -1,6 +1,6 @@
 module github.com/hrodrig/groot-share
 
-go 1.26.6
+go 1.27.3
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.12
