@@ -128,6 +128,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 - Richer roles/scopes, quotas, OIDC, etc. (ideas — not committed)
 - Presigned PUT for laptop / bastion → bucket (only if a spike against that provider succeeds)
 - **External share links** (Phase 9): **admin only** mints time-limited `GET /s/{token}` URLs for third parties; gfs proxies download; audit `share_create` / `share_download` / `share_revoke` — not presigned S3 to outsiders (see SHARE-01..03)
+- **Azure Blob / `vps-azure`** — only after **[groot #98](https://github.com/hrodrig/groot/blob/develop/ROADMAP.md)** (`upload.azure`) ships. Mirror of S3: CLI sink first, then gfs list/get against the container; until then use **`vps`**, SFTP+rclone→Blob, or Blob S3 API if available. Not a near-term phase.
 
 ---
 
@@ -149,6 +150,7 @@ Vendor panels (and most S3-compatible control planes) do **not** issue presigned
 - Changing groot collect pipeline as the main delivery for 20-laptop S3 keys
 - Mass-distributing bucket `AWS_*` to operators “until gfs exists”
 - Building WebDAV into groot CLI as a substitute for gfs (**groot #97** is a different sink)
+- Building Azure Blob into gfs **before** groot has a native Blob upload sink (**groot #98** first; then optional topology **`vps-azure`**)
 - Status poll / download proxy inside **groot-trigger** (trigger SPEC non-goal)
 
 Related ops: groot-selfhosted S3 examples (e.g. `run/examples/s3-contabo/` as one EU vendor) **are** topology S3 only — same topology for MinIO-in-cluster, AWS, or R2. SFTP-VPS example is the ancestor of topology VPS only. gfs is the authenticated door for the VPS-involving topologies.
@@ -167,6 +169,7 @@ Related ops: groot-selfhosted S3 examples (e.g. `run/examples/s3-contabo/` as on
 8. ~~How tightly gfs should vendor/call groot (`exec` binary vs Go module import) for analyze.~~ — **locked 2026-08-19:** **neither.** gfs does not import `groot/internal/analyze` and does not `exec` the groot binary. Collect and analyze stay in **groot**. gfs is the door (ingest / catalog / download / audit). If an LLM-ready digest should appear in the locker, **groot** (or the Job that already runs groot) **produces** it and uploads it; gfs only stores and serves those bytes.
 9. Download in VPS + S3: presigned GET vs proxy through gfs (depends on a GET spike against the operator’s S3 endpoint).
 10. Staging retry policy (interval, give-up, operator alert when stuck in transit).
+11. Azure path for shops without S3 — parked until **groot #98**; then decide **Blob only (no gfs)** vs **`vps-azure`** (same deploy-time topology rules as `vps-s3`).
 
 ---
 
@@ -182,3 +185,4 @@ Related ops: groot-selfhosted S3 examples (e.g. `run/examples/s3-contabo/` as on
 
 - **2026-08-11:** after shipping groot **v1.1.1**, groot-selfhosted **v0.2.10**, landing/get pin bumps, and `protect-main` on github.com/hrodrig/groot — focus shifted from “shared S3 on laptops” to **gfs** as the correct product for team archive sharing.
 - **2026-08-12:** groot-trigger **v0.1.0** validated (in-cluster HTTP → collect Job, optional `upload.s3` to Contabo in lab). Locked three topologies; VPS as transit when S3 exists; cluster S3-direct preferred; laptops HTTP to gfs; no per-upload S3 flag. Object storage contract is S3-compatible, not one vendor.
+- **2026-09-12:** Azure Blob interest noted. **Order locked:** groot **`upload.azure` (#98)** first; gfs **`vps-azure`** only afterward (not near-term). Interim: `vps` / SFTP+rclone→Blob / Blob S3-compatible API.

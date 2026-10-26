@@ -17,7 +17,7 @@ LDFLAGS     := -s -w \
 	-X 'main.branch=$(BRANCH)' \
 	-X 'main.buildDate=$(BUILDDATE)'
 
-GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT_VERSION ?= v2.14.0
 # Gate like groot: release-check runs cover; override locally with COVER_MIN=0 if needed.
 COVER_MIN ?= 80
 GRYPE_FAIL_ON ?= high

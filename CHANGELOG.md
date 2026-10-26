@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-25
+
+### Security
+
+- **Go 1.26.6 → 1.27.3** in `go.mod` and the **Dockerfile** builder (`golang:1.27.3-alpine`). `crypto/x509` rejects chains that include compromised eMudhra intermediates (**CVE-2026-111943** / **GO-2026-6809**). Toolchain minor move, so the product cut is a minor. golangci-lint **v2.12.2 → v2.14.0** (v2.12.2 exits on `go 1.27` modules).
+- Pin `goreleaser-action` to **v2.19.0** (was `version: ~2.16`).
+- Bump `golang.org/x/crypto` to **v0.56.0** (**GO-2026-6354** / **GO-2026-6355**).
+
+### Changed
+
+- GFS-CONSENSUS: Azure Blob / `vps-azure` only after groot **#98** (`upload.azure`); not near-term.
+
 ## [0.7.0] — 2026-08-25
 
 ### Added
@@ -351,7 +363,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/hrodrig/groot-share/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/hrodrig/groot-share/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/hrodrig/groot-share/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/hrodrig/groot-share/compare/v0.5.1...v0.6.0
