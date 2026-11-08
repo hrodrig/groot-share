@@ -138,15 +138,32 @@ func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {
 	}
 }
 
+// listenConfig returns the ListenConfig used for the HTTP listener.
+//
+// Multipath TCP is disabled explicitly. Go 1.24+ enables MPTCP on Linux
+// listeners by default (GODEBUG multipathtcp=2) and CVE-2026-98432 — a
+// use-after-free in the Linux kernel IPv4 TCP options path (CVSS 9.8) — has a
+// public remote-root exploit against hosts exposing an MPTCP listener.
+// SetMultipathTCP(false) overrides both the system default and
+// GODEBUG=multipathtcp=*, so the listener stays plain TCP in every
+// environment. A patched kernel remains the real fix: this closes the
+// published MPTCP exploit path only.
+func listenConfig() *net.ListenConfig {
+	var lc net.ListenConfig
+	lc.SetMultipathTCP(false)
+	return &lc
+}
+
 func listenAndServe(ctx context.Context, httpSrv *http.Server) int {
 	// Pre-bind so the "listen" log only fires on a successful bind.
 	// A false success log on a bind failure was misleading operators.
-	ln, err := net.Listen("tcp", httpSrv.Addr)
+	lc := listenConfig()
+	ln, err := lc.Listen(ctx, "tcp", httpSrv.Addr)
 	if err != nil {
 		slog.Error("listen bind failed", "addr", httpSrv.Addr, "error", err)
 		return 1
 	}
-	slog.Info("listen", "addr", ln.Addr().String())
+	slog.Info("listen", "addr", ln.Addr().String(), "mptcp", lc.MultipathTCP())
 
 	errCh := make(chan error, 1)
 	go func() {

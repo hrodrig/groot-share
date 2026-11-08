@@ -168,6 +168,8 @@ Copy [.env.example](.env.example) for local dev; **never commit** `.env`. Change
 
 Deploy behind a **trusted** reverse proxy for TLS ([groot-share-selfhosted](https://github.com/hrodrig/groot-share-selfhosted)). Absolute links use `Host` / `X-Forwarded-Proto` — the proxy must overwrite those headers (see [SECURITY.md](SECURITY.md)).
 
+gfs listens on **plain TCP**: Multipath TCP is disabled in the binary (`net.ListenConfig.SetMultipathTCP(false)`) and in the module default (`go.mod` → `godebug multipathtcp=0`). See [SECURITY.md](SECURITY.md) for **CVE-2026-98432** (host kernel still needs patching).
+
 [↑ Back to top](#readme-top)
 
 ## HTTP API (summary)

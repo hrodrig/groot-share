@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **MPTCP disabled on the gfs listener** (**CVE-2026-98432**). Same mitigation as groot-trigger: `net.ListenConfig.SetMultipathTCP(false)`, module `godebug multipathtcp=0`. A patched host kernel remains the real fix (plain IPv4 TCP still reaches the underlying race).
 - Bump `golang.org/x/crypto` **v0.56.0 → v0.58.1-0.20261105095718-a1058eb15227** (tip; clears grype **GO-2026-5932**) and `modernc.org/sqlite` **v1.56.0 → v1.62.0** (and transitive `modernc.org/libc` / `memory`).
 - Bump AWS SDK v2 direct deps: `aws-sdk-go-v2` **v1.47.8**, `config` **v1.33.16**, `credentials` **v1.20.16**, `feature/s3/manager` **v1.23.22**, `service/s3` **v1.114.9**, `smithy-go` **v1.28.8** (same Dependabot-style batch as groot).
 
