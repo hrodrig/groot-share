@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-11-08
+
 ### Security
 
 - **MPTCP disabled on the gfs listener** (**CVE-2026-98432**). Same mitigation as groot-trigger: `net.ListenConfig.SetMultipathTCP(false)`, module `godebug multipathtcp=0`. A patched host kernel remains the real fix (plain IPv4 TCP still reaches the underlying race).
