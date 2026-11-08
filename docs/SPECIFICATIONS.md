@@ -228,6 +228,7 @@ rather than delete without protection.
 
 ## 8. Observability
 
+- **MPTCP disabled** on the gfs listener (`net.ListenConfig.SetMultipathTCP(false)`; module default `godebug multipathtcp=0`). Go 1.24+ enables MPTCP on Linux listeners by default and **CVE-2026-98432** (Linux kernel IPv4 TCP options use-after-free, CVSS 9.8) has a public remote-root exploit against hosts exposing an MPTCP listener. A patched kernel remains the real fix — plain IPv4 TCP still reaches the underlying race.
 - slog JSON (or text) lines to stdout — one JSON object per line when `GFS_LOG_FORMAT=json` (no process-name prefix; parseable by jq / Vector / Fluent Bit)
 - HTTP access line with status; never api_key/password
 - Audit table: actor, action, object key/id, ts, remote IP (respect trusted proxies later; v0.1 may use RemoteAddr only)

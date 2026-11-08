@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
@@ -153,6 +155,77 @@ func TestListenAndServeBadAddr(t *testing.T) {
 	if code := listenAndServe(context.Background(), srv); code != 1 {
 		t.Fatalf("code %d", code)
 	}
+}
+
+// TestListenConfigDisablesMPTCP guards the CVE-2026-98432 mitigation: Go 1.24+
+// enables MPTCP on Linux listeners by default and the public exploit targets
+// hosts exposing an MPTCP listener.
+func TestListenConfigDisablesMPTCP(t *testing.T) {
+	if listenConfig().MultipathTCP() {
+		t.Fatal("listen config must not use MPTCP")
+	}
+}
+
+// TestListenerDoesNotUseMPTCP verifies the production listener never negotiates
+// MPTCP. The check is differential: a control listener with MPTCP explicitly
+// enabled has to report MPTCP on the connection, otherwise the host kernel has
+// no MPTCP support and the assertion below would be vacuous.
+func TestListenerDoesNotUseMPTCP(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("MPTCP listeners exist only on Linux")
+	}
+	ctx := context.Background()
+
+	var controlLC net.ListenConfig
+	controlLC.SetMultipathTCP(true)
+	control, err := controlLC.Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("MPTCP control listener unavailable: %v", err)
+	}
+	defer func() { _ = control.Close() }()
+
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	dialer.SetMultipathTCP(true)
+
+	controlConn, err := dialer.DialContext(ctx, "tcp", control.Addr().String())
+	if err != nil {
+		t.Skipf("MPTCP control dial failed: %v", err)
+	}
+	controlMPTCP := connUsesMPTCP(t, controlConn)
+	_ = controlConn.Close()
+
+	if !controlMPTCP {
+		t.Skip("control connection did not negotiate MPTCP; differential check not applicable on this host")
+	}
+
+	l, err := listenConfig().Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = l.Close() }()
+
+	conn, err := dialer.DialContext(ctx, "tcp", l.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	if connUsesMPTCP(t, conn) {
+		t.Fatal("production listener negotiated MPTCP; want plain TCP")
+	}
+}
+
+func connUsesMPTCP(t *testing.T, c net.Conn) bool {
+	t.Helper()
+	tc, ok := c.(*net.TCPConn)
+	if !ok {
+		t.Fatalf("want *net.TCPConn, got %T", c)
+	}
+	use, err := tc.MultipathTCP()
+	if err != nil {
+		t.Fatalf("MultipathTCP: %v", err)
+	}
+	return use
 }
 
 func TestListenAndServeShutdown(t *testing.T) {
