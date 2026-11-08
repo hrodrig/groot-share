@@ -15,6 +15,23 @@ client IP and per username).
 Password changes invalidate all sessions for that user (Settings, `PATCH /v1/me`, or
 admin password patch).
 
+## Multipath TCP (CVE-2026-98432)
+
+Go 1.24+ enables Multipath TCP on Linux listeners by default
+(`GODEBUG multipathtcp=2`). **CVE-2026-98432** is a use-after-free in the Linux
+kernel IPv4 TCP options path (CVSS 9.8) with a public remote-root exploit against
+hosts exposing an MPTCP listener. gfs mitigates the published path:
+
+| Layer | Mitigation |
+| ----- | ---------- |
+| Binary | The gfs listener calls `net.ListenConfig.SetMultipathTCP(false)`, so it never opens an MPTCP socket. This overrides both the system default and `GODEBUG`. |
+| Module default | `go.mod` sets `godebug multipathtcp=0` for every binary in the module. |
+
+**Kernel patching is still required.** Plain IPv4 TCP can still reach the
+underlying race. Patch the host kernel to a fixed release. Setting
+`GODEBUG=multipathtcp=1` in the environment does **not** re-enable MPTCP for
+gfs: the explicit `SetMultipathTCP(false)` wins.
+
 ## Deployment (TLS / proxy)
 
 gfs does not terminate TLS itself. Put a **trusted** reverse proxy in front (see
