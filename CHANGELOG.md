@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-11-20
+
 ### Security
 
 - **Go 1.27.3 → 1.27.4** in `go.mod` and the **Dockerfile** builder (`golang:1.27.4-alpine`). Clears **GO-2026-6859** (`net/http`). README Go badge synced to **1.27.4**.
@@ -375,7 +377,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/hrodrig/groot-share/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/hrodrig/groot-share/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/hrodrig/groot-share/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/hrodrig/groot-share/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/hrodrig/groot-share/compare/v0.6.0...v0.6.1

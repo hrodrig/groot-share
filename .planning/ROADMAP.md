@@ -1,12 +1,12 @@
 # Roadmap: gfs
 
-**Last reviewed:** 2026-11-08
+**Last reviewed:** 2026-11-20
 
 ## Current focus
 
 | Track | Status |
 |-------|--------|
-| Product | **v0.8.1**. MPTCP listener mitigation (**CVE-2026-98432**) + dependency refresh (crypto tip, sqlite, AWS SDK). Phase 10 catalog UX shipped earlier. |
+| Product | **v0.8.2**. Go **1.27.4** (**GO-2026-6859**). Prior: **v0.8.1** MPTCP (**CVE-2026-98432**) + deps. Phase 10 catalog UX shipped earlier. |
 | Operator UX | **Phase 10 done** (2026-08-22). Evidence locker complete. Next band: backlog items (#53–#55, package split). |
 
 ## Overview
