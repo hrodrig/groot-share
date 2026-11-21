@@ -117,3 +117,39 @@ func TestPickSkipsEmptyID(t *testing.T) {
 		t.Fatalf("empty id skipped: %+v", got)
 	}
 }
+
+func TestPickKeepLastPerCluster(t *testing.T) {
+	now := time.Now().UTC()
+	// Newest-first: two clusters interleaved. keep_last=1 → keep newest per slug.
+	items := []store.Archive{
+		{ID: "p1", Key: "groot-capture-aaaaaaa-20260102-150405-prod.tar.gz", CreatedAt: now},
+		{ID: "s1", Key: "groot-capture-bbbbbbb-20260102-140405-staging.tar.gz", CreatedAt: now.Add(-time.Hour)},
+		{ID: "p0", Key: "groot-capture-ccccccc-20260101-150405-prod.tar.gz", CreatedAt: now.Add(-2 * time.Hour)},
+		{ID: "s0", Key: "groot-capture-ddddddd-20260101-140405-staging.tar.gz", CreatedAt: now.Add(-3 * time.Hour)},
+	}
+	got := Pick(items, 1, 0, now)
+	if len(got) != 2 {
+		t.Fatalf("want 2 deletes (one per cluster beyond keep_last=1): %+v", got)
+	}
+	ids := map[string]bool{}
+	for _, a := range got {
+		ids[a.ID] = true
+	}
+	if !ids["p0"] || !ids["s0"] {
+		t.Fatalf("expected p0 and s0 deleted, got %+v", got)
+	}
+}
+
+func TestPickKeepLastUnknownBucketShared(t *testing.T) {
+	now := time.Now().UTC()
+	// Keys without a parseable cluster share the "" bucket (flat keep_last).
+	items := []store.Archive{
+		{ID: "1", Key: "nope.tar.gz", CreatedAt: now},
+		{ID: "2", Key: "also-nope.tar.gz", CreatedAt: now.Add(-time.Hour)},
+		{ID: "3", Key: "still-nope.tar.gz", CreatedAt: now.Add(-2 * time.Hour)},
+	}
+	got := Pick(items, 2, 0, now)
+	if len(got) != 1 || got[0].ID != "3" {
+		t.Fatalf("%+v", got)
+	}
+}

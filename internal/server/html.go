@@ -389,6 +389,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .theme-toggle .is-hidden { display: none; }
 
 /* ---- forms ---- */
+.field-check {
+  display: flex; align-items: center; gap: 8px;
+  margin: 12px 0 16px;
+  font: 400 14px/1.4 var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+}
+.field-check input { width: 1rem; height: 1rem; accent-color: var(--accent); }
 .field { display: block; margin: 0 0 16px; }
 .field > span:first-child {
   display: block; margin-bottom: 6px;
