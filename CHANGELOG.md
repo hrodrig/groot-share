@@ -11,13 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Admin mutations fail-closed on audit insert** (`user.create`, `user.update`, `user.deactivate`, `apikey.revoke`): after a successful store write, a failed audit row yields **500** `audit unavailable` instead of silent success. File upload/download/delete remains fail-open. See SECURITY.md §Audit. (#55)
 
-### Documentation
-
-- **Retention threat model:** SECURITY.md + SPEC §7 document global newest-first `keep_last` / `max_age` (mixed clusters are operator scope; #53) and the ingest-flood vs `keep_last` gap (pins/shares do not cover unpinned evidence; quarantine not implemented; #54).
-
 ### Changed
 
+- **Retention `keep_last` is per cluster (#53):** `retain.Pick` groups by `ParseClusterSlug`; `max_age_days` stays global. List order uses stable newest-first ties (`rowid` / object id).
+- **Pin-on-ingest:** `X-GFS-Pin: 1` or `?pin=1` on `POST /v1/archives` pins for the uploader after success (fail-open). HTML upload checkbox supported. SFTP / S3-list-only objects are not auto-pinned.
 - **Drop synthetic `*_extra_test.go` names (#32):** fold store cases into the real `*_test.go` files; rename server coverage grab-bag to `handlers_edge_test.go`. Coverage gate unchanged (honest move, no padding).
+
+### Documentation
+
+- **Retention threat model:** SECURITY.md + SPEC §7 — per-cluster `keep_last`, global `max_age`, pin-on-ingest, ingest-flood gap (#54).
 
 ## [0.8.2] — 2026-11-20
 

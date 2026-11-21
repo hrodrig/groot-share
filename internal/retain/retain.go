@@ -7,14 +7,15 @@ import (
 )
 
 // Pick returns archives that violate keep_last or max_age_days (union).
-// items must be newest-first.
+// items must be newest-first overall.
 //
-// keepLast semantics:
+// keepLast semantics (per cluster slug from ParseClusterSlug on Key):
 //   - keepLast < 0  → default 20 (defensive; config never emits negative)
 //   - keepLast == 0 → no count limit: keep everything by rank, age cap only
-//   - keepLast > 0  → delete everything beyond the newest keepLast archives
+//   - keepLast > 0  → within each cluster bucket, delete beyond the newest keepLast
+//     Unparseable keys share the empty-string bucket.
 //
-// maxAgeDays semantics:
+// maxAgeDays semantics (global):
 //   - maxAgeDays < 0 → default 90 (defensive; config never emits negative)
 //   - maxAgeDays == 0 → no age limit: keep everything regardless of age
 //   - maxAgeDays > 0 → delete archives older than maxAgeDays
@@ -38,12 +39,25 @@ func Pick(items []store.Archive, keepLast, maxAgeDays int, now time.Time) []stor
 		seen[a.ID] = struct{}{}
 		out = append(out, a)
 	}
-	for i, a := range items {
-		if keepLast > 0 && i >= keepLast {
-			add(a)
+
+	if keepLast > 0 {
+		// Rank within each cluster, preserving newest-first relative order.
+		rank := map[string]int{}
+		for _, a := range items {
+			slug, _ := store.ParseClusterSlug(a.Key)
+			i := rank[slug]
+			rank[slug] = i + 1
+			if i >= keepLast {
+				add(a)
+			}
 		}
-		if maxAgeDays > 0 && !a.CreatedAt.IsZero() && a.CreatedAt.Before(cutoff) {
-			add(a)
+	}
+
+	if maxAgeDays > 0 {
+		for _, a := range items {
+			if !a.CreatedAt.IsZero() && a.CreatedAt.Before(cutoff) {
+				add(a)
+			}
 		}
 	}
 	return out

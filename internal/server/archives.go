@@ -172,6 +172,12 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.recordAudit(r, "upload", a)
+	if wantsPin(r) && ac != nil {
+		// Fail-open: archive is already stored; pin failure must not fail the upload.
+		if err := s.Store.AddPin(r.Context(), ac.User.ID, a); err != nil {
+			slog.Error("pin on ingest", "error", err, "archive_id", a.ID)
+		}
+	}
 	if isBrowserForm(r) {
 		http.Redirect(w, r, "/upload?notice=uploaded&name="+url.QueryEscape(a.Key), http.StatusSeeOther)
 		return
@@ -179,6 +185,24 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(archiveJSON(a))
+}
+
+// wantsPin reports whether the client asked to pin the archive after a successful
+// HTTP ingest (#53). Honors header X-GFS-Pin (truthy) or query pin=1.
+// Multipart form fields are not read here so the body can stream; the HTML
+// upload form sets ?pin=1 via the checkbox script when checked.
+func wantsPin(r *http.Request) bool {
+	h := strings.TrimSpace(strings.ToLower(r.Header.Get("X-GFS-Pin")))
+	switch h {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	q := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("pin")))
+	switch q {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {

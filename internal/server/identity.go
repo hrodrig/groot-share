@@ -784,11 +784,12 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
     <h2 id="up-h">Choose file</h2>
     <p class="hint">groot .tar.gz, up to {{humansize .MaxUpload}} per file</p>
   </div>
-  <form method="post" action="/v1/archives" enctype="multipart/form-data" class="upload">
+  <form method="post" action="/v1/archives" enctype="multipart/form-data" class="upload" id="upload-form">
     <label class="dropzone" id="dropzone">
       <input type="file" name="file" id="file" accept=".tar.gz,.tgz,application/gzip" required>
       <span class="dz-text" id="dz-text">Choose a file or drop it here</span>
     </label>
+    <label class="field-check"><input type="checkbox" id="pin-after" value="1"> Pin after upload (survives retention)</label>
     <button class="btn" type="submit">Upload capture</button>
   </form>
 </section>
@@ -799,6 +800,13 @@ var uploadTmpl = template.Must(template.New("upload").Funcs(pageFuncs).Parse(`<!
   var dz = document.getElementById('dropzone');
   var input = document.getElementById('file');
   var label = document.getElementById('dz-text');
+  var form = document.getElementById('upload-form');
+  var pin = document.getElementById('pin-after');
+  if (form && pin) {
+    form.addEventListener('submit', function () {
+      form.action = pin.checked ? '/v1/archives?pin=1' : '/v1/archives';
+    });
+  }
   if (dz && input) {
     var show = function () {
       if (input.files && input.files.length) {

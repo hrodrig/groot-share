@@ -96,6 +96,7 @@ Upload auth: `Authorization: Bearer <api_key>` or `X-API-Key` (trigger-style). D
 - Max size configurable (default high enough for several GB; stream to staging, **do not** buffer whole archive in RAM)
 - On VPS + S3: write staging, copy to bucket, delete staging; if copy fails → `201` with `storage: transit` + retry (do not `5xx` the laptop)
 - On VPS only: write home dir, `201` with `storage: local`
+- **Pin-on-ingest (opt-in):** header `X-GFS-Pin: 1` (also `true`/`yes`/`on`) or query `pin=1` → after a successful ingest, `AddPin` for the uploading user (fail-open on pin error). HTML upload checkbox sets `?pin=1`. SFTP inbox and objects that only appear via bucket list are **not** auto-pinned.
 
 **SFTP inbox (optional):** when `GFS_SFTP_INBOX` is an absolute directory, gfs polls it (`GFS_SFTP_POLL`, default 30s) and ingests stable `*.tar.gz` files (size unchanged across two polls). Success or SHA-256 duplicate → delete the inbox file. Audit `action=upload`, `actor=sftp`, `uploaded_by` empty. gfs does **not** run an SFTP server. Unset inbox → watcher off.
 
@@ -220,19 +221,19 @@ Job (timer in-process or cron): delete objects that violate **either** keep_last
 VPS only: delete files + sqlite rows if any.  
 VPS + S3: delete bucket objects (home). Staging leftovers older than a grace period are swept as incidents (ERROR log including `last_error`), not as the retention set.
 
-**Scope is global:** `retain.Pick` ranks the full listed inventory **newest-first**
-(one window for the whole prefix / data dir). There is **no** per-cluster
-grouping. Mixed-cluster buckets are an operator responsibility — use separate
-prefixes, buckets, or gfs instances, or raise `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS`.
-See SECURITY.md §Retention threat model (#53).
+**`keep_last` is per cluster:** `retain.Pick` partitions the newest-first list by
+`ParseClusterSlug` on the archive key (unparseable keys share one `""` bucket)
+and applies `GFS_KEEP_LAST` **within each bucket**. **`max_age_days` remains
+global** (absolute age). See SECURITY.md §Retention (#53).
 
 **Pinned/shared archives are protected:** an object with at least one `archive_pins`
 row, or at least one active `share_links` row (not revoked, not expired, not
 exhausted), is excluded from retention regardless of its age or position beyond
 `keep_last`. If the protected set cannot be queried the sweep aborts (fail-closed)
-rather than delete without protection. Pins/shares do **not** protect unpinned
-archives displaced by a newer ingest flood (#54); quarantine / burst-pause is
-not implemented.
+rather than delete without protection. Prefer **pin-on-ingest** (`X-GFS-Pin` /
+`pin=1`) for on-demand evidence. Pins/shares do **not** protect unpinned
+archives displaced by a newer ingest flood within the same cluster (#54);
+quarantine / burst-pause is not implemented.
 
 ## 8. Observability
 
