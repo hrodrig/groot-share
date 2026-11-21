@@ -59,6 +59,39 @@ trusted hop; gfs itself performs no such parsing today. (There is no way to
 make `RemoteAddr` a client IP without either terminating TLS at gfs or teaching
 gfs to trust a proxy hop.)
 
+## Retention threat model
+
+Retention deletes home objects that fail **either** `keep_last` (newest-first
+rank over the full listed set) **or** `max_age_days`. See SPEC §7.
+
+### Ingest flood vs `keep_last` (#54)
+
+An attacker who can **write into the same home prefix** (compromised cluster
+credentials, shared bucket write, or any ingest path that lands objects under
+`GFS_S3_PREFIX` / local data dir — **not** requiring a gfs admin session) can
+upload many newer fake captures. Legitimate archives then fall past the
+`keep_last` window and are deleted on the next sweep, audited as
+`actor=retention`. This is a by-design limit of rank-based retention, not a
+gfs auth bypass.
+
+**Pins and active share links (#45)** protect only objects that an operator
+explicitly pinned or shared. They do **not** cover unpinned evidence that
+simply ages out of the top-N window.
+
+**Not implemented (future):** quarantine of suspicious burst ingest, pause of
+retention during a flood, or WORM/immutability semantics. Operators today
+should raise `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS`, pin critical captures, use
+separate prefixes/buckets per trust boundary, and treat write access to the
+home store as equivalent to the ability to displace evidence.
+
+### Global retention vs mixed clusters (#53)
+
+`retain.Pick` ranks the **entire** listed inventory newest-first. There is no
+per-cluster grouping. Operators who share one prefix across clusters must
+accept a single global window or isolate clusters with separate prefixes /
+buckets / gfs instances. Per-cluster retention is a future product change, not
+current contract.
+
 ## Audit
 
 ### File operations (fail-open)
