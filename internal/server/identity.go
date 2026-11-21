@@ -190,7 +190,10 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusConflict, "conflict")
 		return
 	}
-	s.recordUserAudit(r, "user.create", strconv.FormatInt(created.ID, 10), created.Username)
+	if err := s.requireUserAudit(r, "user.create", strconv.FormatInt(created.ID, 10), created.Username); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "audit unavailable")
+		return
+	}
 	rec, _ := s.userRecord(r.Context(), created)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
