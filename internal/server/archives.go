@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"io"
 	"log/slog"
 	"mime"
@@ -94,7 +95,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 			data["Pins"] = pins
 		}
 	}
-	_ = homeTmpl.Execute(w, data)
+	_ = tmpl.Home.Execute(w, data)
 }
 
 func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +108,7 @@ func (s *Server) handleUploadGET(w http.ResponseWriter, r *http.Request) {
 	data["NoticeKind"] = noticeKind
 	data["NoticeText"] = noticeText
 	data["Nav"] = "upload"
-	_ = uploadTmpl.Execute(w, data)
+	_ = tmpl.Upload.Execute(w, data)
 }
 
 func (s *Server) handleListArchives(w http.ResponseWriter, r *http.Request) {

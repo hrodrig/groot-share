@@ -2,14 +2,10 @@ package server
 
 import (
 	"net/http"
-	"net/url"
 	"sort"
-	"strconv"
 
 	"github.com/hrodrig/groot-share/internal/store"
 )
-
-const defaultSortField = "uploaded"
 
 func parseSort(r *http.Request) (field string, asc bool) {
 	field = r.URL.Query().Get("sort")
@@ -27,15 +23,6 @@ func parseSort(r *http.Request) (field string, asc bool) {
 		return field, false
 	default:
 		return field, firstSortAsc(field)
-	}
-}
-
-func firstSortAsc(field string) bool {
-	switch field {
-	case "size", "uploaded":
-		return false
-	default:
-		return true
 	}
 }
 
@@ -81,40 +68,4 @@ func archiveLess(a, b store.Archive, field string) bool {
 		}
 		return a.Key < b.Key
 	}
-}
-
-func listURL(page, pageSize int, sortField string, sortAsc bool) string {
-	if sortField == "" {
-		sortField = defaultSortField
-	}
-	v := url.Values{}
-	if page > 1 {
-		v.Set("page", strconv.Itoa(page))
-	}
-	if pageSize != htmlPageSize {
-		v.Set("per_page", strconv.Itoa(pageSize))
-	}
-	if sortField != defaultSortField {
-		v.Set("sort", sortField)
-	}
-	if sortAsc != firstSortAsc(sortField) {
-		if sortAsc {
-			v.Set("order", "asc")
-		} else {
-			v.Set("order", "desc")
-		}
-	}
-	q := v.Encode()
-	if q == "" {
-		return "?"
-	}
-	return "?" + q
-}
-
-func sortURL(pv pageView, field string) string {
-	asc := firstSortAsc(field)
-	if pv.SortField == field {
-		asc = !pv.SortAsc
-	}
-	return listURL(1, pv.PageSize, field, asc)
 }

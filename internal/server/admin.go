@@ -2,7 +2,7 @@ package server
 
 import (
 	"errors"
-	"html/template"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -49,7 +49,7 @@ func (s *Server) handleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
 	data["Nav"] = "admin"
 	data["Users"] = users
 	data["NoticeKind"], data["NoticeText"] = adminNotice(r.URL.Query().Get("notice"))
-	_ = adminUsersTmpl.Execute(w, data)
+	_ = tmpl.AdminUsers.Execute(w, data)
 }
 
 func (s *Server) handleAdminUsersCreatePOST(w http.ResponseWriter, r *http.Request) {
@@ -286,144 +286,3 @@ var adminNoticeCopy = map[string][2]string{
 	"role":        {"err", "Choose a valid role: viewer, uploader, or admin."},
 	"error":       {"err", "That action failed. Check the form and try again."},
 }
-
-var adminUsersTmpl = template.Must(template.New("admin").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Users</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
-<header class="appbar">
-  <div class="appbar-in">
-    <div class="appbar-start">
-      <a class="brand" href="/">
-        <span class="crate" aria-hidden="true"></span>
-        <span class="wordmark">gfs</span>
-        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
-      </a>
-` + appNavTmpl + `
-    </div>
-    <div class="appbar-side">
-      {{.ThemeToggle}}
-` + appWhoTmpl + `
-      <form method="post" action="/logout"><button class="btn btn-quiet btn-sm" type="submit">Sign out</button></form>
-    </div>
-  </div>
-</header>
-<main id="main" class="wrap">
-{{if .NoticeText}}<div class="notice notice-{{.NoticeKind}}" role="status">{{.NoticeText}}</div>{{end}}
-<div class="page-head">
-  <div><h1>Users</h1><p class="sub">Manage accounts, logins, and roles.</p></div>
-</div>
-<section class="card" aria-labelledby="create-h">
-  <div class="card-head"><h2 id="create-h">Create user</h2></div>
-  <div class="card-body">
-  <form method="post" action="/admin/users/create" class="stack-form">
-    <label class="field"><span>Name</span><input name="name" required autocomplete="name" maxlength="80"><small class="field-hint">Required. Shown in the header. Long names shorten (Juan ...egro).</small></label>
-    <label class="field"><span>Username</span><input name="username" required autocomplete="off" maxlength="64"><small class="field-hint">Required. Login id. Must be unique.</small></label>
-    <label class="field"><span>Password</span><input name="password" type="password" required autocomplete="new-password" minlength="8"><small class="field-hint">At least 8 characters.</small></label>
-    <label class="field"><span>Role</span>
-      <select name="role">
-        <option value="viewer">viewer</option>
-        <option value="uploader" selected>uploader</option>
-        <option value="admin">admin</option>
-      </select>
-      <small class="field-hint">viewer reads; uploader also writes; admin manages users.</small>
-    </label>
-    <button class="btn" type="submit">Create user</button>
-  </form>
-  </div>
-</section>
-<section class="card" aria-labelledby="users-h">
-  <div class="card-head"><h2 id="users-h">Accounts</h2></div>
-  {{if .Users}}
-  <div class="table-wrap">
-  <table class="grid">
-    <thead><tr>
-      <th scope="col">Name</th>
-      <th scope="col">Username</th>
-      <th scope="col">Role</th>
-      <th scope="col">Active</th>
-      <th scope="col">Created (UTC)</th>
-      <th scope="col"><span class="visually-hidden">Actions</span></th>
-    </tr></thead>
-    <tbody>
-    {{range .Users}}
-    <tr>
-      <td title="{{.Name}}">{{.DisplayName}}</td>
-      <td>
-        <form method="post" action="/admin/users/{{.ID}}/username" class="inline-form">
-          <input name="username" value="{{.Username}}" required maxlength="64" autocomplete="off" aria-label="Login for {{.Name}}">
-          <button class="btn btn-quiet btn-sm" type="submit">Set login</button>
-        </form>
-      </td>
-      <td>{{.Role}}</td>
-      <td>{{if .Active}}yes{{else}}no{{end}}</td>
-      <td class="muted tabular">{{if .CreatedAt.IsZero}}—{{else}}{{.CreatedAt.UTC.Format "2006-01-02 15:04"}}{{end}}</td>
-      <td class="actions">
-        {{if .Active}}
-        <form method="post" action="/admin/users/{{.ID}}/role" class="inline-form">
-          <select name="role" aria-label="Role for {{.Username}}">
-            <option value="viewer"{{if eq .Role "viewer"}} selected{{end}}>viewer</option>
-            <option value="uploader"{{if eq .Role "uploader"}} selected{{end}}>uploader</option>
-            <option value="admin"{{if eq .Role "admin"}} selected{{end}}>admin</option>
-          </select>
-          <button class="btn btn-quiet btn-sm" type="submit">Set role</button>
-        </form>
-        <form method="post" action="/admin/users/{{.ID}}/deactivate">
-          <button class="btn btn-danger-quiet btn-sm" type="submit">Deactivate</button>
-        </form>
-        {{else}}
-        <form method="post" action="/admin/users/{{.ID}}/activate">
-          <button class="btn btn-quiet btn-sm" type="submit">Activate</button>
-        </form>
-        {{if ne .ID $.ActorID}}
-        <form method="post" action="/admin/users/{{.ID}}/remove" data-confirm="This deletes {{.Username}} and their sessions and API keys. It cannot be undone." data-confirm-require="{{.Username}}">
-          <button class="btn btn-danger-quiet btn-sm" type="submit">Remove</button>
-        </form>
-        {{end}}
-        {{end}}
-      </td>
-    </tr>
-    {{end}}
-    </tbody>
-  </table>
-  </div>
-  {{else}}
-  <div class="empty"><p class="empty-title">No users</p></div>
-  {{end}}
-</section>
-</main>
-{{.AppFoot}}
-<dialog id="confirm-dialog" aria-labelledby="confirm-title">
-  <form method="dialog" class="dialog-card">
-    <p class="dialog-title" id="confirm-title">Remove user</p>
-    <p class="dialog-text" id="confirm-text"></p>
-    <div class="dialog-actions">
-      <button class="btn btn-quiet" value="cancel">Cancel</button>
-      <button class="btn btn-danger" value="ok">Remove</button>
-    </div>
-  </form>
-</dialog>
-<script>
-(function () {
-  var dlg = document.getElementById('confirm-dialog');
-  var txt = document.getElementById('confirm-text');
-  var pending = null;
-  if (dlg && dlg.showModal) {
-    document.querySelectorAll('form[data-confirm]').forEach(function (f) {
-      f.addEventListener('submit', function (e) {
-        e.preventDefault();
-        pending = f;
-        txt.textContent = f.getAttribute('data-confirm');
-        dlg.showModal();
-      });
-    });
-    dlg.addEventListener('close', function () {
-      if (dlg.returnValue === 'ok' && pending) { pending.submit(); }
-      pending = null;
-    });
-  }
-})();
-</script>
-{{.ThemeToggleScript}}
-</body></html>
-`))

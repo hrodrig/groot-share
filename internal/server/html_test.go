@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 )
 
 func TestHumanSize(t *testing.T) {
@@ -82,10 +84,10 @@ func TestNoticeFromQueryDuplicateName(t *testing.T) {
 }
 
 func TestLoginPageShell(t *testing.T) {
-	if !strings.Contains(themeHeadScript, "gfs-theme") {
+	if !strings.Contains(tmpl.ThemeHeadScript, "gfs-theme") {
 		t.Fatal("theme script missing key")
 	}
-	if !strings.Contains(passwordToggleScript, "login-password") {
+	if !strings.Contains(tmpl.PasswordToggleScript, "login-password") {
 		t.Fatal("password toggle missing input id")
 	}
 }
