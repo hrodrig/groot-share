@@ -1,14 +1,16 @@
-package server
+package web
 
 import (
 	"errors"
-	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hrodrig/groot-share/internal/server/core"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/store"
@@ -76,26 +78,26 @@ type sharesData struct {
 }
 
 // handleSharesPage renders the per-archive share-link admin UI (GET).
-func (s *Server) handleSharesPage(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleSharesPage(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermSharesManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 	id := strings.Trim(r.PathValue("id"), "/")
-	a, err := s.resolveArchive(r.Context(), id)
+	a, err := srv.ResolveArchive(r.Context(), id)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	links, err := s.Store.ListShareLinks(r.Context(), id)
+	links, err := srv.Store.ListShareLinks(r.Context(), id)
 	if err != nil {
 		slog.Error("list share links", "error", err)
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
 	kind, text := shareNotice(r.URL.Query().Get("notice"))
-	renderSharesPage(w, s, ac, sharesData{
+	renderSharesPage(w, srv, ac, sharesData{
 		ArchiveID:  id,
 		Key:        a.Key,
 		Links:      shareViews(links, time.Now().UTC()),
@@ -104,10 +106,10 @@ func (s *Server) handleSharesPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func renderSharesPage(w http.ResponseWriter, s *Server, ac *Actor, d sharesData) {
+func renderSharesPage(w http.ResponseWriter, srv *Web, ac *core.Actor, d sharesData) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := s.pageShell()
-	mergeActorData(data, ac)
+	data := srv.PageShell()
+	core.MergeActorData(data, ac)
 	data["Nav"] = "captures"
 	data["BaseURL"] = "" // set by callers that need it (create handler sets on the created URL)
 	data["Shares"] = d
@@ -115,53 +117,53 @@ func renderSharesPage(w http.ResponseWriter, s *Server, ac *Actor, d sharesData)
 }
 
 // handleSharesCreate handles POST /shares/{id...} (form-encoded).
-func (s *Server) handleSharesCreate(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleSharesCreate(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermSharesManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 	id := strings.Trim(r.PathValue("id"), "/")
-	archive, err := s.resolveArchive(r.Context(), id)
+	archive, err := srv.ResolveArchive(r.Context(), id)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderSharesNotice(w, r, ac, id, "error")
+		srv.renderSharesNotice(w, r, ac, id, "error")
 		return
 	}
 	label := strings.TrimSpace(r.Form.Get("label"))
 	maxUses, err := parseMaxUses(r.Form.Get("max_uses"))
 	if err != nil {
-		s.renderSharesField(w, r, ac, id, "bad_max", label, r.Form.Get("max_uses"), r.Form.Get("expires_at_local"))
+		srv.renderSharesField(w, r, ac, id, "bad_max", label, r.Form.Get("max_uses"), r.Form.Get("expires_at_local"))
 		return
 	}
 	expires, err := parseShareExpiry(r)
 	if err != nil {
-		s.renderSharesField(w, r, ac, id, "bad_expiry", label, r.Form.Get("max_uses"), r.Form.Get("expires_at_local"))
+		srv.renderSharesField(w, r, ac, id, "bad_expiry", label, r.Form.Get("max_uses"), r.Form.Get("expires_at_local"))
 		return
 	}
 	raw, hash, err := auth.NewShareToken()
 	if err != nil {
 		slog.Error("share token", "error", err)
-		s.renderSharesNotice(w, r, ac, id, "error")
+		srv.renderSharesNotice(w, r, ac, id, "error")
 		return
 	}
-	link, err := s.Store.CreateShareLink(r.Context(), id, hash, ac.User.ID, label, maxUses, expires)
+	link, err := srv.Store.CreateShareLink(r.Context(), id, hash, ac.User.ID, label, maxUses, expires)
 	if err != nil {
 		slog.Error("create share link", "error", err)
-		s.renderSharesNotice(w, r, ac, id, "error")
+		srv.renderSharesNotice(w, r, ac, id, "error")
 		return
 	}
-	s.recordUserAudit(r, "share_create", strconv.FormatInt(link.ID, 10), id)
-	links, err := s.Store.ListShareLinks(r.Context(), id)
+	srv.RecordUserAudit(r, "share_create", strconv.FormatInt(link.ID, 10), id)
+	links, err := srv.Store.ListShareLinks(r.Context(), id)
 	if err != nil {
 		slog.Error("list share links", "error", err)
 		links = []store.ShareLink{link}
 	}
-	url := s.requestBaseURL(r) + "/s/" + raw
-	renderSharesPage(w, s, ac, sharesData{
+	url := srv.RequestBaseURL(r) + "/s/" + raw
+	renderSharesPage(w, srv, ac, sharesData{
 		ArchiveID:  id,
 		Key:        archive.Key,
 		Links:      shareViews(links, time.Now().UTC()),
@@ -211,21 +213,21 @@ func parseShareExpiry(r *http.Request) (time.Time, error) {
 	return t, nil
 }
 
-func (s *Server) renderSharesNotice(w http.ResponseWriter, r *http.Request, ac *Actor, id, notice string) {
-	renderSharesPage(w, s, ac, sharesData{
+func (srv *Web) renderSharesNotice(w http.ResponseWriter, r *http.Request, ac *core.Actor, id, notice string) {
+	renderSharesPage(w, srv, ac, sharesData{
 		ArchiveID:  id,
-		Key:        archiveKeyOrID(s, r, id),
-		Links:      listSharesOrNil(s, r, id),
+		Key:        archiveKeyOrID(srv, r, id),
+		Links:      listSharesOrNil(srv, r, id),
 		NoticeKind: shareNoticeKind(notice),
 		NoticeText: shareNoticeText(notice),
 	})
 }
 
-func (s *Server) renderSharesField(w http.ResponseWriter, r *http.Request, ac *Actor, id, notice, label, maxUses, until string) {
-	renderSharesPage(w, s, ac, sharesData{
+func (srv *Web) renderSharesField(w http.ResponseWriter, r *http.Request, ac *core.Actor, id, notice, label, maxUses, until string) {
+	renderSharesPage(w, srv, ac, sharesData{
 		ArchiveID:   id,
-		Key:         archiveKeyOrID(s, r, id),
-		Links:       listSharesOrNil(s, r, id),
+		Key:         archiveKeyOrID(srv, r, id),
+		Links:       listSharesOrNil(srv, r, id),
 		FormLabel:   label,
 		FormMaxUses: maxUses,
 		FormUntil:   until,
@@ -234,15 +236,15 @@ func (s *Server) renderSharesField(w http.ResponseWriter, r *http.Request, ac *A
 	})
 }
 
-func archiveKeyOrID(s *Server, r *http.Request, id string) string {
-	if a, err := s.resolveArchive(r.Context(), id); err == nil {
+func archiveKeyOrID(srv *Web, r *http.Request, id string) string {
+	if a, err := srv.ResolveArchive(r.Context(), id); err == nil {
 		return a.Key
 	}
 	return id
 }
 
-func listSharesOrNil(s *Server, r *http.Request, id string) []shareView {
-	links, err := s.Store.ListShareLinks(r.Context(), id)
+func listSharesOrNil(srv *Web, r *http.Request, id string) []shareView {
+	links, err := srv.Store.ListShareLinks(r.Context(), id)
 	if err != nil {
 		slog.Warn("list share links", "error", err)
 		return nil
@@ -251,8 +253,8 @@ func listSharesOrNil(s *Server, r *http.Request, id string) []shareView {
 }
 
 // handleSharesRevoke handles the HTML revoke form alias.
-func (s *Server) handleSharesRevoke(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleSharesRevoke(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermSharesManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -260,20 +262,20 @@ func (s *Server) handleSharesRevoke(w http.ResponseWriter, r *http.Request) {
 	raw := strings.Trim(r.PathValue("share_id"), "/")
 	shareID, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || shareID <= 0 {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
 	// Look up the archive id so we can redirect to its shares page.
-	link, err := s.Store.ShareByID(r.Context(), shareID)
+	link, err := srv.Store.ShareByID(r.Context(), shareID)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	if err := s.Store.RevokeShareLink(r.Context(), shareID, time.Now().UTC()); err != nil {
+	if err := srv.Store.RevokeShareLink(r.Context(), shareID, time.Now().UTC()); err != nil {
 		http.Redirect(w, r, "/shares/"+url.PathEscape(link.ArchiveID)+"?notice=missing", http.StatusSeeOther)
 		return
 	}
-	s.recordUserAudit(r, "share_revoke", raw, link.ArchiveID)
+	srv.RecordUserAudit(r, "share_revoke", raw, link.ArchiveID)
 	http.Redirect(w, r, "/shares/"+url.PathEscape(link.ArchiveID)+"?notice=revoked", http.StatusSeeOther)
 }
 

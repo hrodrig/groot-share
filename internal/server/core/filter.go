@@ -1,4 +1,4 @@
-package server
+package core
 
 import (
 	"net/http"
@@ -55,13 +55,13 @@ func ParseFilter(r *http.Request) store.Filter {
 		Cluster: strings.TrimSpace(q.Get("cluster")),
 		Query:   strings.TrimSpace(q.Get("q")),
 		Window:  window,
-		Since:   windowSince(window, time.Now().UTC()),
+		Since:   WindowSince(window, time.Now().UTC()),
 		Source:  source,
 		Storage: storage,
 	}
 }
 
-func windowSince(window string, now time.Time) time.Time {
+func WindowSince(window string, now time.Time) time.Time {
 	switch window {
 	case "24h":
 		return now.Add(-24 * time.Hour)
@@ -76,6 +76,6 @@ func windowSince(window string, now time.Time) time.Time {
 
 // applyFilterInMemory delegates to store.FilterInMemory so the in-memory
 // predicate stays identical to the SQL path (no duplicate copy to drift).
-func applyFilterInMemory(items []store.Archive, f store.Filter) []store.Archive {
+func ApplyFilterInMemory(items []store.Archive, f store.Filter) []store.Archive {
 	return store.FilterInMemory(items, f)
 }
