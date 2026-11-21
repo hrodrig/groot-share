@@ -28,7 +28,7 @@ func applySortQuery(pv *pageView, field string, asc bool) {
 func paginateSlice[T any](items []T, page, pageSize int) ([]T, pageView) {
 	return tmpl.PaginateSlice(items, page, pageSize)
 }
-func firstSortAsc(field string) bool { return tmpl.FirstSortAsc(field) }
+func firstSortAsc(field string) bool           { return tmpl.FirstSortAsc(field) }
 func sortURL(pv pageView, field string) string { return tmpl.SortURL(pv, field) }
 func pagerURL(page int, pv pageView) string    { return tmpl.PagerURL(page, pv) }
 func QueryStringWith(r *http.Request, key, value string) string {
