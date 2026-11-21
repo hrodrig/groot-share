@@ -1,4 +1,4 @@
-package server
+package core
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 )
 
 // WatchLoop polls GFS_SFTP_INBOX until ctx is done. No-op when inbox is unset.
-func (s *Server) WatchLoop(ctx context.Context, every time.Duration) {
-	if strings.TrimSpace(s.Cfg.SFTPInbox) == "" {
+func (c *Core) WatchLoop(ctx context.Context, every time.Duration) {
+	if strings.TrimSpace(c.Cfg.SFTPInbox) == "" {
 		return
 	}
 	if every <= 0 {
@@ -29,7 +29,7 @@ func (s *Server) WatchLoop(ctx context.Context, every time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			if err := s.WatchOnce(ctx, seen); err != nil {
+			if err := c.WatchOnce(ctx, seen); err != nil {
 				slog.Warn("sftp inbox", "error", err)
 			}
 		}
@@ -37,8 +37,8 @@ func (s *Server) WatchLoop(ctx context.Context, every time.Duration) {
 }
 
 // WatchOnce ingests stable *.tar.gz files from the inbox (size unchanged vs last poll).
-func (s *Server) WatchOnce(ctx context.Context, seen map[string]int64) error {
-	inbox := strings.TrimSpace(s.Cfg.SFTPInbox)
+func (c *Core) WatchOnce(ctx context.Context, seen map[string]int64) error {
+	inbox := strings.TrimSpace(c.Cfg.SFTPInbox)
 	if inbox == "" {
 		return nil
 	}
@@ -58,7 +58,7 @@ func (s *Server) WatchOnce(ctx context.Context, seen map[string]int64) error {
 		name := ent.Name()
 		path := filepath.Join(inbox, name)
 		live[path] = struct{}{}
-		s.processInboxEntry(ctx, path, name, ent.IsDir(), seen)
+		c.processInboxEntry(ctx, path, name, ent.IsDir(), seen)
 	}
 	for path := range seen {
 		if _, ok := live[path]; !ok {
@@ -70,7 +70,7 @@ func (s *Server) WatchOnce(ctx context.Context, seen map[string]int64) error {
 
 // processInboxEntry handles one inbox entry: records stability size, then ingests
 // stable *.tar.gz files (removing the inbox file on success) and drops stale sizes.
-func (s *Server) processInboxEntry(ctx context.Context, path, name string, isDir bool, seen map[string]int64) {
+func (c *Core) processInboxEntry(ctx context.Context, path, name string, isDir bool, seen map[string]int64) {
 	if isDir || !isInboxTar(name) {
 		return
 	}
@@ -85,7 +85,7 @@ func (s *Server) processInboxEntry(ctx context.Context, path, name string, isDir
 		seen[path] = size
 		return
 	}
-	if err := s.ingestSFTPPath(ctx, path, size); err != nil {
+	if err := c.ingestSFTPPath(ctx, path, size); err != nil {
 		slog.Warn("sftp ingest", "path", path, "error", err)
 		return
 	}
@@ -99,8 +99,8 @@ func isInboxTar(name string) bool {
 	return strings.HasSuffix(strings.ToLower(name), ".tar.gz")
 }
 
-func (s *Server) ingestSFTPPath(ctx context.Context, path string, size int64) error {
-	if s.Cfg.MaxUploadBytes > 0 && size > s.Cfg.MaxUploadBytes {
+func (c *Core) ingestSFTPPath(ctx context.Context, path string, size int64) error {
+	if c.Cfg.MaxUploadBytes > 0 && size > c.Cfg.MaxUploadBytes {
 		return fmt.Errorf("file exceeds GFS_MAX_UPLOAD_BYTES")
 	}
 	f, err := os.Open(path)
@@ -109,7 +109,7 @@ func (s *Server) ingestSFTPPath(ctx context.Context, path string, size int64) er
 	}
 	defer func() { _ = f.Close() }()
 	key := store.SanitizeArchiveKey(filepath.Base(path))
-	a, err := s.ingestWithSource(ctx, f, key, "sftp", 0)
+	a, err := c.IngestWithSource(ctx, f, key, "sftp", 0)
 	if err != nil {
 		var dup *store.DuplicateError
 		if errors.As(err, &dup) {
@@ -121,7 +121,7 @@ func (s *Server) ingestSFTPPath(ctx context.Context, path string, size int64) er
 		}
 		return err
 	}
-	s.recordSFTPAudit("upload", a)
+	c.recordSFTPAudit("upload", a)
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("remove inbox file: %w", err)
 	}
@@ -129,8 +129,8 @@ func (s *Server) ingestSFTPPath(ctx context.Context, path string, size int64) er
 	return nil
 }
 
-func (s *Server) recordSFTPAudit(action string, a store.Archive) {
-	if s.Store == nil {
+func (c *Core) recordSFTPAudit(action string, a store.Archive) {
+	if c.Store == nil {
 		return
 	}
 	ev := store.Audit{
@@ -139,7 +139,7 @@ func (s *Server) recordSFTPAudit(action string, a store.Archive) {
 		ObjectID:  a.ID,
 		ObjectKey: a.Key,
 	}
-	if err := s.Store.InsertAudit(context.Background(), ev); err != nil {
+	if err := c.Store.InsertAudit(context.Background(), ev); err != nil {
 		slog.Error("sftp audit insert", "error", err, "action", action)
 	}
 }

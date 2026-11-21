@@ -1,11 +1,13 @@
-package server
+package web
 
 import (
 	"errors"
-	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/hrodrig/groot-share/internal/server/core"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/store"
@@ -17,9 +19,9 @@ import (
 // mode. Otherwise the URL is derived from the request, which
 // requires running behind a trusted proxy that overwrites Host and
 // X-Forwarded-Proto; see SECURITY.md.
-func (s *Server) requestBaseURL(r *http.Request) string {
-	if s.Cfg.BaseURL != "" {
-		return s.Cfg.BaseURL
+func (srv *Web) requestBaseURL(r *http.Request) string {
+	if srv.Cfg.BaseURL != "" {
+		return srv.Cfg.BaseURL
 	}
 	scheme := "http"
 	if r.TLS != nil {
@@ -30,30 +32,30 @@ func (s *Server) requestBaseURL(r *http.Request) string {
 	return scheme + "://" + r.Host
 }
 
-func (s *Server) handleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	users, err := s.Store.ListUsers(r.Context())
+	users, err := srv.Store.ListUsers(r.Context())
 	if err != nil {
 		slog.Error("admin list users", "error", err)
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	data := s.pageShell()
-	mergeActorData(data, ac)
-	data["BaseURL"] = s.requestBaseURL(r)
+	data := srv.PageShell()
+	core.MergeActorData(data, ac)
+	data["BaseURL"] = srv.RequestBaseURL(r)
 	data["Nav"] = "admin"
 	data["Users"] = users
 	data["NoticeKind"], data["NoticeText"] = adminNotice(r.URL.Query().Get("notice"))
 	_ = tmpl.AdminUsers.Execute(w, data)
 }
 
-func (s *Server) handleAdminUsersCreatePOST(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUsersCreatePOST(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -88,7 +90,7 @@ func (s *Server) handleAdminUsersCreatePOST(w http.ResponseWriter, r *http.Reque
 		http.Redirect(w, r, "/admin/users?notice=error", http.StatusSeeOther)
 		return
 	}
-	if _, err := s.Store.CreateUser(r.Context(), r.Form.Get("username"), name, hash, role); err != nil {
+	if _, err := srv.Store.CreateUser(r.Context(), r.Form.Get("username"), name, hash, role); err != nil {
 		if errors.Is(err, store.ErrNameRequired) || errors.Is(err, store.ErrNameTooLong) {
 			http.Redirect(w, r, "/admin/users?notice=name", http.StatusSeeOther)
 			return
@@ -103,15 +105,15 @@ func (s *Server) handleAdminUsersCreatePOST(w http.ResponseWriter, r *http.Reque
 	http.Redirect(w, r, "/admin/users?notice=created", http.StatusSeeOther)
 }
 
-func (s *Server) handleAdminUserRolePOST(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUserRolePOST(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id, err := parseUserID(r.PathValue("id"))
+	id, err := core.ParseUserID(r.PathValue("id"))
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -123,38 +125,38 @@ func (s *Server) handleAdminUserRolePOST(w http.ResponseWriter, r *http.Request)
 		http.Redirect(w, r, "/admin/users?notice=error", http.StatusSeeOther)
 		return
 	}
-	u, err := s.Store.UserByID(r.Context(), id)
+	u, err := srv.Store.UserByID(r.Context(), id)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	if err := s.Store.GuardLastAdmin(r.Context(), id, newRole, u.Active); err != nil {
+	if err := srv.Store.GuardLastAdmin(r.Context(), id, newRole, u.Active); err != nil {
 		http.Redirect(w, r, "/admin/users?notice=last_admin", http.StatusSeeOther)
 		return
 	}
-	if err := s.Store.UpdateUser(r.Context(), id, newRole, u.Active); err != nil {
+	if err := srv.Store.UpdateUser(r.Context(), id, newRole, u.Active); err != nil {
 		http.Redirect(w, r, "/admin/users?notice=error", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/admin/users?notice=updated", http.StatusSeeOther)
 }
 
-func (s *Server) handleAdminUserUsernamePOST(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUserUsernamePOST(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id, err := parseUserID(r.PathValue("id"))
+	id, err := core.ParseUserID(r.PathValue("id"))
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
 		http.Redirect(w, r, "/admin/users?notice=error", http.StatusSeeOther)
 		return
 	}
-	if err := s.Store.SetUsername(r.Context(), id, r.Form.Get("username")); err != nil {
+	if err := srv.Store.SetUsername(r.Context(), id, r.Form.Get("username")); err != nil {
 		if errors.Is(err, store.ErrUsernameRequired) || errors.Is(err, store.ErrUsernameTooLong) {
 			http.Redirect(w, r, "/admin/users?notice=username", http.StatusSeeOther)
 			return
@@ -169,81 +171,81 @@ func (s *Server) handleAdminUserUsernamePOST(w http.ResponseWriter, r *http.Requ
 	http.Redirect(w, r, "/admin/users?notice=updated", http.StatusSeeOther)
 }
 
-func (s *Server) handleAdminUserDeactivatePOST(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUserDeactivatePOST(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id, err := parseUserID(r.PathValue("id"))
+	id, err := core.ParseUserID(r.PathValue("id"))
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	u, err := s.Store.UserByID(r.Context(), id)
+	u, err := srv.Store.UserByID(r.Context(), id)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	if err := s.Store.GuardLastAdmin(r.Context(), id, u.Role, false); err != nil {
+	if err := srv.Store.GuardLastAdmin(r.Context(), id, u.Role, false); err != nil {
 		http.Redirect(w, r, "/admin/users?notice=last_admin", http.StatusSeeOther)
 		return
 	}
-	if err := s.Store.UpdateUser(r.Context(), id, u.Role, false); err != nil {
+	if err := srv.Store.UpdateUser(r.Context(), id, u.Role, false); err != nil {
 		http.Redirect(w, r, "/admin/users?notice=error", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/admin/users?notice=deactivated", http.StatusSeeOther)
 }
 
-func (s *Server) handleAdminUserActivatePOST(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUserActivatePOST(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id, err := parseUserID(r.PathValue("id"))
+	id, err := core.ParseUserID(r.PathValue("id"))
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	u, err := s.Store.UserByID(r.Context(), id)
+	u, err := srv.Store.UserByID(r.Context(), id)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
-	if err := s.Store.UpdateUser(r.Context(), id, u.Role, true); err != nil {
+	if err := srv.Store.UpdateUser(r.Context(), id, u.Role, true); err != nil {
 		http.Redirect(w, r, "/admin/users?notice=error", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/admin/users?notice=activated", http.StatusSeeOther)
 }
 
-func (s *Server) handleAdminUserRemovePOST(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *Web) HandleAdminUserRemovePOST(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	id, err := parseUserID(r.PathValue("id"))
+	id, err := core.ParseUserID(r.PathValue("id"))
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
 	if id == ac.User.ID {
 		http.Redirect(w, r, "/admin/users?notice=self", http.StatusSeeOther)
 		return
 	}
-	u, err := s.Store.UserByID(r.Context(), id)
+	u, err := srv.Store.UserByID(r.Context(), id)
 	if err != nil {
-		s.handleNotFound(w, r)
+		http.NotFound(w, r)
 		return
 	}
 	if u.Active {
 		http.Redirect(w, r, "/admin/users?notice=active", http.StatusSeeOther)
 		return
 	}
-	if err := s.Store.RemoveUser(r.Context(), id); err != nil {
+	if err := srv.Store.RemoveUser(r.Context(), id); err != nil {
 		if errors.Is(err, store.ErrLastAdmin) {
 			http.Redirect(w, r, "/admin/users?notice=last_admin", http.StatusSeeOther)
 			return

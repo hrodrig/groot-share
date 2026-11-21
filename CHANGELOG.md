@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Split `internal/server` into core, httpapi, and web (#78):** shared state and domain helpers live in `internal/server/core`; JSON `/v1/*` handlers in `internal/server/httpapi`; HTML handlers in `internal/server/web`. `server.Server` embeds `*core.Core` and wires the mux. No route or behaviour change.
+
 ## [0.9.0] — 2026-11-21
 
 ### Security

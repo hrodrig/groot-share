@@ -27,7 +27,7 @@ func identServer(t *testing.T) (*Server, *store.Store) {
 	if err := st.EnsureAdmin(context.Background(), "root", "correct-horse", ""); err != nil {
 		t.Fatal(err)
 	}
-	return &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Store: st, Ready: func() bool { return true }, Version: "0.1.0-test"}, st
+	return newTestServer(config.Config{Topology: config.TopologyVPS}, st, nil, "0.1.0-test"), st
 }
 
 func TestLoginWrongPassword(t *testing.T) {
@@ -510,7 +510,7 @@ func TestListMyAPIKeysEmpty(t *testing.T) {
 }
 
 func TestLoginNotReadyWithoutStore(t *testing.T) {
-	s := &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Ready: func() bool { return true }}
+	s := newTestServer(config.Config{Topology: config.TopologyVPS}, nil, nil, "")
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"root","password":"x"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")

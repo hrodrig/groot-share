@@ -1,4 +1,4 @@
-package server
+package httpapi
 
 import (
 	"encoding/json"
@@ -9,20 +9,22 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hrodrig/groot-share/internal/server/core"
+
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-func (s *Server) handleListMyAPIKeys(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *API) HandleListMyAPIKeys(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || ac.Method != auth.AuthSession {
-		writeJSONError(w, http.StatusForbidden, "forbidden")
+		core.WriteJSONError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	items, err := s.Store.ListAPIKeysByUser(r.Context(), ac.User.ID)
+	items, err := srv.Store.ListAPIKeysByUser(r.Context(), ac.User.ID)
 	if err != nil {
 		slog.Error("list api keys", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "internal")
+		core.WriteJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
 	out := make([]map[string]any, 0, len(items))
@@ -33,27 +35,27 @@ func (s *Server) handleListMyAPIKeys(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
 }
 
-func (s *Server) handleDeleteAPIKey(w http.ResponseWriter, r *http.Request) {
-	ac := actorFrom(r.Context())
+func (srv *API) HandleDeleteAPIKey(w http.ResponseWriter, r *http.Request) {
+	ac := core.ActorFrom(r.Context())
 	if ac == nil || ac.Method != auth.AuthSession {
-		writeJSONError(w, http.StatusForbidden, "forbidden")
+		core.WriteJSONError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	id, err := parseUserID(strings.Trim(r.PathValue("id"), "/"))
+	id, err := core.ParseUserID(strings.Trim(r.PathValue("id"), "/"))
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "bad_request")
+		core.WriteJSONError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	if err := s.Store.DeleteAPIKey(r.Context(), id, ac.User.ID); err != nil {
+	if err := srv.Store.DeleteAPIKey(r.Context(), id, ac.User.ID); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			writeJSONError(w, http.StatusNotFound, "not_found")
+			core.WriteJSONError(w, http.StatusNotFound, "not_found")
 			return
 		}
-		writeJSONError(w, http.StatusInternalServerError, "internal")
+		core.WriteJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
-	if err := s.requireUserAudit(r, "apikey.revoke", strconv.FormatInt(id, 10), ac.User.Username); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "audit unavailable")
+	if err := srv.RequireUserAudit(r, "apikey.revoke", strconv.FormatInt(id, 10), ac.User.Username); err != nil {
+		core.WriteJSONError(w, http.StatusInternalServerError, "audit unavailable")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -74,7 +76,7 @@ func apiKeyJSON(k store.APIKeyRecord) map[string]any {
 	return out
 }
 
-func (s *Server) createAPIKeyForUser(w http.ResponseWriter, r *http.Request, userID int64, role auth.Role) (raw, prefix string, scope auth.KeyScope, err error) {
+func (srv *API) createAPIKeyForUser(w http.ResponseWriter, r *http.Request, userID int64, role auth.Role) (raw, prefix string, scope auth.KeyScope, err error) {
 	scope = auth.KeyScopeUpload
 	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 		var body struct {
@@ -90,25 +92,25 @@ func (s *Server) createAPIKeyForUser(w http.ResponseWriter, r *http.Request, use
 		}
 	}
 	if scope != auth.KeyScopeUpload && scope != auth.KeyScopeRead {
-		return "", "", "", errBadScope
+		return "", "", "", ErrBadAPIKeyScope
 	}
 	if role == auth.RoleViewer {
-		return "", "", "", errForbiddenScope
+		return "", "", "", ErrForbiddenAPIKeyScope
 	}
 	if role == auth.RoleUploader && scope == auth.KeyScopeRead {
-		return "", "", "", errForbiddenScope
+		return "", "", "", ErrForbiddenAPIKeyScope
 	}
 	raw, hash, prefix, err := auth.NewAPIKey()
 	if err != nil {
 		return "", "", "", err
 	}
-	if err := s.Store.CreateAPIKey(r.Context(), userID, hash, prefix, scope); err != nil {
+	if err := srv.Store.CreateAPIKey(r.Context(), userID, hash, prefix, scope); err != nil {
 		return "", "", "", err
 	}
 	return raw, prefix, scope, nil
 }
 
 var (
-	errBadScope       = errors.New("bad scope")
-	errForbiddenScope = errors.New("forbidden scope")
+	ErrBadAPIKeyScope       = errors.New("bad scope")
+	ErrForbiddenAPIKeyScope = errors.New("forbidden scope")
 )

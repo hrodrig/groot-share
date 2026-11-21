@@ -2,34 +2,21 @@
 package server
 
 import (
-	"context"
 	"io"
 	"net/http"
 
 	"github.com/hrodrig/groot-share/internal/auth"
-	"github.com/hrodrig/groot-share/internal/blob"
-	"github.com/hrodrig/groot-share/internal/config"
-	"github.com/hrodrig/groot-share/internal/ratelimit"
+	"github.com/hrodrig/groot-share/internal/server/core"
+	"github.com/hrodrig/groot-share/internal/server/httpapi"
 	"github.com/hrodrig/groot-share/internal/server/mw"
-	"github.com/hrodrig/groot-share/internal/store"
+	"github.com/hrodrig/groot-share/internal/server/web"
 )
 
 // Server is the HTTP front-end.
 type Server struct {
-	Cfg     config.Config
-	Store   *store.Store
-	Blobs   blob.Store
-	Ready   func() bool
-	Version string
-	// LoginLimit gates POST /login (nil = unlimited; production sets from config).
-	LoginLimit *ratelimit.Limiter
-	// listCache memoizes vps-s3 listings (zero-value = cold, safe).
-	listCache listCache
-	// completenessCache memoizes per-archive completeness badges (zero-value =
-	// cold, safe). Only local (vps) archives consult it.
-	completenessCache completenessCache
-	// auditInsert overrides Store.InsertAudit when non-nil (tests only).
-	auditInsert func(ctx context.Context, ev store.Audit) error
+	*core.Core
+	api *httpapi.API
+	ui  *web.Web
 }
 
 // Handler returns the root mux with middleware.
@@ -37,62 +24,50 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
-	mux.HandleFunc("GET /login", s.handleLoginGET)
-	mux.HandleFunc("POST /login", s.handleLoginPOST)
-	mux.HandleFunc("POST /logout", s.requireAuth(s.handleLogout))
-	mux.HandleFunc("GET /{$}", s.requirePermission(auth.PermArchivesRead, s.handleHome))
-	mux.HandleFunc("GET /upload", s.requirePermission(auth.PermArchivesWrite, s.handleUploadGET))
-	mux.HandleFunc("GET /activity", s.requirePermission(auth.PermAuditRead, s.handleActivityGET))
-	mux.HandleFunc("GET /settings", s.requireAuth(s.handleSettingsGET))
-	mux.HandleFunc("POST /settings/password", s.requireAuth(s.handleSettingsPasswordPOST))
-	mux.HandleFunc("POST /settings/name", s.requireAuth(s.handleSettingsNamePOST))
-	mux.HandleFunc("POST /settings/api-keys", s.requirePermission(auth.PermAPIKeysManage, s.handleSettingsAPIKeyPOST))
-	mux.HandleFunc("POST /settings/api-keys/{id}/revoke", s.requireAuth(s.handleSettingsAPIKeyRevokePOST))
-	mux.HandleFunc("GET /admin/users", s.requirePermission(auth.PermUsersManage, s.handleAdminUsersGET))
-	mux.HandleFunc("POST /admin/users/create", s.requirePermission(auth.PermUsersManage, s.handleAdminUsersCreatePOST))
-	mux.HandleFunc("POST /admin/users/{id}/role", s.requirePermission(auth.PermUsersManage, s.handleAdminUserRolePOST))
-	mux.HandleFunc("POST /admin/users/{id}/username", s.requirePermission(auth.PermUsersManage, s.handleAdminUserUsernamePOST))
-	mux.HandleFunc("POST /admin/users/{id}/deactivate", s.requirePermission(auth.PermUsersManage, s.handleAdminUserDeactivatePOST))
-	mux.HandleFunc("POST /admin/users/{id}/activate", s.requirePermission(auth.PermUsersManage, s.handleAdminUserActivatePOST))
-	mux.HandleFunc("POST /admin/users/{id}/remove", s.requirePermission(auth.PermUsersManage, s.handleAdminUserRemovePOST))
-	mux.HandleFunc("GET /v1/me", s.requirePermission(auth.PermArchivesRead, s.handleMe))
-	mux.HandleFunc("PATCH /v1/me", s.requireAuth(s.handlePatchMe))
-	mux.HandleFunc("GET /v1/me/api-keys", s.requireAuth(s.handleListMyAPIKeys))
-	mux.HandleFunc("DELETE /v1/me/api-keys/{id}", s.requireAuth(s.handleDeleteAPIKey))
-	mux.HandleFunc("POST /v1/api-keys", s.requirePermission(auth.PermAPIKeysManage, s.handleCreateAPIKey))
-	mux.HandleFunc("GET /v1/users", s.requirePermission(auth.PermUsersManage, s.handleListUsers))
-	mux.HandleFunc("POST /v1/users", s.requirePermission(auth.PermUsersManage, s.handleCreateUser))
-	mux.HandleFunc("GET /v1/users/{id}", s.requirePermission(auth.PermUsersManage, s.handleGetUser))
-	mux.HandleFunc("PATCH /v1/users/{id}", s.requirePermission(auth.PermUsersManage, s.handlePatchUser))
-	mux.HandleFunc("DELETE /v1/users/{id}", s.requirePermission(auth.PermUsersManage, s.handleDeleteUser))
-	mux.HandleFunc("GET /v1/archives", s.requirePermission(auth.PermArchivesRead, s.handleListArchives))
-	mux.HandleFunc("POST /v1/archives", s.requirePermission(auth.PermArchivesWrite, s.handleUpload))
-	mux.HandleFunc("GET /v1/archives/{id...}", s.requirePermission(auth.PermArchivesRead, s.handleDownload))
-	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
-	// Form-driven delete (browser): literal "delete" segment before the
-	// archive id so {id...} can capture S3 keys with '/'. Distinct from
-	// the JSON DELETE /v1/archives/{id...} above; the route itself
-	// disambiguates the intent.
-	mux.HandleFunc("POST /v1/archives/delete/{id...}", s.requirePermission(auth.PermArchivesDelete, s.handleDelete))
-	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.handleListAudit))
-	mux.HandleFunc("GET /v1/activity/export", s.requireAuth(s.handleActivityExport))
-	// Share routes: the archive id may contain '/' in vps-s3 (it's the
-	// S3 object key), so the wildcard {id...} is placed at the end of
-	// the path. Go 1.22+ ServeMux requires this. Revoke is keyed by
-	// the share row id alone (a numeric primary key), so the path does
-	// not need the archive id — the audit log records share_id.
-	mux.HandleFunc("GET /v1/shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleListShares))
-	mux.HandleFunc("POST /v1/shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleCreateShare))
-	mux.HandleFunc("DELETE /v1/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.handleRevokeShare))
-	mux.HandleFunc("GET /s/{token}", s.handleShareDownload)
-	mux.HandleFunc("GET /shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleSharesPage))
-	mux.HandleFunc("POST /shares/{id...}", s.requirePermission(auth.PermSharesManage, s.handleSharesCreate))
-	mux.HandleFunc("POST /shares/{share_id}/revoke", s.requirePermission(auth.PermSharesManage, s.handleSharesRevoke))
+	mux.HandleFunc("GET /login", s.ui.HandleLoginGET)
+	mux.HandleFunc("POST /login", s.ui.HandleLoginPOST)
+	mux.HandleFunc("POST /logout", s.requireAuth(s.ui.HandleLogout))
+	mux.HandleFunc("GET /{$}", s.requirePermission(auth.PermArchivesRead, s.ui.HandleHome))
+	mux.HandleFunc("GET /upload", s.requirePermission(auth.PermArchivesWrite, s.ui.HandleUploadGET))
+	mux.HandleFunc("GET /activity", s.requirePermission(auth.PermAuditRead, s.ui.HandleActivityGET))
+	mux.HandleFunc("GET /settings", s.requireAuth(s.ui.HandleSettingsGET))
+	mux.HandleFunc("POST /settings/password", s.requireAuth(s.ui.HandleSettingsPasswordPOST))
+	mux.HandleFunc("POST /settings/name", s.requireAuth(s.ui.HandleSettingsNamePOST))
+	mux.HandleFunc("POST /settings/api-keys", s.requirePermission(auth.PermAPIKeysManage, s.ui.HandleSettingsAPIKeyPOST))
+	mux.HandleFunc("POST /settings/api-keys/{id}/revoke", s.requireAuth(s.ui.HandleSettingsAPIKeyRevokePOST))
+	mux.HandleFunc("GET /admin/users", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUsersGET))
+	mux.HandleFunc("POST /admin/users/create", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUsersCreatePOST))
+	mux.HandleFunc("POST /admin/users/{id}/role", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUserRolePOST))
+	mux.HandleFunc("POST /admin/users/{id}/username", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUserUsernamePOST))
+	mux.HandleFunc("POST /admin/users/{id}/deactivate", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUserDeactivatePOST))
+	mux.HandleFunc("POST /admin/users/{id}/activate", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUserActivatePOST))
+	mux.HandleFunc("POST /admin/users/{id}/remove", s.requirePermission(auth.PermUsersManage, s.ui.HandleAdminUserRemovePOST))
+	mux.HandleFunc("GET /v1/me", s.requirePermission(auth.PermArchivesRead, s.api.HandleMe))
+	mux.HandleFunc("PATCH /v1/me", s.requireAuth(s.api.HandlePatchMe))
+	mux.HandleFunc("GET /v1/me/api-keys", s.requireAuth(s.api.HandleListMyAPIKeys))
+	mux.HandleFunc("DELETE /v1/me/api-keys/{id}", s.requireAuth(s.api.HandleDeleteAPIKey))
+	mux.HandleFunc("POST /v1/api-keys", s.requirePermission(auth.PermAPIKeysManage, s.api.HandleCreateAPIKey))
+	mux.HandleFunc("GET /v1/users", s.requirePermission(auth.PermUsersManage, s.api.HandleListUsers))
+	mux.HandleFunc("POST /v1/users", s.requirePermission(auth.PermUsersManage, s.api.HandleCreateUser))
+	mux.HandleFunc("GET /v1/users/{id}", s.requirePermission(auth.PermUsersManage, s.api.HandleGetUser))
+	mux.HandleFunc("PATCH /v1/users/{id}", s.requirePermission(auth.PermUsersManage, s.api.HandlePatchUser))
+	mux.HandleFunc("DELETE /v1/users/{id}", s.requirePermission(auth.PermUsersManage, s.api.HandleDeleteUser))
+	mux.HandleFunc("GET /v1/archives", s.requirePermission(auth.PermArchivesRead, s.api.HandleListArchives))
+	mux.HandleFunc("POST /v1/archives", s.requirePermission(auth.PermArchivesWrite, s.api.HandleUpload))
+	mux.HandleFunc("GET /v1/archives/{id...}", s.requirePermission(auth.PermArchivesRead, s.api.HandleDownload))
+	mux.HandleFunc("DELETE /v1/archives/{id...}", s.requirePermission(auth.PermArchivesDelete, s.api.HandleDelete))
+	mux.HandleFunc("POST /v1/archives/delete/{id...}", s.requirePermission(auth.PermArchivesDelete, s.api.HandleDelete))
+	mux.HandleFunc("GET /v1/audit", s.requirePermission(auth.PermAuditRead, s.api.HandleListAudit))
+	mux.HandleFunc("GET /v1/activity/export", s.requireAuth(s.api.HandleActivityExport))
+	mux.HandleFunc("GET /v1/shares/{id...}", s.requirePermission(auth.PermSharesManage, s.api.HandleListShares))
+	mux.HandleFunc("POST /v1/shares/{id...}", s.requirePermission(auth.PermSharesManage, s.api.HandleCreateShare))
+	mux.HandleFunc("DELETE /v1/shares/{share_id}", s.requirePermission(auth.PermSharesManage, s.api.HandleRevokeShare))
+	mux.HandleFunc("GET /s/{token}", s.api.HandleShareDownload)
+	mux.HandleFunc("GET /shares/{id...}", s.requirePermission(auth.PermSharesManage, s.ui.HandleSharesPage))
+	mux.HandleFunc("POST /shares/{id...}", s.requirePermission(auth.PermSharesManage, s.ui.HandleSharesCreate))
+	mux.HandleFunc("POST /shares/{share_id}/revoke", s.requirePermission(auth.PermSharesManage, s.ui.HandleSharesRevoke))
 	s.pinRoutes(mux)
 	mountFaviconRoutes(mux)
-	// Catch-all for unmatched routes: render the friendly 404 page
-	// (browser) or return a structured JSON error (API). Specific
-	// patterns registered above always win on priority.
 	mux.HandleFunc("/", s.handleNotFound)
 	return mw.SecurityHeaders(s.Cfg.CSP, mw.AccessLog(mux))
 }
@@ -111,4 +86,4 @@ func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 	_, _ = io.WriteString(w, "ok\n")
 }
 
-func remoteIP(remoteAddr string) string { return mw.RemoteIP(remoteAddr) }
+func remoteIP(remoteAddr string) string { return core.RemoteIP(remoteAddr) }

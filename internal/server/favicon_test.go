@@ -5,10 +5,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/hrodrig/groot-share/internal/config"
 )
 
 func TestFaviconStatic(t *testing.T) {
-	s := &Server{Version: "0.1.0-test"}
+	s := newTestServer(config.Config{}, nil, nil, "0.1.0-test")
 	paths := []string{
 		"/static/favicon.ico",
 		"/static/favicon.svg",
@@ -35,7 +37,7 @@ func TestFaviconStatic(t *testing.T) {
 }
 
 func TestLoginHeroStatic(t *testing.T) {
-	s := &Server{Version: "0.1.0-test"}
+	s := newTestServer(config.Config{}, nil, nil, "0.1.0-test")
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/static/login-hero.jpg", nil))
 	if rr.Code != http.StatusOK {

@@ -132,5 +132,5 @@ func newNotFoundServer(t *testing.T) *Server {
 	if err := st.EnsureAdmin(context.Background(), "root", "correct-horse", ""); err != nil {
 		t.Fatal(err)
 	}
-	return &Server{Cfg: config.Config{Topology: config.TopologyVPS}, Store: st, Ready: func() bool { return true }, Version: "0.1.0-test"}
+	return newTestServer(config.Config{Topology: config.TopologyVPS}, st, nil, "0.1.0-test")
 }

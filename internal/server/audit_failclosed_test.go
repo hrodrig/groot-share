@@ -16,7 +16,7 @@ import (
 
 func TestRequireUserAudit_failClosedOnCreateUser(t *testing.T) {
 	s, st := identServer(t)
-	s.auditInsert = func(ctx context.Context, ev store.Audit) error {
+	s.AuditInsert = func(ctx context.Context, ev store.Audit) error {
 		return errors.New("forced audit failure")
 	}
 
@@ -87,7 +87,7 @@ func TestRequireUserAudit_failClosedOnAPIKeyRevoke(t *testing.T) {
 		t.Fatalf("keys body %s", rr.Body.String())
 	}
 
-	s.auditInsert = func(ctx context.Context, ev store.Audit) error {
+	s.AuditInsert = func(ctx context.Context, ev store.Audit) error {
 		return errors.New("forced audit failure")
 	}
 

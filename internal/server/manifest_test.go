@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/hrodrig/groot-share/internal/server/core"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
@@ -120,7 +121,7 @@ func TestPeekManifest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			total, success, failed, ok := peekManifest(bytes.NewReader(tc.archive()))
+			total, success, failed, ok := core.PeekManifest(bytes.NewReader(tc.archive()))
 			if ok != tc.ok {
 				t.Fatalf("ok = %v, want %v (total=%d success=%d failed=%d)", ok, tc.ok, total, success, failed)
 			}
@@ -158,9 +159,9 @@ func TestBadgeFromJobs(t *testing.T) {
 		{5, 1, 4, "4 of 5 jobs failed", "warn"},
 	}
 	for _, tc := range cases {
-		b := badgeFromJobs(tc.total, tc.success, tc.failed)
+		b := core.BadgeFromJobs(tc.total, tc.success, tc.failed)
 		if b.Label != tc.label || b.Tone != tc.tone {
-			t.Fatalf("badgeFromJobs(%d,%d,%d) = (%q,%q) want (%q,%q)",
+			t.Fatalf("core.BadgeFromJobs(%d,%d,%d) = (%q,%q) want (%q,%q)",
 				tc.total, tc.success, tc.failed, b.Label, b.Tone, tc.label, tc.tone)
 		}
 	}
@@ -232,7 +233,7 @@ func TestCompletenessBadgeCached(t *testing.T) {
 		t.Fatalf("expected local storage, got %q", a.Storage)
 	}
 
-	badge, ok := s.completenessBadgeOf(a)
+	badge, ok := s.CompletenessBadgeOf(a)
 	if !ok || badge.Label != "Complete" {
 		t.Fatalf("first peek: ok=%v badge=%+v", ok, badge)
 	}
@@ -246,20 +247,14 @@ func TestCompletenessBadgeCached(t *testing.T) {
 	if err := os.WriteFile(p, []byte("corrupted"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	badge, ok = s.completenessBadgeOf(a)
+	badge, ok = s.CompletenessBadgeOf(a)
 	if !ok || badge.Label != "Complete" {
 		t.Fatalf("cache must hold badge within TTL: ok=%v badge=%+v", ok, badge)
 	}
 
 	// Force expiry and recompute: the corrupted file no longer yields a badge.
-	s.completenessCache.mu.Lock()
-	s.completenessCache.entries[a.ID] = completenessEntry{
-		badge:  badge,
-		ok:     ok,
-		filled: time.Now().Add(-completenessCacheTTL - time.Second),
-	}
-	s.completenessCache.mu.Unlock()
-	if _, ok = s.completenessBadgeOf(a); ok {
+s.SetCompletenessCacheForTest(a.ID, badge, ok, time.Now().Add(-core.CompletenessCacheTTL - time.Second))
+	if _, ok = s.CompletenessBadgeOf(a); ok {
 		t.Fatal("expired cache must recompute and fail on corrupted file")
 	}
 }

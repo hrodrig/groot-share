@@ -25,7 +25,7 @@ func TestResolveArchiveVPSLocalID(t *testing.T) {
 		t.Fatal("no archives")
 	}
 	id := items[0].ID
-	got, err := s.resolveArchive(context.Background(), id)
+	got, err := s.ResolveArchive(context.Background(), id)
 	if err != nil {
 		t.Fatalf("resolveArchive: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestResolveArchiveVPSLocalID(t *testing.T) {
 
 func TestResolveArchiveVPSRejectsNonHex(t *testing.T) {
 	s, _ := identServer(t)
-	_, err := s.resolveArchive(context.Background(), "not-32-hex")
+	_, err := s.ResolveArchive(context.Background(), "not-32-hex")
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("err: %v want ErrNotFound", err)
 	}
@@ -44,7 +44,7 @@ func TestResolveArchiveVPSRejectsNonHex(t *testing.T) {
 
 func TestResolveArchiveVPSRejectsTraversal(t *testing.T) {
 	s, _ := identServer(t)
-	_, err := s.resolveArchive(context.Background(), "../etc/passwd")
+	_, err := s.ResolveArchive(context.Background(), "../etc/passwd")
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("err: %v want ErrNotFound", err)
 	}
@@ -56,7 +56,7 @@ func TestResolveArchiveVPSS3HeadOK(t *testing.T) {
 	if err := mem.Put(context.Background(), key, strings.NewReader("payload")); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.resolveArchive(context.Background(), key)
+	got, err := s.ResolveArchive(context.Background(), key)
 	if err != nil {
 		t.Fatalf("resolveArchive: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestResolveArchiveVPSS3OutOfPrefix(t *testing.T) {
 	if err := mem.Put(context.Background(), "other/2026.tar.gz", strings.NewReader("x")); err != nil {
 		t.Fatal(err)
 	}
-	_, err := s.resolveArchive(context.Background(), "other/2026.tar.gz")
+	_, err := s.ResolveArchive(context.Background(), "other/2026.tar.gz")
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("err: %v want ErrNotFound", err)
 	}
@@ -86,7 +86,7 @@ func TestResolveArchiveVPSS3OutOfPrefix(t *testing.T) {
 
 func TestResolveArchiveEmptyID(t *testing.T) {
 	s, _ := identServer(t)
-	_, err := s.resolveArchive(context.Background(), "")
+	_, err := s.ResolveArchive(context.Background(), "")
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("err: %v want ErrNotFound", err)
 	}

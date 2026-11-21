@@ -1,4 +1,4 @@
-package server
+package core
 
 import (
 	"archive/tar"
@@ -30,10 +30,10 @@ type manifestJobs struct {
 	} `json:"jobs"`
 }
 
-// completenessBadge is the per-row view-model fragment rendered next to the
+// CompletenessBadge is the per-row view-model fragment rendered next to the
 // capture key. It is absent (false) unless a local archive exposes a valid
 // manifest with job counters.
-type completenessBadge struct {
+type CompletenessBadge struct {
 	Label string // "Complete" | "N of M jobs failed" | "Failed"
 	Tone  string // ok | warn | err
 }
@@ -48,7 +48,7 @@ type completenessBadge struct {
 // with no error — callers simply leave the row unmarked. It never decompresses
 // the whole archive: tar.Next skips bodies, and the manifest body is read once
 // through io.LimitReader.
-func peekManifest(r io.Reader) (total, success, failed int, ok bool) {
+func PeekManifest(r io.Reader) (total, success, failed int, ok bool) {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return 0, 0, 0, false
@@ -98,36 +98,36 @@ func isManifestMember(name string) bool {
 // so the row stays unmarked — never an error, never log spam. Results are
 // memoized per archive id for completenessCacheTTL so a page of N local
 // archives doesn't open N .tar.gz files on every render.
-func (s *Server) completenessBadgeOf(a store.Archive) (completenessBadge, bool) {
+func (c *Core) CompletenessBadgeOf(a store.Archive) (CompletenessBadge, bool) {
 	if a.Storage != "local" {
-		return completenessBadge{}, false
+		return CompletenessBadge{}, false
 	}
 	now := time.Now()
-	if badge, ok, found := s.completenessCache.get(a.ID, now); found {
+	if badge, ok, found := c.completenessCache.get(a.ID, now); found {
 		return badge, ok
 	}
-	badge, ok := s.computeBadge(a)
-	s.completenessCache.set(a.ID, badge, ok, now)
+	badge, ok := c.computeBadge(a)
+	c.completenessCache.set(a.ID, badge, ok, now)
 	return badge, ok
 }
 
 // computeBadge does the uncached manifest peek. Split out so the cache wraps
 // only the expensive file open + gzip/tar scan.
-func (s *Server) computeBadge(a store.Archive) (completenessBadge, bool) {
-	p, err := s.Store.BlobPath(a.ID)
+func (c *Core) computeBadge(a store.Archive) (CompletenessBadge, bool) {
+	p, err := c.Store.BlobPath(a.ID)
 	if err != nil {
-		return completenessBadge{}, false
+		return CompletenessBadge{}, false
 	}
 	f, err := os.Open(p)
 	if err != nil {
-		return completenessBadge{}, false
+		return CompletenessBadge{}, false
 	}
 	defer f.Close()
-	total, success, failed, ok := peekManifest(f)
+	total, success, failed, ok := PeekManifest(f)
 	if !ok {
-		return completenessBadge{}, false
+		return CompletenessBadge{}, false
 	}
-	return badgeFromJobs(total, success, failed), true
+	return BadgeFromJobs(total, success, failed), true
 }
 
 // completenessCache memoizes completeness badges per archive id to avoid
@@ -140,28 +140,28 @@ type completenessCache struct {
 }
 
 type completenessEntry struct {
-	badge  completenessBadge
+	badge  CompletenessBadge
 	ok     bool
 	filled time.Time
 }
 
-// completenessCacheTTL bounds staleness of a cached badge.
-const completenessCacheTTL = 60 * time.Second
+// CompletenessCacheTTL bounds staleness of a cached badge.
+const CompletenessCacheTTL = 60 * time.Second
 
-func (c *completenessCache) get(id string, now time.Time) (completenessBadge, bool, bool) {
+func (c *completenessCache) get(id string, now time.Time) (CompletenessBadge, bool, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.entries == nil {
-		return completenessBadge{}, false, false
+		return CompletenessBadge{}, false, false
 	}
 	e, ok := c.entries[id]
-	if !ok || now.Sub(e.filled) >= completenessCacheTTL {
-		return completenessBadge{}, false, false
+	if !ok || now.Sub(e.filled) >= CompletenessCacheTTL {
+		return CompletenessBadge{}, false, false
 	}
 	return e.badge, e.ok, true
 }
 
-func (c *completenessCache) set(id string, badge completenessBadge, ok bool, now time.Time) {
+func (c *completenessCache) set(id string, badge CompletenessBadge, ok bool, now time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.entries == nil {
@@ -170,20 +170,30 @@ func (c *completenessCache) set(id string, badge completenessBadge, ok bool, now
 	c.entries[id] = completenessEntry{badge: badge, ok: ok, filled: now}
 }
 
+// SetCompletenessCacheForTest seeds or ages a cached badge (server package tests).
+func (c *Core) SetCompletenessCacheForTest(id string, badge CompletenessBadge, ok bool, filled time.Time) {
+	c.completenessCache.mu.Lock()
+	defer c.completenessCache.mu.Unlock()
+	if c.completenessCache.entries == nil {
+		c.completenessCache.entries = make(map[string]completenessEntry)
+	}
+	c.completenessCache.entries[id] = completenessEntry{badge: badge, ok: ok, filled: filled}
+}
+
 func (c *completenessCache) invalidate() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.entries = nil
 }
 
-func badgeFromJobs(total, success, failed int) completenessBadge {
+func BadgeFromJobs(total, success, failed int) CompletenessBadge {
 	switch {
 	case failed == 0:
-		return completenessBadge{Label: "Complete", Tone: "ok"}
+		return CompletenessBadge{Label: "Complete", Tone: "ok"}
 	case failed >= total:
-		return completenessBadge{Label: "Failed", Tone: "err"}
+		return CompletenessBadge{Label: "Failed", Tone: "err"}
 	default:
-		return completenessBadge{
+		return CompletenessBadge{
 			Label: fmt.Sprintf("%d of %d jobs failed", failed, total),
 			Tone:  "warn",
 		}
