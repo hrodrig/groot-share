@@ -5,8 +5,8 @@
 **📦** _Web and API door for groot `.tar.gz` archives when a VPS exists_
 
 [![Release](https://img.shields.io/github/v/release/hrodrig/groot-share?display_name=tag&label=release&logo=github)](https://github.com/hrodrig/groot-share/releases)
-[![Version](https://img.shields.io/badge/version-0.8.1-blue)](https://github.com/hrodrig/groot-share/releases)
-[![Go](https://img.shields.io/badge/Go-1.27.3-00ADD8?logo=go)](https://go.dev/)
+[![Version](https://img.shields.io/badge/version-0.8.2-blue)](https://github.com/hrodrig/groot-share/releases)
+[![Go](https://img.shields.io/badge/Go-1.27.4-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![CI](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hrodrig/groot-share/actions/workflows/ci.yml)
 [![gghstats clones](https://gghstats.hermesrodriguez.com/api/v1/badge/hrodrig/groot-share?metric=clones)](https://gghstats.hermesrodriguez.com/hrodrig/groot-share)

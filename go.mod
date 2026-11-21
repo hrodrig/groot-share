@@ -1,6 +1,6 @@
 module github.com/hrodrig/groot-share
 
-go 1.27.3
+go 1.27.4
 
 // Disable Multipath TCP for every binary in this module. Go 1.24+ enables
 // MPTCP on Linux listeners by default (multipathtcp=2) and CVE-2026-98432 — a
