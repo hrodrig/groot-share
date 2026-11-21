@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Retention threat model:** SECURITY.md + SPEC §7 document global newest-first `keep_last` / `max_age` (mixed clusters are operator scope; #53) and the ingest-flood vs `keep_last` gap (pins/shares do not cover unpinned evidence; quarantine not implemented; #54).
 
+### Changed
+
+- **Drop synthetic `*_extra_test.go` names (#32):** fold store cases into the real `*_test.go` files; rename server coverage grab-bag to `handlers_edge_test.go`. Coverage gate unchanged (honest move, no padding).
+
 ## [0.8.2] — 2026-11-20
 
 ### Security
