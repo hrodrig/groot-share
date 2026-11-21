@@ -1,4 +1,4 @@
-package server
+package core
 
 import (
 	"net/http"
@@ -7,7 +7,18 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-func parseSort(r *http.Request) (field string, asc bool) {
+const defaultSortField = "uploaded"
+
+func firstSortAsc(field string) bool {
+	switch field {
+	case "size", "uploaded":
+		return false
+	default:
+		return true
+	}
+}
+
+func ParseSort(r *http.Request) (field string, asc bool) {
 	field = r.URL.Query().Get("sort")
 	switch field {
 	case "key", "name":
@@ -26,7 +37,7 @@ func parseSort(r *http.Request) (field string, asc bool) {
 	}
 }
 
-func sortArchives(items []store.Archive, field string, asc bool) {
+func SortArchives(items []store.Archive, field string, asc bool) {
 	sort.SliceStable(items, func(i, j int) bool {
 		less := archiveLess(items[i], items[j], field)
 		if asc {

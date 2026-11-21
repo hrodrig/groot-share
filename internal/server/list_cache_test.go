@@ -9,6 +9,7 @@ import (
 
 	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
+	"github.com/hrodrig/groot-share/internal/server/core"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
@@ -31,12 +32,7 @@ func newCachedServer(t *testing.T) (*Server, *store.Store, *countingBlobs) {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	blobs := &countingBlobs{Memory: blob.NewMemory()}
-	s := &Server{
-		Cfg:   config.Config{Topology: config.TopologyVPSS3, S3Prefix: "prefix/"},
-		Store: st,
-		Blobs: blobs,
-		Ready: func() bool { return true },
-	}
+	s := newTestServer(config.Config{Topology: config.TopologyVPSS3, S3Prefix: "prefix/"}, st, blobs, "")
 	// Seed one object so List has something to return.
 	if err := blobs.Put(context.Background(), "prefix/2026/obj.tar.gz", strings.NewReader("x")); err != nil {
 		t.Fatal(err)
@@ -47,10 +43,10 @@ func newCachedServer(t *testing.T) (*Server, *store.Store, *countingBlobs) {
 func TestListItemsBucketCachesWithinTTL(t *testing.T) {
 	s, _, blobs := newCachedServer(t)
 
-	if _, err := s.listItems(context.Background()); err != nil {
+	if _, err := s.ListItems(context.Background()); err != nil {
 		t.Fatalf("first list: %v", err)
 	}
-	if _, err := s.listItems(context.Background()); err != nil {
+	if _, err := s.ListItems(context.Background()); err != nil {
 		t.Fatalf("second list: %v", err)
 	}
 	if got := blobs.lists.Load(); got != 1 {
@@ -61,12 +57,12 @@ func TestListItemsBucketCachesWithinTTL(t *testing.T) {
 func TestListItemsBucketInvalidatesOnUpload(t *testing.T) {
 	s, _, blobs := newCachedServer(t)
 
-	if _, err := s.listItems(context.Background()); err != nil {
+	if _, err := s.ListItems(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	// A successful bucket upload invalidates the cache.
-	s.listCache.invalidate()
-	if _, err := s.listItems(context.Background()); err != nil {
+	s.InvalidateListCache()
+	if _, err := s.ListItems(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if got := blobs.lists.Load(); got != 2 {
@@ -77,15 +73,13 @@ func TestListItemsBucketInvalidatesOnUpload(t *testing.T) {
 func TestListItemsBucketExpiresAfterTTL(t *testing.T) {
 	s, _, blobs := newCachedServer(t)
 
-	if _, err := s.listItems(context.Background()); err != nil {
+	if _, err := s.ListItems(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	// Age the cache past TTL without exercising real time sleeps.
-	s.listCache.mu.Lock()
-	s.listCache.filled = time.Now().Add(-listCacheTTL - time.Second)
-	s.listCache.mu.Unlock()
+	s.SetListCacheFilledForTest(time.Now().Add(-core.ListCacheTTL - time.Second))
 
-	if _, err := s.listItems(context.Background()); err != nil {
+	if _, err := s.ListItems(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if got := blobs.lists.Load(); got != 2 {

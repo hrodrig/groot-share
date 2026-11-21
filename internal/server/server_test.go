@@ -12,7 +12,7 @@ import (
 )
 
 func TestHealthz(t *testing.T) {
-	s := &Server{Cfg: config.Config{Topology: config.TopologyVPS}}
+	s := newTestServer(config.Config{Topology: config.TopologyVPS}, nil, nil, "")
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if rr.Code != http.StatusOK {
@@ -24,7 +24,8 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestReadyzOK(t *testing.T) {
-	s := &Server{Ready: func() bool { return true }}
+	s := newTestServer(config.Config{}, nil, nil, "")
+	s.Ready = func() bool { return true }
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	if rr.Code != http.StatusOK {
@@ -33,7 +34,8 @@ func TestReadyzOK(t *testing.T) {
 }
 
 func TestReadyzNotReady(t *testing.T) {
-	s := &Server{Ready: func() bool { return false }}
+	s := newTestServer(config.Config{}, nil, nil, "")
+	s.Ready = func() bool { return false }
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	if rr.Code != http.StatusServiceUnavailable {
@@ -44,7 +46,8 @@ func TestReadyzNotReady(t *testing.T) {
 func TestUnknownPath404AccessLog(t *testing.T) {
 	var buf bytes.Buffer
 	logging.SetupWriter(&buf, "json", "info")
-	s := &Server{Ready: func() bool { return true }}
+	s := newTestServer(config.Config{}, nil, nil, "")
+	s.Ready = func() bool { return true }
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/nope", nil))
 	if rr.Code != http.StatusNotFound {
@@ -60,7 +63,7 @@ func TestUnknownPath404AccessLog(t *testing.T) {
 }
 
 func TestNotFoundEscapesUserPath(t *testing.T) {
-	s := &Server{}
+	s := newTestServer(config.Config{}, nil, nil, "")
 	rr := httptest.NewRecorder()
 	p := "/<script>alert('xss')</script>"
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, p, nil))
@@ -82,7 +85,7 @@ func TestNotFoundEscapesUserPath(t *testing.T) {
 func TestHealthzSkipsAccessLog(t *testing.T) {
 	var buf bytes.Buffer
 	logging.SetupWriter(&buf, "json", "info")
-	s := &Server{}
+	s := newTestServer(config.Config{}, nil, nil, "")
 	rr := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if rr.Code != http.StatusOK {

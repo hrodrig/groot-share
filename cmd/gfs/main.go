@@ -106,27 +106,22 @@ func openBlobs(cfg config.Config) (blob.Store, error) {
 }
 
 func newApp(cfg config.Config, st *store.Store, blobs blob.Store, version string) *server.Server {
-	return &server.Server{
-		Cfg:        cfg,
-		Store:      st,
-		Blobs:      blobs,
-		Version:    version,
-		LoginLimit: ratelimit.New(cfg.LoginRateLimit.Requests, cfg.LoginRateLimit.Window),
-		Ready: func() bool {
-			if !st.Ping(context.Background()) {
-				return false
-			}
-			if cfg.Topology != config.TopologyVPSS3 {
-				return true
-			}
-			if blobs == nil {
-				return cfg.S3Bucket != "" && config.S3CredsPresent()
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			return blobs.HeadBucket(ctx) == nil
-		},
+	s := server.New(cfg, st, blobs, version, ratelimit.New(cfg.LoginRateLimit.Requests, cfg.LoginRateLimit.Window))
+	s.Ready = func() bool {
+		if !st.Ping(context.Background()) {
+			return false
+		}
+		if cfg.Topology != config.TopologyVPSS3 {
+			return true
+		}
+		if blobs == nil {
+			return cfg.S3Bucket != "" && config.S3CredsPresent()
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return blobs.HeadBucket(ctx) == nil
 	}
+	return s
 }
 
 func newHTTPServer(cfg config.Config, st *store.Store) *http.Server {

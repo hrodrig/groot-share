@@ -6,8 +6,8 @@
 
 | Track | Status |
 |-------|--------|
-| Product | **v0.9.0**. Backlog band: fail-closed admin audit (#55), per-cluster retention + pin-on-ingest (#53), tmpl/mw split (#31), extra-test cleanup (#32). Go **1.27.4**. |
-| Operator UX | **Phase 10 done**. Follow-up: handler httpapi/web split (#78); pin selfhosted after tag. |
+| Product | **v0.9.1**. Backlog band: fail-closed admin audit (#55), per-cluster retention + pin-on-ingest (#53), tmpl/mw split (#31), extra-test cleanup (#32). Go **1.27.4**. |
+| Operator UX | **Phase 10 done**. #78 httpapi/web split shipped. Next: pin selfhosted to v0.9.1 when ready. |
 
 ## Overview
 

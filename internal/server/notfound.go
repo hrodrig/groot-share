@@ -2,29 +2,36 @@
 package server
 
 import (
-	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"net/http"
 	"strings"
+
+	"github.com/hrodrig/groot-share/internal/server/core"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 )
 
-// notFoundTmpl renders the 404 page reusing the page shell (brand, theme,
-// favicon, layout CSS). It intentionally omits the app nav: a 404 is
-// reached for unmatched routes which may not have an authenticated actor,
-// and the primary CTA ("Back to Captures") is enough to recover.
-
-// handleNotFound renders a 404 response. Browser requests (HTML accept, or
-// any path that is not the JSON API surface) get the branded page; API
-// requests keep the structured JSON error.
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
-	if wantsJSON(r) ||
+	if core.WantsJSON(r) ||
 		strings.HasPrefix(r.URL.Path, "/v1/") ||
 		strings.HasPrefix(r.URL.Path, "/s/") {
-		writeJSONError(w, http.StatusNotFound, "not_found")
+		core.WriteJSONError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	data := s.pageShell()
+	data := s.ui.PageShell()
 	data["Path"] = r.URL.Path
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	_ = tmpl.NotFound.Execute(w, data)
+}
+
+// writeShareGone is injected into httpapi for expired/revoked share links (HTML).
+func (s *Server) writeShareGone(w http.ResponseWriter, r *http.Request, reason string) {
+	if core.WantsJSON(r) {
+		core.WriteJSONError(w, http.StatusGone, reason)
+		return
+	}
+	data := s.ui.PageShell()
+	data["Reason"] = reason
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusGone)
+	_ = tmpl.ShareGone.Execute(w, data)
 }
