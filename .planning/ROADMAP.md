@@ -1,13 +1,13 @@
 # Roadmap: gfs
 
-**Last reviewed:** 2026-11-20
+**Last reviewed:** 2026-11-21
 
 ## Current focus
 
 | Track | Status |
 |-------|--------|
-| Product | **v0.8.2**. Go **1.27.4** (**GO-2026-6859**). Prior: **v0.8.1** MPTCP (**CVE-2026-98432**) + deps. Phase 10 catalog UX shipped earlier. |
-| Operator UX | **Phase 10 done** (2026-08-22). Evidence locker complete. Next band: backlog items (#53–#55, package split). |
+| Product | **v0.9.0**. Backlog band: fail-closed admin audit (#55), per-cluster retention + pin-on-ingest (#53), tmpl/mw split (#31), extra-test cleanup (#32). Go **1.27.4**. |
+| Operator UX | **Phase 10 done**. Follow-up: handler httpapi/web split (#78); pin selfhosted after tag. |
 
 ## Overview
 
