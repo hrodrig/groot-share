@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net"
@@ -29,6 +30,8 @@ type Server struct {
 	// completenessCache memoizes per-archive completeness badges (zero-value =
 	// cold, safe). Only local (vps) archives consult it.
 	completenessCache completenessCache
+	// auditInsert overrides Store.InsertAudit when non-nil (tests only).
+	auditInsert func(ctx context.Context, ev store.Audit) error
 }
 
 // Handler returns the root mux with middleware.

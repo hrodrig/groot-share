@@ -132,7 +132,10 @@ func (s *Server) handleSettingsAPIKeyRevokePOST(w http.ResponseWriter, r *http.R
 		http.Redirect(w, r, "/settings?notice=error", http.StatusSeeOther)
 		return
 	}
-	s.recordUserAudit(r, "apikey.revoke", strconv.FormatInt(id, 10), ac.User.Username)
+	if err := s.requireUserAudit(r, "apikey.revoke", strconv.FormatInt(id, 10), ac.User.Username); err != nil {
+		http.Error(w, "audit unavailable", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/settings?notice=revoked", http.StatusSeeOther)
 }
 

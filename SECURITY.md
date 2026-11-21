@@ -59,15 +59,24 @@ trusted hop; gfs itself performs no such parsing today. (There is no way to
 make `RemoteAddr` a client IP without either terminating TLS at gfs or teaching
 gfs to trust a proxy hop.)
 
-## Audit (fail-open)
+## Audit
 
-`InsertAudit` failures are logged at error level and then ignored — the primary
-operation (upload, download, delete, or an admin user/API-key mutation) always
-proceeds. This is a deliberate **fail-open** trade-off: an audit-log outage
-must not take down the file service it is meant to watch. It means a
-persistent `audit` table failure could, in principle, let a write go
-unrecorded. Hardening admin actions so their audit record is required before
-the action completes is tracked as a follow-up.
+### File operations (fail-open)
+
+`InsertAudit` failures for archive upload / download / delete (and similar file
+paths) are logged at error level and then ignored — those primary operations
+still proceed. This is a deliberate **fail-open** trade-off: an audit-log
+outage must not take down the evidence door it is meant to watch.
+
+### Admin mutations (fail-closed)
+
+Privileged identity mutations require a successful audit insert after the
+store write succeeds. Covered actions: `user.create`, `user.update`,
+`user.deactivate`, `apikey.revoke`. If the audit insert fails, the handler
+responds **500** with `audit unavailable` (JSON or plain text for HTML
+settings revoke). Residual: the store mutation may already have applied when
+the audit insert fails; wrapping both in one SQLite transaction is a future
+hardening step.
 
 ## Supported versions
 

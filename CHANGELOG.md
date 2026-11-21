@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Admin mutations fail-closed on audit insert** (`user.create`, `user.update`, `user.deactivate`, `apikey.revoke`): after a successful store write, a failed audit row yields **500** `audit unavailable` instead of silent success. File upload/download/delete remains fail-open. See SECURITY.md §Audit. (#55)
+
 ## [0.8.2] — 2026-11-20
 
 ### Security
