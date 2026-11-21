@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -101,7 +102,7 @@ func (s *Server) handleActivityGET(w http.ResponseWriter, r *http.Request) {
 	data["Nav"] = "activity"
 	data["CanExport"] = ac != nil && ac.User.Role == auth.RoleAdmin
 	mergeAuditFilterData(data, f)
-	_ = activityTmpl.Execute(w, data)
+	_ = tmpl.Activity.Execute(w, data)
 }
 
 func (s *Server) handleListAudit(w http.ResponseWriter, r *http.Request) {

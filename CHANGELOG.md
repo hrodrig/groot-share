@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Split `internal/server` templates and middleware (#31):** `internal/server/tmpl` (CSS, HTML templates, page/pager/filter URL helpers) and `internal/server/mw` (access log, security headers, RemoteIP). Handlers and auth wrappers stay in `server`. No route or behaviour change.
 - **Retention `keep_last` is per cluster (#53):** `retain.Pick` groups by `ParseClusterSlug`; `max_age_days` stays global. List order uses stable newest-first ties (`rowid` / object id).
 - **Pin-on-ingest:** `X-GFS-Pin: 1` or `?pin=1` on `POST /v1/archives` pins for the uploader after success (fail-open). HTML upload checkbox supported. SFTP / S3-list-only objects are not auto-pinned.
 - **Drop synthetic `*_extra_test.go` names (#32):** fold store cases into the real `*_test.go` files; rename server coverage grab-bag to `handlers_edge_test.go`. Coverage gate unchanged (honest move, no padding).
