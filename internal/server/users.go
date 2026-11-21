@@ -139,7 +139,10 @@ func (s *Server) patchUserRoleActive(w http.ResponseWriter, r *http.Request, id 
 		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return false
 	}
-	s.recordUserAudit(r, "user.update", strconv.FormatInt(id, 10), u.Username)
+	if err := s.requireUserAudit(r, "user.update", strconv.FormatInt(id, 10), u.Username); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "audit unavailable")
+		return false
+	}
 	return true
 }
 
@@ -184,7 +187,10 @@ func (s *Server) patchUserUsername(w http.ResponseWriter, r *http.Request, id in
 		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return false
 	}
-	s.recordUserAudit(r, "user.update", strconv.FormatInt(id, 10), strings.TrimSpace(username))
+	if err := s.requireUserAudit(r, "user.update", strconv.FormatInt(id, 10), strings.TrimSpace(username)); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "audit unavailable")
+		return false
+	}
 	return true
 }
 
@@ -230,7 +236,10 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "internal")
 		return
 	}
-	s.recordUserAudit(r, "user.deactivate", strconv.FormatInt(id, 10), u.Username)
+	if err := s.requireUserAudit(r, "user.deactivate", strconv.FormatInt(id, 10), u.Username); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "audit unavailable")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

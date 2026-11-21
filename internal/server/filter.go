@@ -1,9 +1,7 @@
 package server
 
 import (
-	"html/template"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -74,57 +72,6 @@ func windowSince(window string, now time.Time) time.Time {
 	default:
 		return time.Time{}
 	}
-}
-
-// queryStringWith returns a copy of the request query string with the
-// named param set to value (empty string removes it). The base query
-// string comes from r.URL.RawQuery so existing sort/pager/page params
-// are preserved.
-func queryStringWith(r *http.Request, key, value string) string {
-	q := r.URL.Query()
-	if value == "" {
-		q.Del(key)
-	} else {
-		q.Set(key, value)
-	}
-	return q.Encode()
-}
-
-// QueryStringWith is the exported form for use from templates.
-func QueryStringWith(r *http.Request, key, value string) string {
-	return queryStringWith(r, key, value)
-}
-
-// QueryStringWithout returns a copy of the request query string with
-// the named param removed entirely.
-func QueryStringWithout(r *http.Request, key string) string {
-	return queryStringWith(r, key, "")
-}
-
-// FilterURLBuilder is a tiny wrapper used by the template to render
-// facet-chip hrefs without re-parsing the request each time.
-type FilterURLBuilder struct {
-	Base string // encoded base query string
-}
-
-// With returns the base with key=value, marked as template.URL so the
-// html/template package does not escape `=` to `%3d` inside href attrs.
-func (b FilterURLBuilder) With(key, value string) template.URL {
-	q, err := url.ParseQuery(b.Base)
-	if err != nil {
-		q = url.Values{}
-	}
-	if value == "" {
-		q.Del(key)
-	} else {
-		q.Set(key, value)
-	}
-	return template.URL(q.Encode())
-}
-
-// Without returns the base with key removed.
-func (b FilterURLBuilder) Without(key string) template.URL {
-	return b.With(key, "")
 }
 
 // applyFilterInMemory delegates to store.FilterInMemory so the in-memory

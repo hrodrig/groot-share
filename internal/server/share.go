@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"html/template"
+	"github.com/hrodrig/groot-share/internal/server/tmpl"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -261,38 +261,5 @@ func (s *Server) writeShareGone(w http.ResponseWriter, r *http.Request, reason s
 	data["GoneBody"] = body
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusGone)
-	_ = shareGoneTmpl.Execute(w, data)
+	_ = tmpl.ShareGone.Execute(w, data)
 }
-
-var shareGoneTmpl = template.Must(template.New("share-gone").Funcs(pageFuncs).Parse(`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>gfs — Share link</title>{{.FaviconHead}}{{.ThemeHead}}<style>{{.CSS}}</style></head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
-<header class="appbar">
-  <div class="appbar-in">
-    <div class="appbar-start">
-      <a class="brand" href="/">
-        <span class="crate" aria-hidden="true"></span>
-        <span class="wordmark">gfs</span>
-        {{if .BrandSub}}<span class="brand-sub">{{.BrandSub}}</span>{{end}}
-      </a>
-    </div>
-    <div class="appbar-side">
-      {{.ThemeToggle}}
-    </div>
-  </div>
-</header>
-<main id="main" class="wrap">
-  <section class="card" style="max-width:460px;margin:48px auto;">
-    <div class="card-head">
-      <h2>410 — {{.GoneTitle}}</h2>
-      <p class="hint">{{.GoneBody}}</p>
-    </div>
-    <div style="padding:16px 24px 20px;">
-      <a class="btn" href="/">Go to Home</a>
-    </div>
-  </section>
-</main>
-{{.ThemeToggleScript}}
-</body></html>
-`))

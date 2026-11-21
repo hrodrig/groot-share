@@ -239,6 +239,9 @@ func (s *Server) listItemsBucket(ctx context.Context) ([]store.Archive, error) {
 		out = append(out, objectArchive(o))
 	}
 	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].ID > out[j].ID
+		}
 		return out[i].CreatedAt.After(out[j].CreatedAt)
 	})
 	s.listCache.set(out, now)

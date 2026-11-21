@@ -304,10 +304,12 @@ func collapseDashes(s string) string {
 }
 
 // ListArchives returns newest first.
+// Secondary rowid DESC breaks same-second ties so retention keep_last sees
+// later inserts as newer (SQLite datetime is second resolution).
 func (s *Store) ListArchives(ctx context.Context) ([]Archive, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, key, size, sha256, source, COALESCE(uploaded_by, 0), created_at
-		FROM archives ORDER BY created_at DESC`)
+		FROM archives ORDER BY created_at DESC, rowid DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list archives: %w", err)
 	}

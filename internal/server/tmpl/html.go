@@ -1,4 +1,4 @@
-package server
+package tmpl
 
 import (
 	"fmt"
@@ -389,6 +389,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, .dropzone:focus-visi
 .theme-toggle .is-hidden { display: none; }
 
 /* ---- forms ---- */
+.field-check {
+  display: flex; align-items: center; gap: 8px;
+  margin: 12px 0 16px;
+  font: 400 14px/1.4 var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+}
+.field-check input { width: 1rem; height: 1rem; accent-color: var(--accent); }
 .field { display: block; margin: 0 0 16px; }
 .field > span:first-child {
   display: block; margin-bottom: 6px;
@@ -860,7 +868,7 @@ dialog#confirm-dialog::backdrop { background: rgb(16 24 40 / 0.45); }
 }
 `
 
-func humanSize(n int64) string {
+func HumanSize(n int64) string {
 	const k = 1024
 	switch {
 	case n < k:
@@ -874,18 +882,18 @@ func humanSize(n int64) string {
 	}
 }
 
-// statsLine summarizes the archive inventory for the page header.
-func statsLine(count int, total int64) string {
+// StatsLine summarizes the archive inventory for the page header.
+func StatsLine(count int, total int64) string {
 	noun := "archives"
 	if count == 1 {
 		noun = "archive"
 	}
-	return fmt.Sprintf("%d %s · %s total", count, noun, humanSize(total))
+	return fmt.Sprintf("%d %s · %s total", count, noun, HumanSize(total))
 }
 
-// noticeFromQuery maps flash-notice query params to (kind, text). Only fixed
+// NoticeFromQuery maps flash-notice query params to (kind, text). Only fixed
 // notice tokens are accepted; optional name= is basename-validated for uploads.
-func noticeFromQuery(q url.Values) (kind, text string) {
+func NoticeFromQuery(q url.Values) (kind, text string) {
 	switch q.Get("notice") {
 	case "uploaded":
 		if raw := strings.TrimSpace(q.Get("name")); raw != "" {
@@ -898,13 +906,13 @@ func noticeFromQuery(q url.Values) (kind, text string) {
 		}
 		return "err", "This file is already uploaded (same content). Check Captures or pick another file."
 	default:
-		return noticeCopy(q.Get("notice"))
+		return NoticeCopy(q.Get("notice"))
 	}
 }
 
-// noticeCopy maps a flash-notice query token to (kind, text). Unknown tokens
+// NoticeCopy maps a flash-notice query token to (kind, text). Unknown tokens
 // render nothing, so no user input is ever reflected into the page.
-func noticeCopy(token string) (kind, text string) {
+func NoticeCopy(token string) (kind, text string) {
 	switch token {
 	case "uploaded":
 		return "ok", "Capture uploaded. You can send another."
@@ -921,7 +929,7 @@ func noticeCopy(token string) (kind, text string) {
 	}
 }
 
-func loginErrorCopy(code string) string {
+func LoginErrorCopy(code string) string {
 	switch code {
 	case "unauthorized":
 		return "Incorrect username or password."
@@ -938,24 +946,24 @@ func loginErrorCopy(code string) string {
 	}
 }
 
-func displayVersion(v string) string {
+func DisplayVersion(v string) string {
 	if strings.TrimSpace(v) == "" {
 		return "dev"
 	}
 	return strings.TrimSpace(v)
 }
 
-// themeHeadScript applies saved or system theme before first paint.
-const themeHeadScript = `<script>(function(){try{var k='gfs-theme',t=localStorage.getItem(k);if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);return;}}catch(e){}if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.setAttribute('data-theme','dark');}})();</script>`
+// ThemeHeadScript applies saved or system theme before first paint.
+const ThemeHeadScript = `<script>(function(){try{var k='gfs-theme',t=localStorage.getItem(k);if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);return;}}catch(e){}if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.setAttribute('data-theme','dark');}})();</script>`
 
-const themeToggleScript = `<script>(function(){var b=document.getElementById('theme-toggle');if(!b)return;var sun=b.querySelector('.icon-sun');var moon=b.querySelector('.icon-moon');function cur(){var t=document.documentElement.getAttribute('data-theme');if(t==='dark'||t==='light')return t;return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}function sync(){var dark=cur()==='dark';if(sun)sun.classList.toggle('is-hidden',!dark);if(moon)moon.classList.toggle('is-hidden',dark);b.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');}sync();b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('gfs-theme',n);}catch(e){}sync();});})();</script>`
+const ThemeToggleScript = `<script>(function(){var b=document.getElementById('theme-toggle');if(!b)return;var sun=b.querySelector('.icon-sun');var moon=b.querySelector('.icon-moon');function cur(){var t=document.documentElement.getAttribute('data-theme');if(t==='dark'||t==='light')return t;return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}function sync(){var dark=cur()==='dark';if(sun)sun.classList.toggle('is-hidden',!dark);if(moon)moon.classList.toggle('is-hidden',dark);b.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');}sync();b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('gfs-theme',n);}catch(e){}sync();});})();</script>`
 
-const themeToggleHTML = `<button type="button" class="theme-toggle btn btn-quiet btn-sm" id="theme-toggle" aria-label="Switch to dark mode"><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="icon-sun is-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>`
+const ThemeToggleHTML = `<button type="button" class="theme-toggle btn btn-quiet btn-sm" id="theme-toggle" aria-label="Switch to dark mode"><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="icon-sun is-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>`
 
-const passwordToggleScript = `<script>(function(){var i=document.getElementById('login-password');var b=document.getElementById('pw-toggle');if(!i||!b)return;var showIcon=b.querySelector('.icon-show');var hideIcon=b.querySelector('.icon-hide');b.addEventListener('click',function(){var vis=i.type==='password';i.type=vis?'text':'password';b.setAttribute('aria-label',vis?'Hide password':'Show password');if(showIcon)showIcon.classList.toggle('is-hidden',vis);if(hideIcon)hideIcon.classList.toggle('is-hidden',!vis);});})();</script>`
+const PasswordToggleScript = `<script>(function(){var i=document.getElementById('login-password');var b=document.getElementById('pw-toggle');if(!i||!b)return;var showIcon=b.querySelector('.icon-show');var hideIcon=b.querySelector('.icon-hide');b.addEventListener('click',function(){var vis=i.type==='password';i.type=vis?'text':'password';b.setAttribute('aria-label',vis?'Hide password':'Show password');if(showIcon)showIcon.classList.toggle('is-hidden',vis);if(hideIcon)hideIcon.classList.toggle('is-hidden',!vis);});})();</script>`
 
-func faviconHeadHTML(version string) template.HTML {
-	v := template.HTMLEscapeString(displayVersion(version))
+func FaviconHeadHTML(version string) template.HTML {
+	v := template.HTMLEscapeString(DisplayVersion(version))
 	return template.HTML(
 		`<meta name="theme-color" content="#f79009">` +
 			`<link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=` + v + `">` +
@@ -967,8 +975,8 @@ func faviconHeadHTML(version string) template.HTML {
 	)
 }
 
-func appFootHTML(version string) template.HTML {
-	v := displayVersion(version)
+func AppFootHTML(version string) template.HTML {
+	v := DisplayVersion(version)
 	return template.HTML(
 		`<footer class="app-foot"><p>gfs v` + template.HTMLEscapeString(v) +
 			` · <a href="https://github.com/hrodrig/groot" rel="noopener noreferrer">groot</a>` +
@@ -976,40 +984,18 @@ func appFootHTML(version string) template.HTML {
 	)
 }
 
-func pageShellData(version string) map[string]any {
+func PageShellData(version string) map[string]any {
 	return map[string]any{
 		"CSS":               template.CSS(layoutCSS),
-		"FaviconHead":       faviconHeadHTML(version),
-		"ThemeHead":         template.HTML(themeHeadScript),
-		"ThemeToggle":       template.HTML(themeToggleHTML),
-		"ThemeToggleScript": template.HTML(themeToggleScript),
-		"Version":           displayVersion(version),
+		"FaviconHead":       FaviconHeadHTML(version),
+		"ThemeHead":         template.HTML(ThemeHeadScript),
+		"ThemeToggle":       template.HTML(ThemeToggleHTML),
+		"ThemeToggleScript": template.HTML(ThemeToggleScript),
+		"Version":           DisplayVersion(version),
 		"PagerSizes":        HTMLPageSizes,
-		"AppFoot":           appFootHTML(version),
+		"AppFoot":           AppFootHTML(version),
 		"BrandSub":          config.DefaultBrandSub,
 		"LoginTitle":        "gfs — Sign in",
 		"GateClass":         "gate",
 	}
-}
-
-func (s *Server) pageShell() map[string]any {
-	data := pageShellData(s.Version)
-	data["BrandSub"] = config.DisplayBrandSub(s.Cfg.BrandSub)
-	data["AppFoot"] = s.footerHTML()
-	if s.Cfg.LoginSimple {
-		data["LoginTitle"] = "Sign in"
-		data["GateClass"] = "gate gate-simple"
-		data["FaviconHead"] = template.HTML("")
-	}
-	return data
-}
-
-func (s *Server) footerHTML() template.HTML {
-	if strings.TrimSpace(s.Cfg.Footer) == "-" {
-		return ""
-	}
-	if text := config.DisplayFooter(s.Cfg.Footer); text != "" {
-		return template.HTML(`<footer class="app-foot"><p>` + template.HTMLEscapeString(text) + `</p></footer>`)
-	}
-	return appFootHTML(s.Version)
 }

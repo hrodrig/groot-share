@@ -2,16 +2,15 @@
 package server
 
 import (
+	"context"
 	"io"
-	"log/slog"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/hrodrig/groot-share/internal/auth"
 	"github.com/hrodrig/groot-share/internal/blob"
 	"github.com/hrodrig/groot-share/internal/config"
 	"github.com/hrodrig/groot-share/internal/ratelimit"
+	"github.com/hrodrig/groot-share/internal/server/mw"
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
@@ -29,6 +28,8 @@ type Server struct {
 	// completenessCache memoizes per-archive completeness badges (zero-value =
 	// cold, safe). Only local (vps) archives consult it.
 	completenessCache completenessCache
+	// auditInsert overrides Store.InsertAudit when non-nil (tests only).
+	auditInsert func(ctx context.Context, ev store.Audit) error
 }
 
 // Handler returns the root mux with middleware.
@@ -93,7 +94,7 @@ func (s *Server) Handler() http.Handler {
 	// (browser) or return a structured JSON error (API). Specific
 	// patterns registered above always win on priority.
 	mux.HandleFunc("/", s.handleNotFound)
-	return s.securityHeaders(s.accessLog(mux))
+	return mw.SecurityHeaders(s.Cfg.CSP, mw.AccessLog(mux))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
@@ -110,46 +111,4 @@ func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 	_, _ = io.WriteString(w, "ok\n")
 }
 
-func (s *Server) accessLog(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
-			next.ServeHTTP(w, r)
-			return
-		}
-		start := time.Now()
-		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(rec, r)
-		level := slog.LevelInfo
-		switch {
-		case rec.status >= 500:
-			level = slog.LevelError
-		case rec.status >= 400:
-			level = slog.LevelWarn
-		}
-		slog.Log(r.Context(), level, "http",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", rec.status,
-			"ip", remoteIP(r.RemoteAddr),
-			"dur", time.Since(start).Round(time.Millisecond),
-		)
-	})
-}
-
-func remoteIP(remoteAddr string) string {
-	host, _, err := net.SplitHostPort(remoteAddr)
-	if err != nil {
-		return remoteAddr
-	}
-	return host
-}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	status int
-}
-
-func (s *statusRecorder) WriteHeader(code int) {
-	s.status = code
-	s.ResponseWriter.WriteHeader(code)
-}
+func remoteIP(remoteAddr string) string { return mw.RemoteIP(remoteAddr) }

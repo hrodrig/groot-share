@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-11-21
+
+### Security
+
+- **Admin mutations fail-closed on audit insert** (`user.create`, `user.update`, `user.deactivate`, `apikey.revoke`): after a successful store write, a failed audit row yields **500** `audit unavailable` instead of silent success. File upload/download/delete remains fail-open. See SECURITY.md §Audit. (#55)
+
+### Changed
+
+- **Split `internal/server` templates and middleware (#31):** `internal/server/tmpl` (CSS, HTML templates, page/pager/filter URL helpers) and `internal/server/mw` (access log, security headers, RemoteIP). Handlers and auth wrappers stay in `server`. No route or behaviour change.
+- **Retention `keep_last` is per cluster (#53):** `retain.Pick` groups by `ParseClusterSlug`; `max_age_days` stays global. List order uses stable newest-first ties (`rowid` / object id).
+- **Pin-on-ingest:** `X-GFS-Pin: 1` or `?pin=1` on `POST /v1/archives` pins for the uploader after success (fail-open). HTML upload checkbox supported. SFTP / S3-list-only objects are not auto-pinned.
+- **Drop synthetic `*_extra_test.go` names (#32):** fold store cases into the real `*_test.go` files; rename server coverage grab-bag to `handlers_edge_test.go`. Coverage gate unchanged (honest move, no padding).
+
+### Documentation
+
+- **Retention threat model:** SECURITY.md + SPEC §7 — per-cluster `keep_last`, global `max_age`, pin-on-ingest, ingest-flood gap (#54).
+
 ## [0.8.2] — 2026-11-20
 
 ### Security
@@ -377,7 +394,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/hrodrig/groot-share/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/hrodrig/groot-share/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/hrodrig/groot-share/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/hrodrig/groot-share/compare/v0.7.0...v0.8.0
