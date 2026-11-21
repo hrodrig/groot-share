@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Go 1.27.3 → 1.27.4** in `go.mod` and the **Dockerfile** builder (`golang:1.27.4-alpine`). Clears **GO-2026-6859** (`net/http`). README Go badge synced to **1.27.4**.
+
 ## [0.8.1] — 2026-11-08
 
 ### Security
