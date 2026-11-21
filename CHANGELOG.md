@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-11-21
+
 ### Security
 
 - **Admin mutations fail-closed on audit insert** (`user.create`, `user.update`, `user.deactivate`, `apikey.revoke`): after a successful store write, a failed audit row yields **500** `audit unavailable` instead of silent success. File upload/download/delete remains fail-open. See SECURITY.md §Audit. (#55)
@@ -392,7 +394,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging scaffold mirrored from groot-trigger (Make, Docker, GoReleaser, CI)
 - Stub `cmd/gfs` (`version` only; HTTP is Phase 2)
 
-[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/hrodrig/groot-share/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/hrodrig/groot-share/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/hrodrig/groot-share/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/hrodrig/groot-share/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/hrodrig/groot-share/compare/v0.7.0...v0.8.0
