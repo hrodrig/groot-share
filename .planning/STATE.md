@@ -6,9 +6,9 @@ current_phase: 10
 current_phase_name: Operational catalog UX
 status: complete
 stopped_at: Phase 10 10-07 share-link admin UI complete 2026-08-21 (server-rendered admin page, create copy-once/list/revoke, admin-only, Phase 9 JSON API unchanged; tests green; make ci green)
-last_updated: "2026-08-21T21:30:00.000Z"
-last_activity: 2026-08-21
-last_activity_desc: Phase 10 complete — 10-07 share-link admin UI (UX-09) landed, closing the operational catalog UX milestone
+last_updated: "2026-11-20T21:50:00.000Z"
+last_activity: 2026-11-20
+last_activity_desc: v0.8.2 cut on develop — Go 1.27.4 GO-2026-6859; Phase 10 still complete; backlog #53–#55 deferred
 progress:
   total_phases: 10
   completed_phases: 10
