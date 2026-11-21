@@ -220,11 +220,19 @@ Job (timer in-process or cron): delete objects that violate **either** keep_last
 VPS only: delete files + sqlite rows if any.  
 VPS + S3: delete bucket objects (home). Staging leftovers older than a grace period are swept as incidents (ERROR log including `last_error`), not as the retention set.
 
+**Scope is global:** `retain.Pick` ranks the full listed inventory **newest-first**
+(one window for the whole prefix / data dir). There is **no** per-cluster
+grouping. Mixed-cluster buckets are an operator responsibility — use separate
+prefixes, buckets, or gfs instances, or raise `GFS_KEEP_LAST` / `GFS_MAX_AGE_DAYS`.
+See SECURITY.md §Retention threat model (#53).
+
 **Pinned/shared archives are protected:** an object with at least one `archive_pins`
 row, or at least one active `share_links` row (not revoked, not expired, not
 exhausted), is excluded from retention regardless of its age or position beyond
 `keep_last`. If the protected set cannot be queried the sweep aborts (fail-closed)
-rather than delete without protection.
+rather than delete without protection. Pins/shares do **not** protect unpinned
+archives displaced by a newer ingest flood (#54); quarantine / burst-pause is
+not implemented.
 
 ## 8. Observability
 
