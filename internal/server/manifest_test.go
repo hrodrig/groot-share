@@ -1,11 +1,11 @@
 package server
 
 import (
-	"github.com/hrodrig/groot-share/internal/server/core"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"context"
+	"github.com/hrodrig/groot-share/internal/server/core"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -253,7 +253,7 @@ func TestCompletenessBadgeCached(t *testing.T) {
 	}
 
 	// Force expiry and recompute: the corrupted file no longer yields a badge.
-s.SetCompletenessCacheForTest(a.ID, badge, ok, time.Now().Add(-core.CompletenessCacheTTL - time.Second))
+	s.SetCompletenessCacheForTest(a.ID, badge, ok, time.Now().Add(-core.CompletenessCacheTTL-time.Second))
 	if _, ok = s.CompletenessBadgeOf(a); ok {
 		t.Fatal("expired cache must recompute and fail on corrupted file")
 	}

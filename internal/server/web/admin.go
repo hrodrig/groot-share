@@ -13,25 +13,6 @@ import (
 	"github.com/hrodrig/groot-share/internal/store"
 )
 
-// requestBaseURL returns the base URL used to build share links.
-// If Config.BaseURL is set (operator-pinned via GFS_BASE_URL), it
-// wins and request headers are ignored — this is the fail-closed
-// mode. Otherwise the URL is derived from the request, which
-// requires running behind a trusted proxy that overwrites Host and
-// X-Forwarded-Proto; see SECURITY.md.
-func (srv *Web) requestBaseURL(r *http.Request) string {
-	if srv.Cfg.BaseURL != "" {
-		return srv.Cfg.BaseURL
-	}
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	} else if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
-		scheme = strings.TrimSpace(strings.Split(proto, ",")[0])
-	}
-	return scheme + "://" + r.Host
-}
-
 func (srv *Web) HandleAdminUsersGET(w http.ResponseWriter, r *http.Request) {
 	ac := core.ActorFrom(r.Context())
 	if ac == nil || !ac.Can(auth.PermUsersManage) {
